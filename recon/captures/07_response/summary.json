@@ -1,0 +1,17 @@
+{
+ "evidence_id": "ev_926dd0dc8dba2f1b24f24331b950298a80a12c9ee7bdb12066585c9d5a814d20",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao/response"
+  },
+  {
+   "tag": "01_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao/response"
+  }
+ ]
+}

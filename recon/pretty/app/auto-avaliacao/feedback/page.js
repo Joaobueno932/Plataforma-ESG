@@ -1,0 +1,395 @@
+(self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([
+  [4431],
+  {
+    16089: function (e, a, o) {
+      Promise.resolve().then(o.bind(o, 84810));
+    },
+    1295: function (e, a, o) {
+      "use strict";
+      Object.defineProperty(a, "__esModule", { value: !0 }),
+        (function (e, a) {
+          for (var o in a)
+            Object.defineProperty(e, o, { enumerable: !0, get: a[o] });
+        })(a, {
+          default: function () {
+            return c;
+          },
+          unstable_getImgProps: function () {
+            return l;
+          },
+        });
+      let i = o(21024),
+        r = o(32301),
+        n = o(27873),
+        t = o(63222),
+        s = i._(o(75033)),
+        l = (e) => {
+          (0, n.warnOnce)(
+            "Warning: unstable_getImgProps() is experimental and may change or be removed at any time. Use at your own risk.",
+          );
+          let { props: a } = (0, r.getImgProps)(e, {
+            defaultLoader: s.default,
+            imgConf: {
+              deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+              imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+              path: "/_next/image",
+              loader: "default",
+              dangerouslyAllowSVG: !1,
+              unoptimized: !1,
+            },
+          });
+          for (let [e, o] of Object.entries(a)) void 0 === o && delete a[e];
+          return { props: a };
+        },
+        c = t.Image;
+    },
+    84810: function (e, a, o) {
+      "use strict";
+      o.r(a),
+        o.d(a, {
+          default: function () {
+            return d;
+          },
+        });
+      var i = o(57437),
+        r = o(16691),
+        n = o.n(r);
+      o(2265);
+      var t = o(6345),
+        s = o(61396),
+        l = o.n(s),
+        c = o(55800);
+      function d() {
+        let { formData: e } = (0, c.Gc)(),
+          a = 0 === e.answers.fundamentalNonCompliant;
+        return (0, i.jsxs)("div", {
+          className:
+            "bg-neutral-01 flex flex-col items-center gap-8 h-screen pt-5 overflow-y-scroll",
+          children: [
+            (0, i.jsx)(n(), {
+              alt: "imagem da logo ESG",
+              src: t.default,
+              className: "w-72",
+            }),
+            (0, i.jsxs)("section", {
+              className: "w-[1000px] space-y-8 bg-white shadow p-8 px-16",
+              children: [
+                (0, i.jsxs)("h1", {
+                  className: "title-m text-center",
+                  children: [
+                    "Obrigada por responder \xe1 autoavalia\xe7\xe3o do programa ESG-",
+                    "FIEMS",
+                    ".",
+                  ],
+                }),
+                (0, i.jsxs)("div", {
+                  className: "flex flex-col gap-4",
+                  children: [
+                    (0, i.jsxs)("p", {
+                      className: "body-l",
+                      children: [
+                        "Qualquer d\xfavida, entre em contato com as entidades gestoras do programa pelo e-mail:",
+                        " ",
+                        (0, i.jsx)("a", {
+                          href: "mailto:".concat("contato.esg@sfiems.com.br"),
+                          className: "text-primary-03 hover:underline",
+                          children: "contato.esg@sfiems.com.br",
+                        }),
+                      ],
+                    }),
+                    (0, i.jsx)("span", {
+                      className: "body-l",
+                      children: "Aqui est\xe1 o resumo do resultado: ",
+                    }),
+                  ],
+                }),
+                a
+                  ? (0, i.jsx)("div", {
+                      className: "bg-secondary-01 rounded-md p-12",
+                      children: (0, i.jsxs)("p", {
+                        className: "text-xl",
+                        children: [
+                          "A empresa\xa0 atingiu as diretrizes fundamentais para a conformidade em pr\xe1ticas ESG.\xa0 O programa de certifica\xe7\xe3o da",
+                          " ",
+                          "FIEMS",
+                          " tem a dura\xe7\xe3o de at\xe9 12 meses, tempo suficiente para evoluir ainda mais nos requisitos de sustentabilidade dentro da cultura empresarial e estar preparado para o processo de auditoria externa.\xa0Entre em contato com nosso time pelo e-mail acima e saiba como aderir ao progama de certifica\xe7\xe3o.",
+                        ],
+                      }),
+                    })
+                  : (0, i.jsx)("div", {
+                      className: "bg-red-200 rounded-md p-12",
+                      children: (0, i.jsxs)("p", {
+                        className: "text-xl",
+                        children: [
+                          "A empresa n\xe3o atingiu plenamente as diretrizes fundamentais para a conformidade em pr\xe1ticas ESG. Aproveite a oportunidade para visualizar os pontos de melhoria no relat\xf3rio abaixo e se preparar para a jornada de certifica\xe7\xe3o do Selo ESG-",
+                          "FIEMS",
+                          ".\xa0O programa de certifica\xe7\xe3o da ",
+                          "FIEMS",
+                          " tem a dura\xe7\xe3o de at\xe9 12 meses, tempo suficiente para corrigir os pontos sens\xedveis e estar apto ao processo de auditoria externa.\xa0Entre em contato com nosso time pelo e-mail acima e saiba como aderir ao programa de certifica\xe7\xe3o.",
+                        ],
+                      }),
+                    }),
+                (0, i.jsxs)("div", {
+                  className: "flex flex-col gap-5",
+                  children: [
+                    (0, i.jsx)("p", {
+                      className: "body-l",
+                      children:
+                        "Clique no link abaixo para visualizar sua auto avalia\xe7\xe3o realizada na plataforma",
+                    }),
+                    (0, i.jsx)(l(), {
+                      href:
+                        "/auto-avaliacao/resume" +
+                        "?criteriosNaoAplicaveis=".concat(
+                          e.answers.nonApplicable,
+                        ) +
+                        "&criteriosAplicaveis=".concat(e.answers.applicable) +
+                        "&criteriosAplicaveisNaoConformes=".concat(
+                          e.answers.applicableNonCompliant,
+                        ) +
+                        "&criteriosAplicaveisFundamentaisNaoConformes=".concat(
+                          e.answers.fundamentalNonCompliant,
+                        ) +
+                        "&result=".concat(a ? "ok" : "notok"),
+                      className:
+                        "text-primary-03 hover:underline text-center text-xl",
+                      children: "Visualizar Autoavalia\xe7\xe3o",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        });
+      }
+    },
+    55800: function (e, a, o) {
+      "use strict";
+      o.d(a, {
+        Ho: function () {
+          return i.H;
+        },
+        n7: function () {
+          return r.n;
+        },
+        RV: function () {
+          return x;
+        },
+        vH: function () {
+          return n.v;
+        },
+        dr: function () {
+          return t.d;
+        },
+        Gc: function () {
+          return A;
+        },
+      });
+      var i = o(24723),
+        r = o(93822),
+        n = o(17746),
+        t = o(81388),
+        s = o(57437),
+        l = o(2265),
+        c = o(2915);
+      let d = async (e) => {
+        let a = await c.h.post("/leads", e);
+        return a;
+      };
+      var u = {
+          Administrativo: "Administrativo",
+          "Assist\xeancia Social": "AssistenciaSocial",
+          Atendimento: "Atendimento",
+          Benefícios: "Beneficios",
+          "Centro de distribui\xe7\xe3o": "CentroDistribuicao",
+          Comercial: "Comercial",
+          Compras: "Compras",
+          "Conselho administrativo": "ConselhoAdministrativo",
+          Contabilidade: "Contabilidade",
+          Contratos: "Contratos",
+          "Departamento pessoal": "DepartamentoPessoal",
+          Desenvolvimento: "Desenvolvimento",
+          Educação: "Educacao",
+          Engenharia: "Engenharia",
+          Ferramentaria: "Ferramentaria",
+          Financeiro: "Financeiro",
+          Fiscal: "Fiscal",
+          Gabinete: "Gabinete",
+          Geral: "Geral",
+          Industrial: "Industrial",
+          Infraestrutura: "Infraestrutura",
+          Inovação: "Inovacao",
+          Jurídico: "Juridico",
+          Laboratório: "Laboratorio",
+          Licitação: "Licitacao",
+          Logística: "Logistica",
+          Manutenção: "Manutencao",
+          Marketing: "Marketing",
+          "Medicina ocupacional": "MedicinaOcupacional",
+          "Meio ambiente": "MeioAmbiente",
+          Operacional: "Operacional",
+          Outros: "Outros",
+          "P&D": "P_D",
+          Pessoal: "Pessoal",
+          Presidência: "Presidencia",
+          Produção: "Producao",
+          Projetos: "Projetos",
+          Qsms: "Qsms",
+          Qualidade: "Qualidade",
+          "Qualidade de vida": "QualidadeVida",
+          Recepção: "Recepcao",
+          "Recursos humanos": "RecursosHumanos",
+          Regional: "Regional",
+          Saúde: "Saude",
+          Secretaria: "Secretaria",
+          "Seguran\xe7a do trabalho": "SegurancaTrabalho",
+          SESMT: "SESMT",
+          Superintendência: "Superintendencia",
+          Suprimentos: "Suprimentos",
+          TI: "TI",
+          Unidade: "Unidade",
+          "Vice-presid\xeancia": "VicePresidencia",
+        },
+        m = {
+          Analista: "Analista",
+          Assessor: "Assessor",
+          Assistente: "Assistente",
+          Atendente: "Atendente",
+          Auxiliar: "Auxiliar",
+          CEO: "CEO",
+          Chefe: "Chefe",
+          "Comprador(a)": "Comprador",
+          "Consultor(a)": "Consultor",
+          "Contador(a)": "Contador",
+          "Coordenador(a)": "Coordenador",
+          "Diretor(a)": "Diretor",
+          "Enfermeiro(a)": "Enfermeiro",
+          "Engenheiro(a)": "Engenheiro",
+          Especialista: "Especialista",
+          "Estagi\xe1rio(a)": "Estagiario",
+          Gerente: "Gerente",
+          "M\xe9dico(a) do Trabalho": "MedicoTrabalho",
+          Outros: "Outros",
+          "Prefeito(a)": "Prefeito",
+          Presidente: "Presidente",
+          Recepcionista: "Recepcionista",
+          "Secret\xe1rio(a)": "Secretario",
+          Sócio: "Socio",
+          Superintendente: "Superintendente",
+          "Supervisor(a)": "Supervisor",
+          "T\xe9cnico(a)": "Tecnico",
+          "Tesoureiro(a)": "Tesoureiro",
+          "Vice-Presidente": "VicePresidente",
+        };
+      let p = (0, l.createContext)(null),
+        x = (e) => {
+          let { children: a } = e,
+            [o, i] = (0, l.useState)({
+              first_name: "",
+              last_name: "",
+              email: "",
+              phone: "",
+              mobile: "",
+              role: "",
+              department: "",
+              knowledgeMethod: "",
+              answers: {
+                nonApplicable: 0,
+                applicable: 0,
+                applicableNonCompliant: 0,
+                fundamentalNonCompliant: 0,
+              },
+            }),
+            r = async () => (
+              console.log("formData answers", o.answers),
+              await d({
+                first_name: o.first_name,
+                last_name: o.last_name,
+                email: o.email,
+                phone: o.phone,
+                mobile: null == o ? void 0 : o.mobile,
+                role: m[o.role],
+                department: u[o.department],
+                knowledgeMethod: o.knowledgeMethod,
+                answers: { ...o.answers },
+                companyData: {
+                  cnpj: (null == o ? void 0 : o.cnpj) || "",
+                  razaoSocial: (null == o ? void 0 : o.razaoSocial) || "",
+                  nomeFantasia: (null == o ? void 0 : o.nomeFantasia) || "",
+                  atividade: (null == o ? void 0 : o.atividade) || "",
+                  porte: (null == o ? void 0 : o.porte) || "",
+                },
+                address: {
+                  logradouro: (null == o ? void 0 : o.logradouro) || "",
+                  numero: (null == o ? void 0 : o.numero) || "",
+                  complemento: (null == o ? void 0 : o.complemento) || "",
+                  bairro: (null == o ? void 0 : o.bairro) || "",
+                  municipio: (null == o ? void 0 : o.municipio) || "",
+                  cep: (null == o ? void 0 : o.cep) || "",
+                  uf: (null == o ? void 0 : o.uf) || "",
+                },
+              })
+            );
+          return (0, s.jsx)(p.Provider, {
+            value: {
+              formData: o,
+              addToFormData: (e) => {
+                i(Object.assign(o, e)), console.log("XD", o);
+              },
+              resetFormData: () => {
+                i({
+                  first_name: "",
+                  last_name: "",
+                  email: "",
+                  phone: "",
+                  mobile: "",
+                  role: "",
+                  department: "",
+                  knowledgeMethod: "",
+                  answers: {
+                    nonApplicable: 0,
+                    applicable: 0,
+                    applicableNonCompliant: 0,
+                    fundamentalNonCompliant: 0,
+                  },
+                });
+              },
+              sendFormDataToApi: r,
+            },
+            children: a,
+          });
+        },
+        A = () => {
+          let e = (0, l.useContext)(p);
+          if (!e)
+            throw Error("useFormContext must be used within a FormProvider");
+          return e;
+        };
+    },
+    6345: function (e, a, o) {
+      "use strict";
+      o.r(a),
+        (a.default = {
+          src: "/_next/static/media/esg_logo_vertical.fc649488.png",
+          height: 570,
+          width: 1207,
+          blurDataURL:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAMAAACEE47CAAAAM1BMVEVswu0EJXMFPZ4FKH6C5/9jvekba85NoOUEJXMAAAAAAAAGJ3wAAACB3PtwyvczhdgAIHV+L5oNAAAAEXRSTlMzOBl5Lws3S1UWBUcgQyIoJ5ZKwxwAAAAJcEhZcwAALiMAAC4jAXilP3YAAAAoSURBVHicBcGFAQAgDAOwzg37/1oSnK32iBsBRYoMPAKUOWC/Vqv6Aw7hANphmm+RAAAAAElFTkSuQmCC",
+          blurWidth: 8,
+          blurHeight: 4,
+        });
+    },
+    16691: function (e, a, o) {
+      e.exports = o(1295);
+    },
+    61396: function (e, a, o) {
+      e.exports = o(46685);
+    },
+  },
+  function (e) {
+    e.O(0, [2254, 6685, 3222, 8962, 2971, 596, 1744], function () {
+      return e((e.s = 16089));
+    }),
+      (_N_E = e.O());
+  },
+]);

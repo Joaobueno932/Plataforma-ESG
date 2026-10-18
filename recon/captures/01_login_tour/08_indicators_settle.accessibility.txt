@@ -1,0 +1,92 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - complementary:
+    - img "imagem da logo"
+    - navigation:
+      - list:
+        - link "Indicadores":
+          - /url: /indicators
+          - listitem:
+            - img
+            - text: Indicadores
+        - link "Empresas":
+          - /url: /companies
+          - listitem:
+            - img
+            - text: Empresas
+        - link "Usuários":
+          - /url: /users
+          - listitem:
+            - img
+            - text: Usuários
+    - button "Ajuda":
+      - img
+      - text: Ajuda
+    - link "Configurações":
+      - /url: /settings
+      - img
+      - text: Configurações
+    - button "Sair":
+      - img
+      - text: Sair
+    - text: AE
+    - heading "Adm ESG" [level=6]
+    - text: adm.esg@sfiems.com.br
+  - main:
+    - heading "Indicadores" [level=2]
+    - heading "Indicadores" [level=3]
+    - button "CADASTRAR NOVO CADERNO"
+    - button "CADASTRAR NOVO INDICADOR"
+    - img "imagem do caderno"
+    - heading "CADERNO GERAL" [level=4]
+    - paragraph: Caderno Geral
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL A" [level=4]
+    - paragraph: Alimentos e Bebidas
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL B" [level=4]
+    - paragraph: Frigoríficos e Derivados
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL C" [level=4]
+    - paragraph: Construção Civil
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL D" [level=4]
+    - paragraph: Industria de Transformação Diversas
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL E" [level=4]
+    - paragraph: Energia, Telecomunicações, Resíduos e Similares
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL F" [level=4]
+    - paragraph: Extração de minerais metálicos, não metálicos, pesca, agropecuária e similares
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL G" [level=4]
+    - paragraph: Papel e Celulose
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+    - img "imagem do caderno"
+    - heading "CADERNO SETORIAL H" [level=4]
+    - paragraph: Calçados, Componentes para Calçados, Couro, Confecções Têxteis e Artefatos
+    - button "Deletar caderno":
+      - img
+      - text: Deletar caderno
+  - alert

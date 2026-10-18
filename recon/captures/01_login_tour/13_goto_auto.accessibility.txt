@@ -1,0 +1,22 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - main:
+    - link "Imagem da logo ESG FIEMS":
+      - /url: /
+      - img "Imagem da logo ESG FIEMS"
+    - navigation:
+      - link "Imagem da logo do sistema FIEMS":
+        - /url: https://www.ms.senai.br/
+        - img "Imagem da logo do sistema FIEMS"
+    - heading "Autoavaliação" [level=1]
+    - heading "Bem vindo(a) à plataforma de autoavaliação do Programa ESG-FIEMS!" [level=2]
+    - paragraph: O Programa ESG-FIEMS é composto por 64 indicadores do caderno geral e 10 indicadores por caderno temático, de natureza ambiental, social e de governança. Alguns destes indicadores correspondem a obrigações legais básicas e, portanto, as empresas precisam estar em conformidade com eles para participar do Programa.
+    - paragraph: Ao realizar esta autoavaliação, você responderá a 20 perguntas objetivas sobre a conformidade ou não de sua empresa para com os principais requisitos legais básicos. Não é necessário apresentar evidências de conformidade (documentos), tratando-se de um procedimento inicial.
+    - paragraph: Ao final desta etapa, será gerado automaticamente um relatório informando se a empresa está apta ou não a iniciar sua jornada de certificação no Programa ESG-FIEMS.
+    - img
+    - paragraph: "Importante: o resultado da autoavaliação não garante a obtenção da certificação."
+    - text: Não se preocupe, todas as informações prestadas são confidenciais.
+    - link "INICIAR":
+      - /url: /auto-avaliacao/your-data
+  - alert

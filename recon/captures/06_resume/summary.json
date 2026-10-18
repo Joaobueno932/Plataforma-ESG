@@ -1,0 +1,17 @@
+{
+ "evidence_id": "ev_700aa35fa914126b51f69f2104775057d4c6ec205c89256e05a66d85e7660628",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao/resume?criteriosNaoAplicaveis=3&criteriosAplicaveis=12&criteriosAplicaveisNaoConformes=2&criteriosAplicaveisFundamentaisNaoConformes=1&result=notok"
+  },
+  {
+   "tag": "01_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao/resume?criteriosNaoAplicaveis=3&criteriosAplicaveis=12&criteriosAplicaveisNaoConformes=2&criteriosAplicaveisFundamentaisNaoConformes=1&result=notok"
+  }
+ ]
+}

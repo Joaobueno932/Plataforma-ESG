@@ -1,0 +1,23 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - main:
+    - link "Imagem da logo ESG FIEMS":
+      - /url: /
+      - img "Imagem da logo ESG FIEMS"
+    - navigation:
+      - link "Imagem da logo do sistema FIEMS":
+        - /url: https://www.ms.senai.br/
+        - img "Imagem da logo do sistema FIEMS"
+    - heading "Dados da empresa" [level=2]
+    - textbox "00 000 000/0000 - 00"
+    - text: CNPJ - MF
+    - textbox "Digite a razão social"
+    - text: Razão social
+    - textbox "Digite o nome fantasia"
+    - text: Nome fantasia
+    - textbox "Digite a atividade"
+    - text: Atividade
+    - combobox "Porte": Selecione o porte da empresa
+    - text: Porte
+    - button "Continuar"

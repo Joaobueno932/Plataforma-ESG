@@ -1,0 +1,1146 @@
+(self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([
+  [9525],
+  {
+    73766: function (e, t, r) {
+      Promise.resolve().then(r.bind(r, 71179));
+    },
+    71179: function (e, t, r) {
+      "use strict";
+      r.r(t),
+        r.d(t, {
+          default: function () {
+            return w;
+          },
+        });
+      var a = r(57437),
+        n = r(93378),
+        i = r(64992),
+        o = r(93695),
+        l = r(69279),
+        s = r(15429),
+        d = r(22048),
+        c = r(41303),
+        u = r(38110);
+      r(2265);
+      var m = r(61865),
+        f = r(74578);
+      let p = f.z.object({
+        cnpj: f.z
+          .string()
+          .min(1, "CNPJ \xe9 obrigat\xf3rio")
+          .regex(
+            /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/,
+            "CNPJ deve estar em um formato v\xe1lido",
+          ),
+        razaoSocial: f.z.string().optional(),
+        nomeFantasia: f.z.string().min(1, "Nome fantasia \xe9 obrigat\xf3rio"),
+        atividade: f.z.string().optional(),
+        porte: f.z.string().optional(),
+      });
+      var x = r(55800),
+        h = r(24033);
+      let b = /^\d{2}.\d{3}.\d{3}\/\d{4}-\d{2}$/;
+      function g(e, t) {
+        let r = t.slice(0, e),
+          a = e - 7,
+          n = 0;
+        for (let t = e; t >= 1; t--) {
+          let i = r[e - t];
+          (n += i * a--), a < 2 && (a = 9);
+        }
+        let i = 11 - (n % 11);
+        return i > 9 ? 0 : i;
+      }
+      var v = r(89384);
+      function w() {
+        let { addToFormData: e } = (0, x.Gc)(),
+          t = (0, h.useRouter)(),
+          r = (0, m.cI)({ resolver: (0, u.F)(p) });
+        return (0, a.jsx)("div", {
+          className:
+            'container mx-auto h-full flex flex-col "justify-center" gap-7 mt-8',
+          children: (0, a.jsx)(i.l0, {
+            ...r,
+            children: (0, a.jsxs)("form", {
+              onSubmit: r.handleSubmit((r) => {
+                if (
+                  !(function () {
+                    let e =
+                      arguments.length > 0 && void 0 !== arguments[0]
+                        ? arguments[0]
+                        : "";
+                    if (!e) return !1;
+                    let t = "string" == typeof e,
+                      r = t || Number.isInteger(e) || Array.isArray(e);
+                    if (!r) return !1;
+                    if (t) {
+                      let t = /^\d{14}$/.test(e),
+                        r = b.test(e);
+                      if (!(t || r)) return !1;
+                    }
+                    let a = (function () {
+                      let e =
+                          arguments.length > 0 && void 0 !== arguments[0]
+                            ? arguments[0]
+                            : "",
+                        t = e.toString().match(/\d/g);
+                      return Array.isArray(t) ? t.map(Number) : [];
+                    })(e);
+                    if (14 !== a.length) return !1;
+                    let n = [...new Set(a)];
+                    if (1 === n.length) return !1;
+                    let i = a.slice(12),
+                      o = g(12, a);
+                    if (o !== i[0]) return !1;
+                    let l = g(13, a);
+                    return l === i[1];
+                  })(r.cnpj)
+                )
+                  return (0, v.h)(
+                    "Certifique-se de colocar um CNPJ v\xe1lido",
+                    "error",
+                  );
+                e(r), t.push("/auto-avaliacao/response");
+              }),
+              className: "space-y-8",
+              noValidate: !0,
+              autoComplete: "off",
+              children: [
+                (0, a.jsxs)("div", {
+                  className: "flex flex-col gap-6",
+                  children: [
+                    (0, a.jsx)("h2", {
+                      className: "font-semibold text-3xl text-neutral",
+                      children: "Dados da empresa",
+                    }),
+                    (0, a.jsxs)("div", {
+                      className: "flex gap-6 w-full",
+                      children: [
+                        (0, a.jsx)(i.Wi, {
+                          name: "cnpj",
+                          control: r.control,
+                          render: (e) => {
+                            let { field: t } = e;
+                            return (0, a.jsxs)(i.xJ, {
+                              className:
+                                "group/fieldset relative flex flex-col-reverse gap-1 mb-1 w-[45%]",
+                              children: [
+                                (0, a.jsx)(i.NI, {
+                                  children: (0, a.jsxs)(a.Fragment, {
+                                    children: [
+                                      (0, a.jsx)(l.v, {
+                                        placeholder: "00 000 000/0000 - 00",
+                                        maskType: "cnpj",
+                                        field: { ...t },
+                                      }),
+                                      (0, a.jsx)(i.lX, {
+                                        className:
+                                          "input-label-float -top-4 left-2 text-xs",
+                                        children: "CNPJ - MF",
+                                      }),
+                                    ],
+                                  }),
+                                }),
+                                (0, a.jsx)(i.zG, {}),
+                              ],
+                            });
+                          },
+                        }),
+                        (0, a.jsx)(i.Wi, {
+                          name: "razaoSocial",
+                          control: r.control,
+                          render: (e) => {
+                            let { field: t } = e;
+                            return (0, a.jsxs)(i.xJ, {
+                              className:
+                                "group/fieldset relative flex flex-col-reverse gap-1 mb-1 w-[45%]",
+                              children: [
+                                (0, a.jsx)(i.NI, {
+                                  children: (0, a.jsxs)(a.Fragment, {
+                                    children: [
+                                      (0, a.jsx)(o.I, {
+                                        placeholder: "Digite a raz\xe3o social",
+                                        ...t,
+                                      }),
+                                      (0, a.jsx)(i.lX, {
+                                        className:
+                                          "input-label-float -top-4 left-2 text-xs",
+                                        children: "Raz\xe3o social",
+                                      }),
+                                    ],
+                                  }),
+                                }),
+                                (0, a.jsx)(i.zG, {}),
+                              ],
+                            });
+                          },
+                        }),
+                      ],
+                    }),
+                    (0, a.jsxs)("div", {
+                      className: "flex gap-6 w-full",
+                      children: [
+                        (0, a.jsx)(i.Wi, {
+                          name: "nomeFantasia",
+                          control: r.control,
+                          render: (e) => {
+                            let { field: t } = e;
+                            return (0, a.jsxs)(i.xJ, {
+                              className:
+                                "group/fieldset relative flex flex-col-reverse gap-1 mb-1 w-[45%]",
+                              children: [
+                                (0, a.jsx)(i.NI, {
+                                  children: (0, a.jsxs)(a.Fragment, {
+                                    children: [
+                                      (0, a.jsx)(o.I, {
+                                        placeholder: "Digite o nome fantasia",
+                                        ...t,
+                                      }),
+                                      (0, a.jsx)(i.lX, {
+                                        className:
+                                          "input-label-float -top-4 left-2 text-xs",
+                                        children: "Nome fantasia",
+                                      }),
+                                    ],
+                                  }),
+                                }),
+                                (0, a.jsx)(i.zG, {}),
+                              ],
+                            });
+                          },
+                        }),
+                        (0, a.jsx)(i.Wi, {
+                          name: "atividade",
+                          control: r.control,
+                          render: (e) => {
+                            let { field: t } = e;
+                            return (0, a.jsxs)(i.xJ, {
+                              className:
+                                "group/fieldset relative flex flex-col-reverse gap-1 mb-1 w-[45%]",
+                              children: [
+                                (0, a.jsx)(i.NI, {
+                                  children: (0, a.jsxs)(a.Fragment, {
+                                    children: [
+                                      (0, a.jsx)(o.I, {
+                                        placeholder: "Digite a atividade",
+                                        ...t,
+                                      }),
+                                      (0, a.jsx)(i.lX, {
+                                        className:
+                                          "input-label-float -top-4 left-2 text-xs",
+                                        children: "Atividade",
+                                      }),
+                                    ],
+                                  }),
+                                }),
+                                (0, a.jsx)(i.zG, {}),
+                              ],
+                            });
+                          },
+                        }),
+                      ],
+                    }),
+                    (0, a.jsx)(i.Wi, {
+                      name: "porte",
+                      control: r.control,
+                      render: (e) => {
+                        let { field: t } = e;
+                        return (0, a.jsxs)(i.xJ, {
+                          className: "relative w-[45%]",
+                          children: [
+                            (0, a.jsxs)(s.Ph, {
+                              onValueChange: t.onChange,
+                              defaultValue: t.value,
+                              children: [
+                                (0, a.jsx)(i.NI, {
+                                  children: (0, a.jsx)(s.i4, {
+                                    children: (0, a.jsx)(s.ki, {
+                                      placeholder:
+                                        "Selecione o porte da empresa",
+                                    }),
+                                  }),
+                                }),
+                                (0, a.jsx)(i.lX, {
+                                  className:
+                                    "input-label-float -top-4 left-2 text-xs",
+                                  children: "Porte",
+                                }),
+                                (0, a.jsx)(s.Bw, {
+                                  children: (0, a.jsxs)(s.DI, {
+                                    children: [
+                                      (0, a.jsx)(s.n5, {
+                                        children:
+                                          "Selecione o tamanho da empresa",
+                                      }),
+                                      c.ai.map((e) =>
+                                        (0, a.jsx)(
+                                          s.Ql,
+                                          { value: e.value, children: e.text },
+                                          e.value,
+                                        ),
+                                      ),
+                                    ],
+                                  }),
+                                }),
+                              ],
+                            }),
+                            (0, a.jsx)(i.zG, {}),
+                          ],
+                        });
+                      },
+                    }),
+                  ],
+                }),
+                (0, a.jsx)(d.Separator, { className: "h-[2px] my-8" }),
+                (0, a.jsx)("div", {
+                  className: "flex justify-end",
+                  children: (0, a.jsx)(n.z, {
+                    size: "lg",
+                    className: "w-fit bg-[#309D99] hover:bg-[#309D99E5]",
+                    type: "submit",
+                    children: "Continuar",
+                  }),
+                }),
+              ],
+            }),
+          }),
+        });
+      }
+    },
+    93378: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        z: function () {
+          return d;
+        },
+      });
+      var a = r(57437),
+        n = r(2265),
+        i = r(67256),
+        o = r(96061),
+        l = r(22703);
+      let s = (0, o.j)(
+          "inline-flex items-center justify-center rounded-md text-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-neutral-02 disabled:text-neutral-01 ",
+          {
+            variants: {
+              variant: {
+                default:
+                  "bg-primary-03 text-white shadow hover:bg-primary-03/90",
+                "primary-02":
+                  "bg-primary-02 text-white shadow hover:bg-primary-02/90",
+                "primary-main":
+                  "bg-primary-main text-white hover:bg-primary-main/90",
+                secondary:
+                  "bg-secondary-02 text-white shadow-sm hover:bg-secondary-03",
+                neutral:
+                  "bg-neutral-02 text-neutral hover:text-white hover:bg-neutral-03",
+                "neutral-02":
+                  "bg-neutral-03 text-neutral-01 hover:bg-neutral-03/90",
+                error:
+                  "bg-semantic-error text-white shadow-sm hover:bg-[#FF301CB2]",
+                alert: "text-neutral bg-semantic-alert hover:bg-[#CA9715]",
+                success:
+                  "bg-semantic-success text-neutral shadow-sm hover:bg-secondary-02",
+                "success-2":
+                  "bg-semantic-success-2 text-white shadow-sm hover:bg-semantic-success-2",
+                link: "text-neutral bg-semantic-link hover:bg-[#18D3DE]",
+                outline:
+                  "border border-primary-03 text-primary-03 bg-transparent shadow-sm hover:bg-primary-03 hover:text-white",
+                "outline-white":
+                  "border border-white text-white bg-transparent shadow-sm hover:bg-white hover:text-primary-03",
+                "outline-02":
+                  "border border-neutral-01 text-primary-03 bg-neutral-01 shadow-sm hover:bg-primary-03 hover:text-white hover:border-primary-03",
+                "outline-03":
+                  "text-[#0E3A68] bg-white border-solid border-2 border-[#759EE7] disabled:border-[0px]",
+                ghost: "hover:bg-transparent hover:text-neutral",
+                "card-answer":
+                  "bg-black text-white shadow-md hover:bg-black/90",
+                "dark-blue":
+                  "bg-[#0E3A68] text-white shadow-sm hover:bg-[#0b335f]",
+              },
+              size: {
+                default: "h-9 px-4 py-2",
+                sm: "h-8 rounded-md px-3 text-xs",
+                lg: "h-11 rounded-md px-8",
+                icon: "h-9 w-9",
+                free: "",
+              },
+            },
+            defaultVariants: { variant: "default", size: "default" },
+          },
+        ),
+        d = n.forwardRef((e, t) => {
+          let { className: r, variant: n, size: o, asChild: d = !1, ...c } = e,
+            u = d ? i.g7 : "button";
+          return (0, a.jsx)(u, {
+            className: (0, l.cn)(s({ variant: n, size: o, className: r })),
+            ref: t,
+            ...c,
+          });
+        });
+      d.displayName = "Button";
+    },
+    64992: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        NI: function () {
+          return h;
+        },
+        Wi: function () {
+          return u;
+        },
+        l0: function () {
+          return d;
+        },
+        lX: function () {
+          return x;
+        },
+        xJ: function () {
+          return p;
+        },
+        zG: function () {
+          return g;
+        },
+      });
+      var a = r(57437),
+        n = r(2265),
+        i = r(67256),
+        o = r(61865),
+        l = r(22703),
+        s = r(58020);
+      let d = o.RV,
+        c = n.createContext({}),
+        u = (e) => {
+          let { ...t } = e;
+          return (0, a.jsx)(c.Provider, {
+            value: { name: t.name },
+            children: (0, a.jsx)(o.Qr, { ...t }),
+          });
+        },
+        m = () => {
+          let e = n.useContext(c),
+            t = n.useContext(f),
+            { getFieldState: r, formState: a } = (0, o.Gc)(),
+            i = r(e.name, a);
+          if (!e) throw Error("useFormField should be used within <FormField>");
+          let { id: l } = t;
+          return {
+            id: l,
+            name: e.name,
+            formItemId: "".concat(l, "-form-item"),
+            formDescriptionId: "".concat(l, "-form-item-description"),
+            formMessageId: "".concat(l, "-form-item-message"),
+            ...i,
+          };
+        },
+        f = n.createContext({}),
+        p = n.forwardRef((e, t) => {
+          let { className: r, ...i } = e,
+            o = n.useId();
+          return (0, a.jsx)(f.Provider, {
+            value: { id: o },
+            children: (0, a.jsx)("div", {
+              ref: t,
+              className: (0, l.cn)("space-y-2 relative", r),
+              ...i,
+            }),
+          });
+        });
+      p.displayName = "FormItem";
+      let x = n.forwardRef((e, t) => {
+        let { className: r, ...n } = e,
+          { error: i, formItemId: o } = m();
+        return (0, a.jsx)(s._, {
+          ref: t,
+          className: (0, l.cn)(
+            i &&
+              "text-destructive body-m transition-colors ease-in-out duration-100",
+            r,
+          ),
+          htmlFor: o,
+          ...n,
+        });
+      });
+      x.displayName = "FormLabel";
+      let h = n.forwardRef((e, t) => {
+        let { ...r } = e,
+          {
+            error: n,
+            formItemId: o,
+            formDescriptionId: l,
+            formMessageId: s,
+          } = m();
+        return (0, a.jsx)(i.g7, {
+          ref: t,
+          id: o,
+          "aria-describedby": n ? "".concat(l, " ").concat(s) : "".concat(l),
+          "aria-invalid": !!n,
+          ...r,
+        });
+      });
+      h.displayName = "FormControl";
+      let b = n.forwardRef((e, t) => {
+        let { className: r, ...n } = e,
+          { formDescriptionId: i } = m();
+        return (0, a.jsx)("p", {
+          ref: t,
+          id: i,
+          className: (0, l.cn)("text-[0.8rem] text-muted-foreground", r),
+          ...n,
+        });
+      });
+      b.displayName = "FormDescription";
+      let g = n.forwardRef((e, t) => {
+        let { className: r, children: n, ...i } = e,
+          { error: o, formMessageId: s } = m(),
+          d = o ? String(null == o ? void 0 : o.message) : n;
+        return d
+          ? (0, a.jsx)("p", {
+              ref: t,
+              id: s,
+              className: (0, l.cn)(
+                "text-[0.8rem] font-medium text-destructive absolute -bottom-4 text-xs text-rose-600",
+                r,
+              ),
+              ...i,
+              children: "Required" === d ? "Obrigat\xf3rio" : d,
+            })
+          : null;
+      });
+      g.displayName = "FormMessage";
+    },
+    69279: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        v: function () {
+          return l;
+        },
+      });
+      var a = r(57437),
+        n = r(2265),
+        i = r(31010),
+        o = r(22703);
+      let l = n.forwardRef((e, t) => {
+        let { className: r, type: l, maskType: s, field: d, ...c } = e,
+          u = {
+            cpf: ["999.999.999-99"],
+            cnpj: ["99.999.999/9999-99"],
+            phone: ["(99) 99999-9999"],
+            cep: ["99999-999"],
+          },
+          [m, f] = n.useState();
+        return (0, a.jsx)("input", {
+          type: l,
+          className: (0, o.cn)(
+            "appearance-none flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 peer input-base input-placeholder  ease-in-out  duration-500",
+            r,
+          ),
+          ...d,
+          value: m,
+          onChange: (e) => {
+            f((0, i.mask)((0, i.unMask)(e.currentTarget.value), u[s])),
+              d.onChange(
+                (0, i.mask)((0, i.unMask)(e.currentTarget.value), u[s]),
+              );
+          },
+          ref: t,
+          ...c,
+        });
+      });
+      l.displayName = "Input";
+    },
+    93695: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        I: function () {
+          return o;
+        },
+      });
+      var a = r(57437),
+        n = r(2265),
+        i = r(22703);
+      let o = n.forwardRef((e, t) => {
+        let { className: r, type: n, ...o } = e;
+        return (0, a.jsx)("input", {
+          type: n,
+          className: (0, i.cn)(
+            "appearance-none flex h-12 w-full rounded-md border border-input bg-transparent py-1 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 peer input-base body-s  ease-in-out  duration-500 hover:bg-gray-200 px-4 border-gray-200 hover:border-gray-200 outline-none focus:border-primary focus:text-primary focus:bg-white",
+            r,
+          ),
+          ref: t,
+          ...o,
+        });
+      });
+      o.displayName = "Input";
+    },
+    58020: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        _: function () {
+          return d;
+        },
+      });
+      var a = r(57437),
+        n = r(2265),
+        i = r(36743),
+        o = r(96061),
+        l = r(22703);
+      let s = (0, o.j)(
+          "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+        ),
+        d = n.forwardRef((e, t) => {
+          let { className: r, ...n } = e;
+          return (0, a.jsx)(i.f, {
+            ref: t,
+            className: (0, l.cn)(s(), r),
+            ...n,
+          });
+        });
+      d.displayName = i.f.displayName;
+    },
+    15429: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        Bw: function () {
+          return m;
+        },
+        DI: function () {
+          return d;
+        },
+        Ph: function () {
+          return s;
+        },
+        Ql: function () {
+          return p;
+        },
+        i4: function () {
+          return u;
+        },
+        ki: function () {
+          return c;
+        },
+        n5: function () {
+          return f;
+        },
+      });
+      var a = r(57437),
+        n = r(2265),
+        i = r(69394),
+        o = r(93342),
+        l = r(22703);
+      let s = o.fC,
+        d = o.ZA,
+        c = o.B4,
+        u = n.forwardRef((e, t) => {
+          let { className: r, children: n, ...s } = e;
+          return (0, a.jsxs)(o.xz, {
+            ref: t,
+            className: (0, l.cn)(
+              "flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 input-base h-12 text-zinc-500",
+              r,
+            ),
+            ...s,
+            children: [
+              n,
+              (0, a.jsx)(o.JO, {
+                asChild: !0,
+                children: (0, a.jsx)(i.jnn, {
+                  className: "h-4 w-4 opacity-50",
+                }),
+              }),
+            ],
+          });
+        });
+      u.displayName = o.xz.displayName;
+      let m = n.forwardRef((e, t) => {
+        let { className: r, children: n, position: i = "popper", ...s } = e;
+        return (0, a.jsx)(o.h_, {
+          children: (0, a.jsx)(o.VY, {
+            ref: t,
+            className: (0, l.cn)(
+              "relative z-50 min-w-[8rem] overflow-hidden rounded-md border bg-card text-neutral-04 shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+              "popper" === i &&
+                "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+              r,
+            ),
+            position: i,
+            ...s,
+            children: (0, a.jsx)(o.l_, {
+              className: (0, l.cn)(
+                "p-1",
+                "popper" === i &&
+                  "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+              ),
+              children: n,
+            }),
+          }),
+        });
+      });
+      m.displayName = o.VY.displayName;
+      let f = n.forwardRef((e, t) => {
+        let { className: r, ...n } = e;
+        return (0, a.jsx)(o.__, {
+          ref: t,
+          className: (0, l.cn)("px-2 text-sm font-semibold py-4 border-b", r),
+          ...n,
+        });
+      });
+      f.displayName = o.__.displayName;
+      let p = n.forwardRef((e, t) => {
+        let { className: r, children: n, ...s } = e;
+        return (0, a.jsxs)(o.ck, {
+          ref: t,
+          className: (0, l.cn)(
+            "relative flex w-full cursor-default select-none items-center rounded-sm pl-2 pr-8 text-sm outline-none focus:bg-neutral-01 focus:text-primary-03 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 border-b py-4",
+            r,
+          ),
+          ...s,
+          children: [
+            (0, a.jsx)("span", {
+              className:
+                "absolute right-2 flex h-3.5 w-3.5 items-center justify-center",
+              children: (0, a.jsx)(o.wU, {
+                children: (0, a.jsx)(i.nQG, { className: "h-4 w-4" }),
+              }),
+            }),
+            (0, a.jsx)(o.eT, { children: n }),
+          ],
+        });
+      });
+      p.displayName = o.ck.displayName;
+      let x = n.forwardRef((e, t) => {
+        let { className: r, ...n } = e;
+        return (0, a.jsx)(o.Z0, {
+          ref: t,
+          className: (0, l.cn)("-mx-1 my-1 h-px bg-primary-03", r),
+          ...n,
+        });
+      });
+      x.displayName = o.Z0.displayName;
+    },
+    22048: function (e, t, r) {
+      "use strict";
+      r.r(t),
+        r.d(t, {
+          Separator: function () {
+            return l;
+          },
+        });
+      var a = r(57437),
+        n = r(2265),
+        i = r(26823),
+        o = r(22703);
+      let l = n.forwardRef((e, t) => {
+        let {
+          className: r,
+          orientation: n = "horizontal",
+          decorative: l = !0,
+          ...s
+        } = e;
+        return (0, a.jsx)(i.f, {
+          ref: t,
+          decorative: l,
+          orientation: n,
+          className: (0, o.cn)(
+            "shrink-0 bg-border",
+            "horizontal" === n ? "h-[1px] w-full" : "h-full w-[1px]",
+            r,
+          ),
+          ...s,
+        });
+      });
+      l.displayName = i.f.displayName;
+    },
+    55800: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        Ho: function () {
+          return a.H;
+        },
+        n7: function () {
+          return n.n;
+        },
+        RV: function () {
+          return p;
+        },
+        vH: function () {
+          return i.v;
+        },
+        dr: function () {
+          return o.d;
+        },
+        Gc: function () {
+          return x;
+        },
+      });
+      var a = r(24723),
+        n = r(93822),
+        i = r(17746),
+        o = r(81388),
+        l = r(57437),
+        s = r(2265),
+        d = r(2915);
+      let c = async (e) => {
+        let t = await d.h.post("/leads", e);
+        return t;
+      };
+      var u = {
+          Administrativo: "Administrativo",
+          "Assist\xeancia Social": "AssistenciaSocial",
+          Atendimento: "Atendimento",
+          Benefícios: "Beneficios",
+          "Centro de distribui\xe7\xe3o": "CentroDistribuicao",
+          Comercial: "Comercial",
+          Compras: "Compras",
+          "Conselho administrativo": "ConselhoAdministrativo",
+          Contabilidade: "Contabilidade",
+          Contratos: "Contratos",
+          "Departamento pessoal": "DepartamentoPessoal",
+          Desenvolvimento: "Desenvolvimento",
+          Educação: "Educacao",
+          Engenharia: "Engenharia",
+          Ferramentaria: "Ferramentaria",
+          Financeiro: "Financeiro",
+          Fiscal: "Fiscal",
+          Gabinete: "Gabinete",
+          Geral: "Geral",
+          Industrial: "Industrial",
+          Infraestrutura: "Infraestrutura",
+          Inovação: "Inovacao",
+          Jurídico: "Juridico",
+          Laboratório: "Laboratorio",
+          Licitação: "Licitacao",
+          Logística: "Logistica",
+          Manutenção: "Manutencao",
+          Marketing: "Marketing",
+          "Medicina ocupacional": "MedicinaOcupacional",
+          "Meio ambiente": "MeioAmbiente",
+          Operacional: "Operacional",
+          Outros: "Outros",
+          "P&D": "P_D",
+          Pessoal: "Pessoal",
+          Presidência: "Presidencia",
+          Produção: "Producao",
+          Projetos: "Projetos",
+          Qsms: "Qsms",
+          Qualidade: "Qualidade",
+          "Qualidade de vida": "QualidadeVida",
+          Recepção: "Recepcao",
+          "Recursos humanos": "RecursosHumanos",
+          Regional: "Regional",
+          Saúde: "Saude",
+          Secretaria: "Secretaria",
+          "Seguran\xe7a do trabalho": "SegurancaTrabalho",
+          SESMT: "SESMT",
+          Superintendência: "Superintendencia",
+          Suprimentos: "Suprimentos",
+          TI: "TI",
+          Unidade: "Unidade",
+          "Vice-presid\xeancia": "VicePresidencia",
+        },
+        m = {
+          Analista: "Analista",
+          Assessor: "Assessor",
+          Assistente: "Assistente",
+          Atendente: "Atendente",
+          Auxiliar: "Auxiliar",
+          CEO: "CEO",
+          Chefe: "Chefe",
+          "Comprador(a)": "Comprador",
+          "Consultor(a)": "Consultor",
+          "Contador(a)": "Contador",
+          "Coordenador(a)": "Coordenador",
+          "Diretor(a)": "Diretor",
+          "Enfermeiro(a)": "Enfermeiro",
+          "Engenheiro(a)": "Engenheiro",
+          Especialista: "Especialista",
+          "Estagi\xe1rio(a)": "Estagiario",
+          Gerente: "Gerente",
+          "M\xe9dico(a) do Trabalho": "MedicoTrabalho",
+          Outros: "Outros",
+          "Prefeito(a)": "Prefeito",
+          Presidente: "Presidente",
+          Recepcionista: "Recepcionista",
+          "Secret\xe1rio(a)": "Secretario",
+          Sócio: "Socio",
+          Superintendente: "Superintendente",
+          "Supervisor(a)": "Supervisor",
+          "T\xe9cnico(a)": "Tecnico",
+          "Tesoureiro(a)": "Tesoureiro",
+          "Vice-Presidente": "VicePresidente",
+        };
+      let f = (0, s.createContext)(null),
+        p = (e) => {
+          let { children: t } = e,
+            [r, a] = (0, s.useState)({
+              first_name: "",
+              last_name: "",
+              email: "",
+              phone: "",
+              mobile: "",
+              role: "",
+              department: "",
+              knowledgeMethod: "",
+              answers: {
+                nonApplicable: 0,
+                applicable: 0,
+                applicableNonCompliant: 0,
+                fundamentalNonCompliant: 0,
+              },
+            }),
+            n = async () => (
+              console.log("formData answers", r.answers),
+              await c({
+                first_name: r.first_name,
+                last_name: r.last_name,
+                email: r.email,
+                phone: r.phone,
+                mobile: null == r ? void 0 : r.mobile,
+                role: m[r.role],
+                department: u[r.department],
+                knowledgeMethod: r.knowledgeMethod,
+                answers: { ...r.answers },
+                companyData: {
+                  cnpj: (null == r ? void 0 : r.cnpj) || "",
+                  razaoSocial: (null == r ? void 0 : r.razaoSocial) || "",
+                  nomeFantasia: (null == r ? void 0 : r.nomeFantasia) || "",
+                  atividade: (null == r ? void 0 : r.atividade) || "",
+                  porte: (null == r ? void 0 : r.porte) || "",
+                },
+                address: {
+                  logradouro: (null == r ? void 0 : r.logradouro) || "",
+                  numero: (null == r ? void 0 : r.numero) || "",
+                  complemento: (null == r ? void 0 : r.complemento) || "",
+                  bairro: (null == r ? void 0 : r.bairro) || "",
+                  municipio: (null == r ? void 0 : r.municipio) || "",
+                  cep: (null == r ? void 0 : r.cep) || "",
+                  uf: (null == r ? void 0 : r.uf) || "",
+                },
+              })
+            );
+          return (0, l.jsx)(f.Provider, {
+            value: {
+              formData: r,
+              addToFormData: (e) => {
+                a(Object.assign(r, e)), console.log("XD", r);
+              },
+              resetFormData: () => {
+                a({
+                  first_name: "",
+                  last_name: "",
+                  email: "",
+                  phone: "",
+                  mobile: "",
+                  role: "",
+                  department: "",
+                  knowledgeMethod: "",
+                  answers: {
+                    nonApplicable: 0,
+                    applicable: 0,
+                    applicableNonCompliant: 0,
+                    fundamentalNonCompliant: 0,
+                  },
+                });
+              },
+              sendFormDataToApi: n,
+            },
+            children: t,
+          });
+        },
+        x = () => {
+          let e = (0, s.useContext)(f);
+          if (!e)
+            throw Error("useFormContext must be used within a FormProvider");
+          return e;
+        };
+    },
+    22703: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        cn: function () {
+          return i;
+        },
+      });
+      var a = r(57042),
+        n = r(23986);
+      function i() {
+        for (var e = arguments.length, t = Array(e), r = 0; r < e; r++)
+          t[r] = arguments[r];
+        return (0, n.m)((0, a.W)(t));
+      }
+    },
+    41303: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        ai: function () {
+          return a;
+        },
+        bM: function () {
+          return i;
+        },
+        k1: function () {
+          return n;
+        },
+        o2: function () {
+          return o;
+        },
+      });
+      let a = [
+          { text: "Micro", value: "MICRO_PEQUENA" },
+          { text: "M\xe9dia", value: "MEDIA" },
+          { text: "Grande", value: "GRANDE" },
+        ],
+        n = [
+          { text: "Ambiental", value: "E" },
+          { text: "Social", value: "S" },
+          { text: "Governan\xe7a", value: "G" },
+        ],
+        i = [
+          { text: "Engajada", value: "Engajado" },
+          { text: "Iniciante", value: "Iniciante" },
+          { text: "Sensibilizada", value: "Sensibilizada" },
+          { text: "Consciente", value: "Consciente" },
+          { text: "N\xe3o conforme", value: "Nao_conforme" },
+          { text: "Conforme", value: "Conforme" },
+        ],
+        o = [
+          { text: "0", value: "0" },
+          { text: "2", value: "2" },
+          { text: "4", value: "4" },
+          { text: "6", value: "6" },
+          { text: "8", value: "8" },
+          { text: "10", value: "10" },
+        ];
+    },
+    31010: function (e, t) {
+      !(function (e) {
+        "use strict";
+        var t = Object.freeze({
+          __proto__: null,
+          mask: ({ locale: e, currency: t, value: r }) => {
+            let { format: a } = new Intl.NumberFormat(`${e}`, {
+              style: "currency",
+              currency: t,
+            });
+            return a(r);
+          },
+          unmask: ({ locale: e, currency: t, value: r }) => {
+            let a = new Intl.NumberFormat(e, {
+                style: "currency",
+                currency: t,
+              }),
+              n = `${r}`.replace(/[^0-9\-]/g, ""),
+              i = a.formatToParts(1.1),
+              o = i.find((e) => "fraction" === e.type);
+            return o ? parseInt(n) / (10 * parseInt(o.value)) : parseInt(n);
+          },
+        });
+        let r = {
+            9: new RegExp(/[0-9]/),
+            A: new RegExp(/[a-zA-Z]/),
+            S: new RegExp(/[0-9a-zA-Z]/),
+          },
+          a = (e) => e.replace(/[^0-9a-zA-Z]/g, ""),
+          n = (e, t, n) => {
+            let i = t.split(""),
+              o = a(String(e)),
+              l = [],
+              s = 0;
+            for (let e = 0; e < i.length; e++) {
+              let a = t[e],
+                d = o[s],
+                c = r[a];
+              if (d === a) {
+                (l[e] = d), s++;
+                continue;
+              }
+              if (!c) {
+                l[e] = a;
+                continue;
+              }
+              if (d && c.test(d)) {
+                (l[e] = d), s++;
+                continue;
+              }
+              if (n?.placeholder) {
+                l[e] = n.placeholder;
+                continue;
+              }
+              l.length < i.length && /\W/.test(l[l.length - 1]) && l.pop();
+              break;
+            }
+            return l.join("");
+          },
+          i = (e, t, r) =>
+            n(
+              e,
+              t.reduce((t, r) => (e.length <= a(t).length ? t : r), t[0]),
+              r,
+            );
+        (e.currency = t),
+          (e.mask = (e, t, r) =>
+            "string" == typeof t ? n(e, t || "", r) : i(e, t, r)),
+          (e.unMask = a),
+          (e.unmask = a);
+      })(t);
+    },
+    26823: function (e, t, r) {
+      "use strict";
+      r.d(t, {
+        f: function () {
+          return c;
+        },
+      });
+      var a = r(13428),
+        n = r(2265),
+        i = r(9381);
+      let o = "horizontal",
+        l = ["horizontal", "vertical"],
+        s = (0, n.forwardRef)((e, t) => {
+          let { decorative: r, orientation: l = o, ...s } = e,
+            c = d(l) ? l : o;
+          return (0, n.createElement)(
+            i.WV.div,
+            (0, a.Z)(
+              { "data-orientation": c },
+              r
+                ? { role: "none" }
+                : {
+                    "aria-orientation": "vertical" === c ? c : void 0,
+                    role: "separator",
+                  },
+              s,
+              { ref: t },
+            ),
+          );
+        });
+      function d(e) {
+        return l.includes(e);
+      }
+      s.propTypes = {
+        orientation(e, t, r) {
+          let a = e[t],
+            n = String(a);
+          return a && !d(a)
+            ? Error(`Invalid prop \`orientation\` of value \`${n}\` supplied to \`${r}\`, expected one of:
+  - horizontal
+  - vertical
+
+Defaulting to \`${o}\`.`)
+            : null;
+        },
+      };
+      let c = s;
+    },
+  },
+  function (e) {
+    e.O(
+      0,
+      [8310, 2254, 2649, 9233, 3688, 3342, 8962, 2971, 596, 1744],
+      function () {
+        return e((e.s = 73766));
+      },
+    ),
+      (_N_E = e.O());
+  },
+]);

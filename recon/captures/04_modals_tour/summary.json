@@ -1,0 +1,191 @@
+{
+ "evidence_id": "ev_7727ab4466780dc07582cf93e1ada15bf8e75c43dfb4a2c80f80ef45b76099ca",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "01_fill_email",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "02_fill_pass",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "03_login",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "04_wait_list",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "05_open_new_company",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "06_new_company_modal",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "07_close_new_company",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "08_open_kebab",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "09_kebab_menu",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "10_close_kebab",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "11_nav_indicators",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "12_indicators_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "13_open_new_caderno",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "14_new_caderno_modal",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "15_close_new_caderno",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "16_open_new_indicator",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "17_new_indicator_modal",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "18_close_new_indicator",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "19_click_caderno_geral",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "20_caderno_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "21_nav_users",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "22_users_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "23_open_new_user",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "24_new_user_modal",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "25_close_new_user",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "26_open_edit_user",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "27_edit_user_modal",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "28_close_edit_user",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "29_open_help",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "30_help_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  }
+ ]
+}

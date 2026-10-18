@@ -1,0 +1,73 @@
+{
+ "cookies": [
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "userRole",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "835d6dc88b708bc646d6db82c853ef4182fabbd4a8de59c213f2b5ab3ae7d9be",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "userId",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "ab2c163d5e2a3f7c03f50b55319338d8f875c5a5f4721f16d58ce00e91763897",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "token",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "3b2ab2169f75effd95375baca616817558dcba6f9cefcf25b85beace565e49fd",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "refreshToken",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "9c02dfde3d3307bc6269a1a079c10553ceb145d5ba30cde1f9eb5b9e1b8d6b74",
+   "value_state": "hashed"
+  }
+ ],
+ "local_storage": [
+  {
+   "name": "iconify-count",
+   "value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+   "value_state": "hashed"
+  },
+  {
+   "name": "iconify-version",
+   "value_sha256": "41f5da85fe50035fa166aef622ccf9fd0f5e95bdc7b691899f2414e3ecc6d78f",
+   "value_state": "hashed"
+  },
+  {
+   "name": "jwt",
+   "value_sha256": "3b2ab2169f75effd95375baca616817558dcba6f9cefcf25b85beace565e49fd",
+   "value_state": "hashed"
+  }
+ ],
+ "session_storage": [
+  {
+   "name": "iconify-count",
+   "value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+   "value_state": "hashed"
+  },
+  {
+   "name": "iconify-version",
+   "value_sha256": "41f5da85fe50035fa166aef622ccf9fd0f5e95bdc7b691899f2414e3ecc6d78f",
+   "value_state": "hashed"
+  }
+ ]
+}

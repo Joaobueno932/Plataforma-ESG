@@ -1,0 +1,267 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - complementary:
+    - img "imagem da logo"
+    - navigation:
+      - list:
+        - link "Indicadores":
+          - /url: /indicators
+          - listitem:
+            - img
+            - text: Indicadores
+        - link "Empresas":
+          - /url: /companies
+          - listitem:
+            - img
+            - text: Empresas
+        - link "Usuários":
+          - /url: /users
+          - listitem:
+            - img
+            - text: Usuários
+    - button "Ajuda":
+      - img
+      - text: Ajuda
+    - link "Configurações":
+      - /url: /settings
+      - img
+      - text: Configurações
+    - button "Sair":
+      - img
+      - text: Sair
+    - text: AE
+    - heading "Adm ESG" [level=6]
+    - text: adm.esg@sfiems.com.br
+  - main:
+    - heading "Empresas" [level=2]
+    - heading "Lista de Empresas" [level=3]
+    - paragraph: Veja a lista de empresas cadastradas assim como a situação das mesmas
+    - group:
+      - button:
+        - img
+      - textbox "Procurar por empresa"
+    - button "Cadastrar Nova Empresa"
+    - heading "Todas as empresas" [level=6]
+    - button
+    - table:
+      - rowgroup:
+        - row "Empresa Tópicos Periodo de Referência Status Visualizar Extrato Geral Relatório":
+          - columnheader "Empresa"
+          - columnheader "Tópicos"
+          - columnheader "Periodo de Referência"
+          - columnheader "Status"
+          - columnheader "Visualizar"
+          - columnheader "Extrato Geral"
+          - columnheader "Relatório"
+      - rowgroup:
+        - row "SEMALO INDUSTRIA E COMERCIO DE ALIMENTOS 69 Jul 21, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "SEMALO INDUSTRIA E COMERCIO DE ALIMENTOS":
+            - button "SEMALO INDUSTRIA E COMERCIO DE ALIMENTOS"
+          - cell "69"
+          - cell "Jul 21, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoA 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoA":
+            - button "CadernoA"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/da5e509e-0a08-494e-8c2b-cb4268b67b6b/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "Test2 69 Jul 22, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "Test2":
+            - button "Test2"
+          - cell "69"
+          - cell "Jul 22, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/d5bb5459-52fd-4c3e-8115-d6e0a89a70d4/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "Test 69 Jun 16, 2024 Auditoria finalizada VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "Test":
+            - button "Test"
+          - cell "69"
+          - cell "Jun 16, 2024"
+          - cell "Auditoria finalizada"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - button "EXTRATO" [disabled]:
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA":
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoE 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoE":
+            - button "CadernoE"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/67762e4a-4461-4e24-9b40-092331122ac3/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoF 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoF":
+            - button "CadernoF"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/562fd2d8-5443-4c0c-aa8e-a4a0f91ef08c/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoB 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoB":
+            - button "CadernoB"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/4f2d3b9c-56e6-489b-9f4a-6d459d7da459/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoC 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoC":
+            - button "CadernoC"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/2b1d52bc-3aa8-4b78-bc26-384a16806940/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoD 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoD":
+            - button "CadernoD"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/1d7590f4-8ed3-4a7c-83c6-bfd9bf890f92/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoH 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoH":
+            - button "CadernoH"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/0e1d55d1-2974-48dd-8ca2-a1d05e1c06d8/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+        - row "CadernoG 69 Jun 3, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "CadernoG":
+            - button "CadernoG"
+          - cell "69"
+          - cell "Jun 3, 2024"
+          - cell "Em andamento"
+          - cell "VISUALIZAR":
+            - button "VISUALIZAR":
+              - img
+              - text: VISUALIZAR
+          - cell "EXTRATO":
+            - link "EXTRATO":
+              - /url: /companies/095e5a42-a161-4dbd-bb02-0ef0acc539ce/performance-report
+              - img
+              - text: EXTRATO
+          - cell "RELATÓRIO AUDITORIA":
+            - button "RELATÓRIO AUDITORIA" [disabled]:
+              - img
+              - text: RELATÓRIO AUDITORIA
+    - text: Página 1 de 1
+  - alert: ESG

@@ -1,0 +1,107 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - complementary:
+    - img "imagem da logo"
+    - navigation:
+      - list:
+        - link "Indicadores":
+          - /url: /indicators
+          - listitem:
+            - img
+            - text: Indicadores
+        - link "Empresas":
+          - /url: /companies
+          - listitem:
+            - img
+            - text: Empresas
+        - link "Usuários":
+          - /url: /users
+          - listitem:
+            - img
+            - text: Usuários
+    - button "Ajuda":
+      - img
+      - text: Ajuda
+    - link "Configurações":
+      - /url: /settings
+      - img
+      - text: Configurações
+    - button "Sair":
+      - img
+      - text: Sair
+    - text: AE
+    - heading "Adm ESG" [level=6]
+    - text: adm.esg@sfiems.com.br
+  - main:
+    - heading "Usuários" [level=2]
+    - heading "Lista de Usuários" [level=3]
+    - paragraph: Veja a lista de usuários cadastrados assim como a situação dos mesmos.
+    - group:
+      - button:
+        - img
+      - textbox "Procurar por usuário"
+    - heading "Todos os usuários" [level=6]
+    - button "Cadastrar Novo Usuário"
+    - table:
+      - rowgroup:
+        - row "Nome Função Data de Cadastro E-mail":
+          - columnheader "Nome"
+          - columnheader "Função"
+          - columnheader "Data de Cadastro"
+          - columnheader "E-mail"
+          - columnheader
+      - rowgroup:
+        - row "usertest2 Funcionário Jul 23, 2024 bgneto+user2@sfiec.org.br":
+          - cell "usertest2"
+          - cell "Funcionário"
+          - cell "Jul 23, 2024"
+          - cell "bgneto+user2@sfiec.org.br"
+          - cell:
+            - button:
+              - img
+            - button:
+              - img
+        - row "TestGestor2 Gestor Jul 23, 2024 bgneto+gestor2@sfiec.org.br":
+          - cell "TestGestor2"
+          - cell "Gestor"
+          - cell "Jul 23, 2024"
+          - cell "bgneto+gestor2@sfiec.org.br"
+          - cell:
+            - button:
+              - img
+            - button:
+              - img
+        - row "Adm ESG Admin Jul 16, 2024 adm.esg@sfiems.com.br":
+          - cell "Adm ESG"
+          - cell "Admin"
+          - cell "Jul 16, 2024"
+          - cell "adm.esg@sfiems.com.br"
+          - cell:
+            - button:
+              - img
+            - button:
+              - img
+        - row "Rodrigo Ferrazza Admin Jul 5, 2024 rodrigo.ferrazza@sfiems.com.br":
+          - cell "Rodrigo Ferrazza"
+          - cell "Admin"
+          - cell "Jul 5, 2024"
+          - cell "rodrigo.ferrazza@sfiems.com.br"
+          - cell:
+            - button:
+              - img
+            - button:
+              - img
+        - row "TestConsultor Consultor Jun 17, 2024 bgneto+consultor@sfiec.org.br":
+          - cell "TestConsultor"
+          - cell "Consultor"
+          - cell "Jun 17, 2024"
+          - cell "bgneto+consultor@sfiec.org.br"
+          - cell:
+            - button:
+              - img
+            - button:
+              - img
+    - text: Página 1 de 3
+    - button "Próximo"
+  - alert

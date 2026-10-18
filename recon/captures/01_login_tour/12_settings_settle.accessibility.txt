@@ -1,0 +1,48 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - complementary:
+    - img "imagem da logo"
+    - navigation:
+      - list:
+        - link "Indicadores":
+          - /url: /indicators
+          - listitem:
+            - img
+            - text: Indicadores
+        - link "Empresas":
+          - /url: /companies
+          - listitem:
+            - img
+            - text: Empresas
+        - link "Usuários":
+          - /url: /users
+          - listitem:
+            - img
+            - text: Usuários
+    - button "Ajuda":
+      - img
+      - text: Ajuda
+    - link "Configurações":
+      - /url: /settings
+      - img
+      - text: Configurações
+    - button "Sair":
+      - img
+      - text: Sair
+    - text: AE
+    - heading "Adm ESG" [level=6]
+    - text: adm.esg@sfiems.com.br
+  - main:
+    - heading "Configurações" [level=2]
+    - heading "Redefinição de senha" [level=3]
+    - textbox "Digite sua nova senha"
+    - text: Nova senha
+    - button:
+      - img
+    - textbox "Confirme sua senha"
+    - text: Confirme sua nova senha
+    - button:
+      - img
+    - button "salvar nova senha"
+  - alert

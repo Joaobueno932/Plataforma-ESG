@@ -1,0 +1,29 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - main:
+    - link "Imagem da logo ESG FIEMS":
+      - /url: /
+      - img "Imagem da logo ESG FIEMS"
+    - navigation:
+      - link "Imagem da logo do sistema FIEMS":
+        - /url: https://www.ms.senai.br/
+        - img "Imagem da logo do sistema FIEMS"
+    - heading "Seus dados" [level=2]
+    - textbox
+    - text: Primeiro nome
+    - textbox
+    - text: Sobrenome
+    - textbox "nome@seudomínio.com.br"
+    - text: E-mail
+    - textbox "(00) 0000-0000"
+    - text: Telefone*
+    - textbox "(00) 0000-0000"
+    - text: Celular*
+    - combobox "Cargo": Selecione
+    - text: Cargo
+    - combobox "Departamento": Selecione
+    - text: Departamento
+    - combobox "Forma de Conhecimento": Selecione
+    - text: Forma de Conhecimento
+    - button "Continuar"

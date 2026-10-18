@@ -1,0 +1,83 @@
+{
+ "cookies": [
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "userRole",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "835d6dc88b708bc646d6db82c853ef4182fabbd4a8de59c213f2b5ab3ae7d9be",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "userId",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "ab2c163d5e2a3f7c03f50b55319338d8f875c5a5f4721f16d58ce00e91763897",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "token",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "c4be08f77edf78694db4282c4683d0fba89abb77a601e3e8fbf1c96bf165d091",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "refreshToken",
+   "path": "/",
+   "same_site": "Strict",
+   "secure": true,
+   "value_sha256": "e9f4add8bce73831b0db4e5ef3aef692350664dc28ee57929b389c8fea4ceb6a",
+   "value_state": "hashed"
+  },
+  {
+   "domain": "esg-fiems-stg.sfiec.org.br",
+   "http_only": false,
+   "name": "oldPath",
+   "path": "/",
+   "same_site": "Lax",
+   "secure": false,
+   "value_sha256": "e94a667b361642d4f6118194208eade94a0c10b2eccf6e8cd4394c4778d0d040",
+   "value_state": "hashed"
+  }
+ ],
+ "local_storage": [
+  {
+   "name": "iconify-count",
+   "value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+   "value_state": "hashed"
+  },
+  {
+   "name": "iconify-version",
+   "value_sha256": "41f5da85fe50035fa166aef622ccf9fd0f5e95bdc7b691899f2414e3ecc6d78f",
+   "value_state": "hashed"
+  },
+  {
+   "name": "jwt",
+   "value_sha256": "c4be08f77edf78694db4282c4683d0fba89abb77a601e3e8fbf1c96bf165d091",
+   "value_state": "hashed"
+  }
+ ],
+ "session_storage": [
+  {
+   "name": "iconify-count",
+   "value_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+   "value_state": "hashed"
+  },
+  {
+   "name": "iconify-version",
+   "value_sha256": "41f5da85fe50035fa166aef622ccf9fd0f5e95bdc7b691899f2414e3ecc6d78f",
+   "value_state": "hashed"
+  }
+ ]
+}

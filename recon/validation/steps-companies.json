@@ -1,0 +1,7 @@
+[{"goto":"http://localhost:3000/"},{"wait":1500},{"fill":["input[name=email]","admin@esgdemo.com.br"]},{"fill":["input[type=password]","admin123"]},{"click":"button:has-text('ENTRAR')"},{"waitFor":"tbody tr"},{"wait":1500},{"shot":"01_list"},
+{"click":"button:has-text('Cadastrar Nova Empresa')"},{"wait":500},{"click":"button:has-text('CADASTRAR EMPRESA')"},{"wait":500},{"shot":"02_register_validation"},
+{"fill":["input[name=legalName]","Teste Validação Ltda"]},{"fill":["input[name=bussinessName]","Teste Validação"]},{"fill":["input[name=email]","teste@validacao.com"]},{"fill":["input[name=cnpj]","98765432000110"]},{"fill":["input[name=accessDate]","2024-08-15"]},
+{"click":"button:has-text('Selecione o tamanho da empresa')"},{"click":"[role=option]:has-text('Média')"},{"click":"button:has-text('Selecione um Caderno Setorial')"},{"click":"[role=option]:has-text('Construção Civil')"},{"shot":"03_register_filled"},
+{"click":"button:has-text('CADASTRAR EMPRESA')"},{"wait":3500},{"shot":"04_after_register"},
+{"fill":["#search","validação"]},{"press":["#search","Enter"]},{"wait":1000},{"shot":"05_search"},
+{"click":"button[aria-label='Ações']"},{"wait":400},{"shot":"06_kebab"},{"click":"[role=menuitem]:has-text('Editar')"},{"wait":400},{"fill":["[id=search] >> nth=1","Demo"]},{"wait":400},{"click":"button:has-text('Empresa Demonstração')"},{"shot":"07_edit_select"},{"click":"button:has-text('EDITAR EMPRESA')"},{"wait":1200},{"shot":"08_edit_form"}]

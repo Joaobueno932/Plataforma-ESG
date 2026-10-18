@@ -1,0 +1,37 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - complementary:
+    - img "imagem da logo"
+    - navigation:
+      - list:
+        - link "Indicadores":
+          - /url: /indicators
+          - listitem:
+            - img
+            - text: Indicadores
+        - link "Empresas":
+          - /url: /companies
+          - listitem:
+            - img
+            - text: Empresas
+        - link "Usuários":
+          - /url: /users
+          - listitem:
+            - img
+            - text: Usuários
+    - button "Ajuda":
+      - img
+      - text: Ajuda
+    - link "Configurações":
+      - /url: /settings
+      - img
+      - text: Configurações
+    - button "Sair":
+      - img
+      - text: Sair
+  - main:
+    - heading "Indicadores" [level=2]
+    - heading "Indicadores" [level=3]
+    - paragraph: "Selecione um de seus cadernos setoriais:"
+  - alert

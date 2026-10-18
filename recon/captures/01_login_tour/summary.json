@@ -1,0 +1,95 @@
+{
+ "evidence_id": "ev_b4b991e47bb82cc32c283d61302561b948773c51fa35980a64f1eb42a64708e6",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "01_fill_email",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "02_fill_pass",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "03_login",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "04_after_login",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "05_goto_companies",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "06_companies_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "07_goto_indicators",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "08_indicators_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/indicators"
+  },
+  {
+   "tag": "09_goto_users",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "10_users_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/users"
+  },
+  {
+   "tag": "11_goto_settings",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/settings"
+  },
+  {
+   "tag": "12_settings_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/settings"
+  },
+  {
+   "tag": "13_goto_auto",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao"
+  },
+  {
+   "tag": "14_auto_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao"
+  }
+ ]
+}

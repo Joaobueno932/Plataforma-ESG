@@ -1,0 +1,29 @@
+- document:
+  - region "Notifications (F8)":
+    - list
+  - complementary:
+    - heading "Faça o login para acessar o ESG" [level=5]
+    - img "imagem da logo"
+    - text: E-mail
+    - textbox "E-mail":
+      - /placeholder: Insira seu e-mail
+      - text: adm.esg@sfiems.com.br
+    - text: Senha
+    - textbox "Senha":
+      - /placeholder: Insira sua senha
+    - button:
+      - img
+    - button "Esqueci a senha"
+    - checkbox
+    - text: Lembre-me
+    - button "ENTRAR"
+    - heading "Ainda não possui acesso ao ESG?" [level=5]
+    - paragraph: Clique no botão abaixo e faça uma autoavaliação gratuita, para verificar se a sua empresa está apta a participar do Programa ESG-FIEMS.
+    - link "Auto Avaliação":
+      - /url: /auto-avaliacao
+      - button "Auto Avaliação"
+    - button "Fale Conosco":
+      - img
+      - text: Fale Conosco
+  - main
+  - alert

@@ -1,0 +1,95 @@
+{
+ "evidence_id": "ev_260e79271e0251843ac1773c55751dd96396f28dc46e399da2167d6df169c2bb",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "01_fill_email",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "02_fill_pass",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "03_login",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "04_wait_list",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "05_click_view_semalo",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "06_view_semalo_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e"
+  },
+  {
+   "tag": "07_back_companies_1",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "08_wait_list_2",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "09_click_extrato_semalo",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "10_extrato_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e/performance-report"
+  },
+  {
+   "tag": "11_back_companies_2",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "12_wait_list_3",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "13_click_report_test",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "14_report_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies/831b965c-3336-491f-8fed-c1795d55f884/report"
+  }
+ ]
+}

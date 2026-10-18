@@ -1,0 +1,1360 @@
+"use strict";
+(self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([
+  [8962],
+  {
+    24723: function (e, t, r) {
+      r.d(t, {
+        H: function () {
+          return m;
+        },
+        V: function () {
+          return h;
+        },
+      });
+      var a = r(57437),
+        o = r(2265),
+        n = r(24033),
+        s = r(68230),
+        c = r(2915),
+        i = r(27470),
+        u = r(89384),
+        l = r(93822),
+        d = r(29222);
+      let h = (0, o.createContext)({}),
+        m = (e) => {
+          let { children: t } = e,
+            r = (0, n.useRouter)();
+          (0, n.usePathname)();
+          let [m, p] = (0, o.useState)(!1),
+            [y, g] = (0, o.useState)(null),
+            f = (0, s.parseCookies)();
+          f.token &&
+            (c.h.defaults.headers.common.Authorization = "Bearer ".concat(
+              f.token,
+            )),
+            (0, o.useEffect)(() => {
+              let e = async () => {
+                  try {
+                    let e = await (0, i.VG)();
+                    g(e.data);
+                  } catch (r) {
+                    console.error(
+                      "Erro ao obter todos os dados do userLogged:",
+                      r,
+                    );
+                    let e = (0, s.parseCookies)(),
+                      t = [];
+                    for (let r in e)
+                      (t.length <= 0 || !t.includes(r)) &&
+                        (0, s.destroyCookie)(null, r);
+                  }
+                },
+                t = async (t) => {
+                  try {
+                    await (0, i.ur)(t), e();
+                  } catch (e) {
+                    console.error("Erro ao tentar dar refresh token:", e);
+                  }
+                };
+              if (f.token) e();
+              else if (f.keepLogged) {
+                let e = f.refreshToken;
+                t(e);
+              } else (0, s.destroyCookie)(null, "refreshToken");
+            }, []);
+          let w = async (e) => {
+            let t = (0, u.h)("Autenticando...", "loading");
+            try {
+              let a = await (0, i.jW)(e, m);
+              (0, u.b)(t, "Logado com sucesso!", "success"),
+                g(a.data.sanitizedUser),
+                r.push("/companies");
+            } catch (e) {
+              if (d.default.isAxiosError(e)) {
+                var a, o, n, s, c;
+                (0, u.b)(
+                  t,
+                  ""
+                    .concat(
+                      null === (o = e.response) || void 0 === o
+                        ? void 0
+                        : null === (a = o.data) || void 0 === a
+                          ? void 0
+                          : a.error,
+                      ": ",
+                    )
+                    .concat(
+                      null === (s = e.response) || void 0 === s
+                        ? void 0
+                        : null === (n = s.data) || void 0 === n
+                          ? void 0
+                          : n.message,
+                    ),
+                  "error",
+                ),
+                  console.error(
+                    "Erro ao tentar fazer login:",
+                    null === (c = e.response) || void 0 === c ? void 0 : c.data,
+                  );
+              } else
+                (0, u.b)(t, e.message, "error"),
+                  console.error("Erro ao tentar fazer login:", e);
+            }
+          };
+          return (0, a.jsx)(h.Provider, {
+            value: { login: w, keepLogged: m, setKeepLogged: p, userLogged: y },
+            children: (0, a.jsx)(l.n, { children: t }),
+          });
+        };
+    },
+    93822: function (e, t, r) {
+      r.d(t, {
+        Q: function () {
+          return d;
+        },
+        n: function () {
+          return h;
+        },
+      });
+      var a = r(57437),
+        o = r(89384),
+        n = r(26058),
+        s = r(24033),
+        c = r(2265),
+        i = r(81388),
+        u = r(18962),
+        l = r(43027);
+      let d = (0, c.createContext)({}),
+        h = (e) => {
+          let { children: t } = e,
+            [r, h] = (0, c.useState)(null),
+            [m, p] = (0, c.useState)(1),
+            [y, g] = (0, c.useState)(1),
+            [f, w] = (0, c.useState)(void 0),
+            [v, b] = (0, c.useState)([]),
+            { userLogged: E } = (0, u.a)(),
+            x = (0, s.usePathname)();
+          (0, c.useEffect)(() => {
+            if ("/companies" === x && E) {
+              let e = async () => {
+                  try {
+                    let { data: e } = await (0, n.QL)(void 0, 50, f);
+                    h(e.data), p(e.page), g(e.numberOfPages);
+                  } catch (e) {
+                    throw (
+                      (console.error("Erro ao obter todas as Empresas:", e), e)
+                    );
+                  }
+                },
+                t = async () => {
+                  try {
+                    let e = await (0, n.Ot)(null == E ? void 0 : E.companyId);
+                    h([e.data]);
+                  } catch (e) {
+                    console.error("Erro ao obter a Empresa do userLogged:", e);
+                  }
+                };
+              "ADMIN" !== E.role ? t() : e();
+            }
+            if (("/companies" === x || "/indicators" === x) && E) {
+              let e = async () => {
+                try {
+                  let { data: e } = await (0, l.s1)();
+                  if ("ADMIN" !== E.role) {
+                    let t = e.find((e) => {
+                      var t;
+                      return (
+                        e.section ===
+                        (null === (t = E.company) || void 0 === t
+                          ? void 0
+                          : t.section)
+                      );
+                    });
+                    b([t]);
+                  } else b(e);
+                } catch (e) {
+                  console.error("Erro ao obter todos os Sectors:", e);
+                }
+              };
+              e();
+            }
+          }, [x, E]);
+          let k = async (e) => {
+              let t = e.trim();
+              try {
+                let { data: e } = await (0, n.QL)(void 0, 50, t);
+                h(e.data), p(e.page), g(e.numberOfPages), w(t);
+              } catch (e) {
+                console.error("Erro ao procurar por uma empresa", e);
+              }
+            },
+            C = async (e) => {
+              let t = new Date(e.accessDate),
+                r = t.toISOString(),
+                a = { ...e, accessDate: r },
+                s = (0, o.h)("Cadastrando...", "loading");
+              try {
+                await (0, n.Zj)(a),
+                  (0, o.b)(s, "Empresa cadastrada com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (t) {
+                var c, i, u, l;
+                let e =
+                  null !==
+                    (i =
+                      "object" ==
+                        typeof (l = u =
+                          null === (c = t.response) || void 0 === c
+                            ? void 0
+                            : c.data) &&
+                      null !== l &&
+                      "errors" in l &&
+                      Array.isArray(l.errors) &&
+                      l.errors.length > 0 &&
+                      "object" == typeof l.errors[0] &&
+                      "message" in l.errors[0]
+                        ? u.errors[0].message
+                        : null) && void 0 !== i
+                    ? i
+                    : t.message;
+                (0, o.b)(s, e, "error"),
+                  console.error("Erro ao tentar cadastrar empresa:", t);
+              }
+            },
+            S = async () => {
+              try {
+                let { data: e } = await (0, n.QL)(m + 1, 50, f);
+                p(e.page), g(e.numberOfPages), h(e.data);
+              } catch (e) {
+                console.error(
+                  "Erro ao tentar ir para pr\xf3xima p\xe1gina da empresa:",
+                  e,
+                );
+              }
+            },
+            P = async () => {
+              try {
+                let { data: e } = await (0, n.QL)(m - 1, 50, f);
+                p(e.page), g(e.numberOfPages), h(e.data);
+              } catch (e) {
+                console.error(
+                  "Erro ao tentar ir para p\xe1gina anterior da empresa:",
+                  e,
+                );
+              }
+            },
+            A = async (e) => {
+              let t = (0, o.h)("Submetendo...", "loading");
+              try {
+                await (0, n.QE)(e),
+                  (0, o.b)(
+                    t,
+                    "Caderno Setorial submetido com sucesso!",
+                    "success",
+                  ),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                var r;
+                if (
+                  (console.error(
+                    "Erro ao tentar submeter o caderno setorial da Empresa:",
+                    e,
+                  ),
+                  (null == e
+                    ? void 0
+                    : null === (r = e.response) || void 0 === r
+                      ? void 0
+                      : r.status) === 403)
+                )
+                  return (0, o.b)(
+                    t,
+                    "Ainda existem quest\xf5es que precisam ser aprovadas pelo cosultor.",
+                    "error",
+                  );
+                (0, o.b)(t, e.message, "error");
+              }
+            },
+            I = async (e, t) => {
+              let r = (0, o.h)("Atualizando empresa...", "loading");
+              try {
+                await (0, n.yX)(e, t),
+                  (0, o.b)(r, "Empresa atualizada com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                console.error("Erro ao tentar atualizar Empresa:", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            },
+            j = async (e) => {
+              let t = (0, o.h)("Removendo empresa...", "loading");
+              try {
+                await (0, n.mV)(e),
+                  (0, o.b)(t, "Empresa removida com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                console.error("Erro ao tentar remover Empresa:", e),
+                  (0, o.b)(t, e.message, "error");
+              }
+            };
+          return (0, a.jsx)(d.Provider, {
+            value: {
+              companies: r,
+              searchCompany: k,
+              registerCompany: C,
+              handleNextPageCompanies: S,
+              handlePreviousPageCompanies: P,
+              submitToAuditor: A,
+              updateCompany: I,
+              removeCompany: j,
+              sectors: v,
+              numberOfPages: y,
+              currentPage: m,
+            },
+            children: (0, a.jsx)(i.d, { children: t }),
+          });
+        };
+    },
+    17746: function (e, t, r) {
+      r.d(t, {
+        H: function () {
+          return d;
+        },
+        v: function () {
+          return h;
+        },
+      });
+      var a = r(57437),
+        o = r(89384),
+        n = r(18962),
+        s = r(26058),
+        c = r(43027),
+        i = r(24033),
+        u = r(2265),
+        l = r(57973);
+      let d = (0, u.createContext)({}),
+        h = (e) => {
+          let { children: t } = e,
+            [r, h] = (0, u.useState)(null),
+            [m, p] = (0, u.useState)(!1),
+            [y, g] = (0, u.useState)(null),
+            f = (0, i.useRouter)(),
+            { userLogged: w } = (0, n.a)(),
+            v = async (e) => {
+              try {
+                let t = await (0, s.vQ)(e);
+                h(t.data);
+              } catch (e) {
+                console.error("Erro ao obter todos os Reports:", e);
+              }
+            },
+            b = async (e) => {
+              try {
+                let t = [];
+                if ((null == w ? void 0 : w.role) === "ADMIN") {
+                  let { data: r } = await (0, s.S_)(e);
+                  t = [...r];
+                } else {
+                  let { data: e } = await (0, s.S_)();
+                  t = [...e];
+                }
+                g(t);
+              } catch (e) {
+                console.error("Erro ao obter todos os Indicators:", e);
+              }
+            },
+            E = (e) => {
+              let t = e.section,
+                r = {
+                  title: e.title,
+                  description: e.description,
+                  category: e.category,
+                  subcategory: e.subcategory,
+                  hasMandatory: e.hasMandatory,
+                  answers: e.answers.map((e) => ({
+                    ...e,
+                    points: Number(e.points),
+                  })),
+                },
+                a = { data: [{ ...r }], section: t };
+              return a;
+            },
+            x = async (e) => {
+              let t = E(e),
+                r = (0, o.h)("Cadastrando...", "loading");
+              try {
+                await (0, c.HU)(t.data, t.section),
+                  (0, o.b)(r, "Indicador cadastrado com sucesso!", "success"),
+                  f.push("/indicators");
+              } catch (e) {
+                console.error("Erro ao tentar cadastrar Indicator:", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            },
+            k = async (e, t, r) => {
+              let a = (0, o.h)("Registrando a resposta...", "loading");
+              try {
+                await (0, c._7)(e, t),
+                  (0, o.b)(a, "Resposta registrada com sucesso!", "success"),
+                  f.push("/companies/".concat(r));
+              } catch (e) {
+                console.error("Erro ao tentar responder Indicator:", e),
+                  (0, o.b)(a, e.message, "error");
+              }
+            },
+            C = async (e, t) => {
+              let r = (0, o.h)("validando...", "loading");
+              try {
+                await (0, c.e0)(e, t),
+                  b(e),
+                  (0, o.b)(r, "Valida\xe7\xe3o feita com sucesso!", "success");
+              } catch (e) {
+                console.error("Erro ao validar Indicator:", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            },
+            S = async (e, t) => {
+              let r = (0, o.h)("validando...", "loading");
+              try {
+                await (0, c.jh)(e, t),
+                  b(t),
+                  (0, o.b)(r, "Valida\xe7\xe3o feita com sucesso!", "success");
+              } catch (e) {
+                console.error("Erro ao validar Indicator:", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            },
+            P = async (e) => {
+              let t = (0, o.h)("validando...", "loading");
+              try {
+                await (0, c.Vu)(e),
+                  (0, o.b)(t, "Valida\xe7\xe3o feita com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1800);
+              } catch (e) {
+                console.error("Erro ao validar Indicator:", e),
+                  (0, o.b)(t, e.message, "error");
+              }
+            },
+            A = async () => {
+              let e = (0, o.h)("Submetendo...", "loading");
+              try {
+                await (0, c.AO)(),
+                  (0, o.b)(e, "Rel\xe1torio Submetido com sucesso!", "success"),
+                  f.push("/companies");
+              } catch (t) {
+                console.error("Erro ao validar Indicator:", t),
+                  (0, o.b)(e, t.message, "error");
+              }
+            },
+            I = async (e) => {
+              let t = (0, o.h)("Submetendo...", "loading");
+              try {
+                await (0, c.sp)(e),
+                  (0, o.b)(t, "Rel\xe1torio Submetido com sucesso!", "success"),
+                  f.push("/companies");
+              } catch (e) {
+                console.error("Erro ao validar Indicator:", e),
+                  (0, o.b)(t, e.message, "error");
+              }
+            },
+            j = async (e, t) => {
+              let r = (0, o.h)("Removendo...", "loading");
+              try {
+                await (0, c.Rh)(e),
+                  (0, o.b)(r, "Arquivo removido com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1800);
+              } catch (t) {
+                var a, n;
+                console.error("Erro ao enviar os arquivos:", t);
+                let e =
+                  null === (a = t.response) || void 0 === a ? void 0 : a.data;
+                (0, o.b)(
+                  r,
+                  null !== (n = null == e ? void 0 : e.message) && void 0 !== n
+                    ? n
+                    : t.message,
+                  "error",
+                );
+              }
+            },
+            O = async (e, t, r) => {
+              let a = (0, o.h)("Adicionando Lembre-me...", "loading");
+              try {
+                await (0, c.C7)(e, t),
+                  (0, o.b)(a, "Lembrete adicionado com sucesso!", "success");
+                let { data: n } = await (0, s.IH)(t);
+                r(n);
+              } catch (e) {
+                console.error("Erro ao adicionar lembrete:", e),
+                  (0, o.b)(a, e.message, "error");
+              }
+            },
+            R = async (e, t) => {
+              let r = (0, o.h)("Removendo Lembre-me...", "loading");
+              try {
+                await (0, c.b4)(e),
+                  (0, o.b)(r, "Lembrete removido com sucesso!", "success");
+                let { data: a } = await (0, s.IH)(e);
+                t(a);
+              } catch (e) {
+                console.error("Erro ao remnover lembrete:", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            },
+            T = async (e) => {
+              let t = (0, o.h)("Removendo Lembre-me...", "loading");
+              try {
+                await (0, s.wm)(e), (0, o.b)(t, "Acesso liberado", "success");
+              } catch (e) {
+                var r, a, n;
+                if (
+                  (console.log(e),
+                  console.error("Erro ao liberar acesso", e),
+                  (null == e
+                    ? void 0
+                    : null === (r = e.response) || void 0 === r
+                      ? void 0
+                      : r.status) == 403)
+                )
+                  return (0, o.b)(
+                    t,
+                    (null == e
+                      ? void 0
+                      : null === (n = e.response) || void 0 === n
+                        ? void 0
+                        : null === (a = n.data) || void 0 === a
+                          ? void 0
+                          : a.message) || "Erro ao liberar acesso ao relatorio",
+                    "error",
+                  );
+                (0, o.b)(t, "Ops! Algo deu errado:", "error");
+              }
+            },
+            z = async (e, t, r) => {
+              let a = (0, o.h)("Atualizando quest\xe3o", "loading");
+              try {
+                await (0, l.j4)(e, t, r),
+                  (0, o.b)(a, "Quest\xe3o atualizada", "success"),
+                  window.location.reload();
+              } catch (e) {
+                (0, o.b)(a, "Erro ao atualizar quest\xe3o", "error");
+              }
+            },
+            L = async (e, t, r, a, n, s) => {
+              p(!0);
+              let c = (0, o.h)("Deletando pergunta", "loading");
+              try {
+                await (0, l._9)(e, t, r, a, n, s),
+                  (0, o.b)(c, "Pergunta deletada", "success"),
+                  p(!1),
+                  window.location.reload();
+              } catch (e) {
+                p(!1), (0, o.b)(c, "Erro ao deletar pergunta", "error");
+              }
+            },
+            q = async (e) => {
+              p(!0);
+              let t = (0, o.h)("Deletando pergunta", "loading");
+              try {
+                await (0, l.CP)(e),
+                  (0, o.b)(t, "Pergunta deletada", "success"),
+                  p(!1),
+                  window.location.reload();
+              } catch (e) {
+                p(!1), (0, o.b)(t, "Erro ao deletar pergunta", "error");
+              }
+            };
+          return (0, a.jsx)(d.Provider, {
+            value: {
+              getAndSetReports: v,
+              getAndSetIndicatorBySector: b,
+              registerIndicator: x,
+              answerIndicator: k,
+              validateIndicator: C,
+              validateQuestionByAuditor: S,
+              markNonApplicableByAuditor: P,
+              submitReport: A,
+              removeFile: j,
+              addRedflag: O,
+              removeRedflag: R,
+              finishAuditoryReport: I,
+              giveReportAccess: T,
+              updateQuestion: z,
+              updateAnswer: L,
+              deleteAnswer: q,
+              reporstCompany: r,
+              indicatorsBySector: y,
+              updateAnswerIsLoading: m,
+            },
+            children: t,
+          });
+        };
+    },
+    81388: function (e, t, r) {
+      r.d(t, {
+        S: function () {
+          return d;
+        },
+        d: function () {
+          return h;
+        },
+      });
+      var a = r(57437),
+        o = r(89384),
+        n = r(84991),
+        s = r(24033),
+        c = r(2265),
+        i = r(17746),
+        u = r(18962),
+        l = r(92164);
+      let d = (0, c.createContext)({}),
+        h = (e) => {
+          let { children: t } = e,
+            [r, h] = (0, c.useState)(null),
+            m = (0, s.useRouter)(),
+            [p, y] = (0, c.useState)(1),
+            [g, f] = (0, c.useState)(1),
+            [w, v] = (0, c.useState)(void 0),
+            b = (0, s.usePathname)(),
+            { userLogged: E } = (0, u.a)();
+          (0, c.useEffect)(() => {
+            if ("/users" === b && E) {
+              let e = async () => {
+                  try {
+                    let { data: e } = await (0, n.mN)();
+                    h(e.data), y(e.page), f(e.numberOfPages);
+                  } catch (e) {
+                    throw (
+                      (console.error("Erro ao obter todos os usu\xe1rios:", e),
+                      e)
+                    );
+                  }
+                },
+                t = async () => {
+                  try {
+                    let { data: e } = await (0, n.sA)();
+                    h(e.data), y(e.page), f(e.numberOfPages);
+                  } catch (e) {
+                    throw (
+                      (console.error(
+                        "Erro ao obter todos os usu\xe1rios da empresa:",
+                        e,
+                      ),
+                      e)
+                    );
+                  }
+                };
+              (null == E ? void 0 : E.role) !== "ADMIN" ? t() : e();
+            }
+          }, [b, E]);
+          let x = async (e) => {
+              let t = (0, o.h)("Cadastrando...", "loading");
+              try {
+                await (0, n.Hy)(e),
+                  (0, o.b)(t, "Usu\xe1rio cadastrado com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                console.error("Erro ao tentar cadastrar usu\xe1rio:", e),
+                  (0, o.b)(t, e.message, "error");
+              }
+            },
+            k = async (e) => {
+              let t = e.trim();
+              try {
+                let { data: e } = await (0, n.mN)(void 0, void 0, t);
+                h(e.data), y(e.page), f(e.numberOfPages), v(t);
+              } catch (e) {
+                console.error("Erro ao procurar por um usu\xe1rio", e);
+              }
+            },
+            C = async () => {
+              try {
+                let { data: e } = await (0, n.mN)(p + 1, void 0, w);
+                y(e.page), f(e.numberOfPages), h(e.data);
+              } catch (e) {
+                console.error(
+                  "Erro ao tentar ir para pr\xf3xima p\xe1gina do usu\xe1rio:",
+                  e,
+                );
+              }
+            },
+            S = async () => {
+              try {
+                let { data: e } = await (0, n.mN)(p - 1, void 0, w);
+                y(e.page), f(e.numberOfPages), h(e.data);
+              } catch (e) {
+                console.error(
+                  "Erro ao tentar ir para p\xe1gina anterior do usu\xe1rio:",
+                  e,
+                );
+              }
+            },
+            P = async (e, t) => {
+              let r = (0, o.h)("Editando usu\xe1rio...", "loading");
+              try {
+                await (0, n.jJ)(e, t),
+                  (0, o.b)(r, "Usu\xe1rio editado com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                if (
+                  (console.error("Erro ao tentar editar usu\xe1rio:", e),
+                  e instanceof l.d7)
+                ) {
+                  var a, s;
+                  return (0, o.b)(
+                    r,
+                    (null == e
+                      ? void 0
+                      : null === (s = e.response) || void 0 === s
+                        ? void 0
+                        : null === (a = s.data) || void 0 === a
+                          ? void 0
+                          : a.message) || "Ops! Algo deu errado",
+                    "error",
+                  );
+                }
+                (0, o.b)(r, e.message, "error");
+              }
+            },
+            A = async (e) => {
+              let t = (0, o.h)("Removendo usu\xe1rio...", "loading");
+              try {
+                await (0, n.Pr)(e),
+                  (0, o.b)(t, "Usu\xe1rio removido com sucesso!", "success"),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                console.error("Erro ao tentar deletar usu\xe1rio:", e),
+                  (0, o.b)(t, e.message, "error");
+              }
+            },
+            I = async (e, t) => {
+              let r = (0, o.h)("Mudando de empresa...", "loading");
+              try {
+                await (0, n.HB)(e, t),
+                  (0, o.b)(
+                    r,
+                    "Mudan\xe7a de empresa feita com sucesso!",
+                    "success",
+                  ),
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2e3);
+              } catch (e) {
+                console.error("Erro ao tentar mudar de empresa:", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            },
+            j = async (e) => {
+              let t = (0, o.h)("Enviando email", "loading");
+              try {
+                await (0, n.Gl)(e),
+                  (0, o.b)(
+                    t,
+                    "O email de redefini\xe7\xe3o de senha foi enviado, verifique sua caixa de entrada.",
+                    "success",
+                  );
+              } catch (n) {
+                var r, a;
+                console.error("Erro ao tentar enviar o email", n);
+                let e =
+                  (null === (a = n.response) || void 0 === a
+                    ? void 0
+                    : null === (r = a.data) || void 0 === r
+                      ? void 0
+                      : r.message) || "Erro desconhecido";
+                (0, o.b)(t, "Ocorreu o seguinte erro:".concat(e), "error");
+              }
+            },
+            O = async (e, t) => {
+              let r = (0, o.h)("Mudando senha", "loading");
+              try {
+                await (0, n.NG)(e, t),
+                  (0, o.b)(r, "Senha redefinida com sucesso.", "success"),
+                  m.push("/");
+              } catch (e) {
+                console.error("Erro ao tentar mudar de senha.", e),
+                  (0, o.b)(r, e.message, "error");
+              }
+            };
+          return (0, a.jsx)(d.Provider, {
+            value: {
+              users: r,
+              registerUser: x,
+              updateUser: P,
+              deleteUser: A,
+              searchUser: k,
+              numberOfPages: g,
+              currentPage: p,
+              handleNextPage: C,
+              handlePreviousPage: S,
+              changeCompany: I,
+              requestPasswordChange: j,
+              requestChangePassword: O,
+            },
+            children: (0, a.jsx)(i.v, { children: t }),
+          });
+        };
+    },
+    18962: function (e, t, r) {
+      r.d(t, {
+        a: function () {
+          return n;
+        },
+      });
+      var a = r(24723),
+        o = r(2265);
+      let n = () => (0, o.useContext)(a.V);
+    },
+    2915: function (e, t, r) {
+      r.d(t, {
+        h: function () {
+          return o;
+        },
+      });
+      var a = r(29222);
+      let o = a.default.create({
+        baseURL: "https://esg-fiems-api-stg.sfiec.org.br",
+        timeout: 6e4,
+      });
+    },
+    27470: function (e, t, r) {
+      r.d(t, {
+        Cp: function () {
+          return d;
+        },
+        VG: function () {
+          return i;
+        },
+        jW: function () {
+          return c;
+        },
+        l3: function () {
+          return l;
+        },
+        ur: function () {
+          return u;
+        },
+      });
+      var a = r(69761),
+        o = r(2915),
+        n = r(68230),
+        s = r(24033);
+      let c = async (e, t) => {
+          let r = await o.h.post("/auth/login", e, {
+              headers: { "Content-Type": "application/json" },
+            }),
+            s = r.data.access_token;
+          return (
+            (o.h.defaults.headers.common.authorization = "Bearer ".concat(s)),
+            localStorage.setItem("jwt", s),
+            (0, n.setCookie)(
+              null,
+              "userRole",
+              "".concat(r.data.sanitizedUser.role),
+              { ...a.w, secure: !0 },
+            ),
+            (0, n.setCookie)(
+              null,
+              "userId",
+              "".concat(r.data.sanitizedUser.id),
+              { ...a.w, secure: !0 },
+            ),
+            (0, n.setCookie)(null, "token", "".concat(s), {
+              ...a.R,
+              secure: !0,
+            }),
+            (0, n.setCookie)(
+              null,
+              "refreshToken",
+              "".concat(r.data.refresh_token),
+              { ...a.w, secure: !0 },
+            ),
+            t &&
+              (0, n.setCookie)(null, "keepLogged", "true", {
+                ...a.w,
+                secure: !0,
+              }),
+            r
+          );
+        },
+        i = async () => {
+          let e = await o.h.get("/auth/me");
+          return e;
+        },
+        u = async (e) => {
+          let t = await o.h.post("/auth/refresh", null, {
+              headers: { Authorization: "Bearer ".concat(e) },
+            }),
+            r = t.data.access_token;
+          return (
+            (o.h.defaults.headers.common.authorization = "Bearer ".concat(r)),
+            (0, n.setCookie)(null, "token", "".concat(r), {
+              ...a.R,
+              secure: !0,
+            }),
+            (0, n.setCookie)(
+              null,
+              "refreshToken",
+              "".concat(t.data.refresh_token),
+              { ...a.w, secure: !0 },
+            ),
+            t
+          );
+        },
+        l = async () => {
+          let e = (0, n.parseCookies)();
+          for (let t in e) (0, n.destroyCookie)(null, t);
+          localStorage.removeItem("jwt"), (0, s.redirect)("/");
+        },
+        d = async (e) => {
+          let t = (0, n.parseCookies)(),
+            r = await o.h.patch("/users/".concat(t.userId), e, {
+              headers: { Authorization: "Bearer ".concat(t.token) },
+            });
+          return r;
+        };
+    },
+    26058: function (e, t, r) {
+      r.d(t, {
+        IH: function () {
+          return d;
+        },
+        Lz: function () {
+          return g;
+        },
+        Ot: function () {
+          return c;
+        },
+        QE: function () {
+          return h;
+        },
+        QL: function () {
+          return n;
+        },
+        S_: function () {
+          return u;
+        },
+        Zj: function () {
+          return i;
+        },
+        j_: function () {
+          return s;
+        },
+        mV: function () {
+          return p;
+        },
+        vQ: function () {
+          return l;
+        },
+        wm: function () {
+          return y;
+        },
+        yX: function () {
+          return m;
+        },
+      });
+      var a = r(2915),
+        o = r(68230);
+      let n = async function () {
+          let e =
+              arguments.length > 0 && void 0 !== arguments[0]
+                ? arguments[0]
+                : 1,
+            t =
+              arguments.length > 1 && void 0 !== arguments[1]
+                ? arguments[1]
+                : 5,
+            r = arguments.length > 2 ? arguments[2] : void 0,
+            a = arguments.length > 3 ? arguments[3] : void 0,
+            n = (0, o.parseCookies)(),
+            s = ""
+              .concat(
+                "https://esg-fiems-api-stg.sfiec.org.br",
+                "/companies?page=",
+              )
+              .concat(e, "&perPage=")
+              .concat(t)
+              .concat(r ? "&bussinessName=".concat(r) : "")
+              .concat(a ? "&nonPaginate=true" : ""),
+            c = await fetch(s, {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer ".concat(n.token),
+              },
+            });
+          if (!c.ok) throw Error("HTTP error! status: ".concat(c.status));
+          let i = await c.json();
+          return { data: i };
+        },
+        s = async () => {
+          let e = await a.h.get("/companies/light/all");
+          return e;
+        },
+        c = async (e) => {
+          let t = await a.h.get("/companies/".concat(e));
+          return t;
+        },
+        i = async (e) => {
+          let t = await a.h.post("/companies", e);
+          return t;
+        },
+        u = async (e) => {
+          let t = await a.h.get("/reports/company/questions/".concat(e || ""));
+          return t;
+        },
+        l = async (e) => {
+          let t = await a.h.get("/reports/".concat(e));
+          return t;
+        },
+        d = async (e) => {
+          let t = a.h.get("/reports/questionReports/".concat(e));
+          return t;
+        },
+        h = async (e) => {
+          let t = a.h.post("/reports/submit/".concat(e));
+          return t;
+        },
+        m = async (e, t) => {
+          let r = await a.h.patch("/companies/".concat(e), t);
+          return r;
+        },
+        p = async (e) => {
+          let t = a.h.delete("/companies/".concat(e));
+          return t;
+        },
+        y = async (e) => {
+          let t = a.h.post("/auditory/givereportaccess/".concat(e));
+          return t;
+        },
+        g = async () => {
+          let e = await a.h.get("/companies/get/files"),
+            t = e.data;
+          return t;
+        };
+    },
+    43027: function (e, t, r) {
+      r.d(t, {
+        AO: function () {
+          return d;
+        },
+        Bu: function () {
+          return w;
+        },
+        C7: function () {
+          return g;
+        },
+        HU: function () {
+          return o;
+        },
+        Rh: function () {
+          return y;
+        },
+        Sf: function () {
+          return m;
+        },
+        Vu: function () {
+          return l;
+        },
+        _7: function () {
+          return n;
+        },
+        b4: function () {
+          return f;
+        },
+        bD: function () {
+          return s;
+        },
+        e0: function () {
+          return c;
+        },
+        jh: function () {
+          return u;
+        },
+        k3: function () {
+          return p;
+        },
+        s1: function () {
+          return i;
+        },
+        sp: function () {
+          return h;
+        },
+      });
+      var a = r(2915);
+      let o = async (e, t) => {
+          let r = await a.h.post("/questions/section/".concat(t), e);
+          return r;
+        },
+        n = async (e, t) => {
+          let r = a.h.patch("/reports/answerQuestion/".concat(t), e);
+          return r;
+        },
+        s = async (e, t) => {
+          let r = a.h.patch("/reports/editQuestionReport/".concat(t), e);
+          return r;
+        },
+        c = async (e, t) => {
+          let r = await a.h.post("/reports/validateanswer/".concat(e), t);
+          return r;
+        },
+        i = async () => {
+          let e = await a.h.get("/sectors");
+          return e;
+        },
+        u = async (e, t) => {
+          let r = await a.h.post("/auditory/evaluatequestion/".concat(t), e);
+          return r;
+        },
+        l = async (e) => {
+          let t = await a.h.post("/auditory/nonApplicable/".concat(e));
+          return t;
+        },
+        d = async () => {
+          let e = await a.h.post("/auditory/submitToSupervisor");
+          return e;
+        },
+        h = async (e) => {
+          let t = await a.h.post("/auditory/finishAuditory/".concat(e));
+          return t;
+        },
+        m = async (e) => {
+          let t = new FormData();
+          return t.append("file", e), a.h.post("/uploads/sectorCovers", t);
+        },
+        p = async (e, t) => {
+          let r = new FormData();
+          r.append("companyId", e), r.append("file", t);
+          let o = a.h.post("/uploads/companyFile", r);
+          return o;
+        },
+        y = async (e) => {
+          let t = await a.h.delete("/reports/questionFiles/".concat(e));
+          return t;
+        },
+        g = async (e, t) => {
+          let r = await a.h.patch("reports/redflag/".concat(t), { redflag: e });
+          return r;
+        },
+        f = async (e) => {
+          let t = await a.h.delete("reports/redflag/".concat(e));
+          return t;
+        },
+        w = async (e, t) => {
+          let r = await a.h.patch(
+            "reports/changeQuestionStatus/".concat(e, "/").concat(t),
+          );
+          return r;
+        };
+    },
+    57973: function (e, t, r) {
+      r.d(t, {
+        CP: function () {
+          return s;
+        },
+        Km: function () {
+          return i;
+        },
+        _9: function () {
+          return n;
+        },
+        dc: function () {
+          return c;
+        },
+        j4: function () {
+          return o;
+        },
+      });
+      var a = r(2915);
+      let o = async (e, t, r) => {
+          let o = await a.h.patch("/questions/".concat(e), {
+            title: t,
+            description: r,
+          });
+          return o;
+        },
+        n = async (e, t, r, o, n, s) => {
+          let c = await a.h.patch(
+            "/questions/answer/".concat(e, "/").concat(t),
+            { points: o, description: n, mandatory: s },
+          );
+          return c;
+        },
+        s = async (e) => {
+          let t = await a.h.delete("/questions/answer/".concat(e));
+          return t;
+        },
+        c = async (e) => {
+          let t = await a.h.delete("/questions/section/".concat(e));
+          return t;
+        },
+        i = async (e) => {
+          let t = await a.h.delete("/questions/".concat(e));
+          return t;
+        };
+    },
+    84991: function (e, t, r) {
+      r.d(t, {
+        Gl: function () {
+          return d;
+        },
+        HB: function () {
+          return l;
+        },
+        Hy: function () {
+          return n;
+        },
+        NG: function () {
+          return h;
+        },
+        Pr: function () {
+          return u;
+        },
+        hz: function () {
+          return c;
+        },
+        jJ: function () {
+          return i;
+        },
+        mN: function () {
+          return o;
+        },
+        sA: function () {
+          return s;
+        },
+      });
+      var a = r(2915);
+      let o = async function () {
+          let e =
+              arguments.length > 0 && void 0 !== arguments[0]
+                ? arguments[0]
+                : 1,
+            t =
+              arguments.length > 1 && void 0 !== arguments[1]
+                ? arguments[1]
+                : 5,
+            r = arguments.length > 2 ? arguments[2] : void 0,
+            o = await a.h.get(
+              "/users?page="
+                .concat(e, "&perPage")
+                .concat(t)
+                .concat(r ? "&name=".concat(r) : ""),
+            );
+          return o;
+        },
+        n = async (e) => {
+          let t = await a.h.post("/users", e);
+          return t;
+        },
+        s = async () => {
+          let e = await a.h.get("/users/getUsers/company");
+          return e;
+        },
+        c = async (e, t) => {
+          let r = await a.h.patch("/reports/addanswerer/".concat(e), t);
+          return r;
+        },
+        i = async (e, t) => {
+          let r = await a.h.patch("/users/".concat(e), t);
+          return r;
+        },
+        u = async (e) => {
+          let t = await a.h.delete("/users/".concat(e));
+          return t;
+        },
+        l = async (e, t) => {
+          let r = await a.h.patch("/users/changeCompany/".concat(e), {
+            companyId: t,
+          });
+          return r;
+        },
+        d = async (e) => {
+          let t = await a.h.post("/auth/forgotPassword/", { email: e });
+          return t;
+        },
+        h = async (e, t) => {
+          let r = await a.h.post(
+            "auth/changePassword",
+            { newPassword: e },
+            { headers: { Authorization: "Bearer ".concat(t) } },
+          );
+          return r;
+        };
+    },
+    69761: function (e, t, r) {
+      r.d(t, {
+        R: function () {
+          return o;
+        },
+        w: function () {
+          return a;
+        },
+      });
+      let a = { maxAge: 2592e3, path: "/", sameSite: "strict" },
+        o = { maxAge: 3600, path: "/", sameSite: "strict" };
+    },
+    89384: function (e, t, r) {
+      r.d(t, {
+        b: function () {
+          return n;
+        },
+        h: function () {
+          return o;
+        },
+      });
+      var a = r(63014);
+      r(66518);
+      let o = (e, t) => {
+          let r = {
+              position: a.toast.POSITION.TOP_CENTER,
+              theme: "light",
+              autoClose: 2500,
+              pauseOnHover: !0,
+              closeOnClick: !0,
+            },
+            o = { fontSize: "18px" };
+          switch (t) {
+            case "success":
+              return a.toast.success(e, { ...r, style: o });
+            case "error":
+              return a.toast.error(e, { ...r, style: o });
+            case "info":
+              return a.toast.info(e, { ...r, style: o });
+            case "warning":
+              return a.toast.warning(e, { ...r, style: o });
+            case "loading":
+              return a.toast.loading(e, { ...r, style: o });
+            default:
+              return (0, a.toast)(e);
+          }
+        },
+        n = (e, t, r) =>
+          a.toast.update(e, {
+            render: t,
+            type: r,
+            isLoading: !1,
+            autoClose: 2500,
+            pauseOnHover: !0,
+            closeOnClick: !0,
+            draggable: !0,
+          });
+    },
+  },
+]);

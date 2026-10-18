@@ -1,0 +1,71 @@
+{
+ "evidence_id": "ev_32273ec30bfe38405918fd35e6acedc1bf14ddbca1c15a6515d18dee7e2e4b98",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "01_fill_email",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "02_fill_pass",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "03_login",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/"
+  },
+  {
+   "tag": "04_wait_list",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "05_click_view_test",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "06_view_test_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies/831b965c-3336-491f-8fed-c1795d55f884"
+  },
+  {
+   "tag": "07_back",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "08_wait_list_2",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "09_click_view_cadernoA",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies"
+  },
+  {
+   "tag": "10_view_cadernoA_settle",
+   "status": "completed",
+   "error": null,
+   "url": "https://esg-fiems-stg.sfiec.org.br/companies/da5e509e-0a08-494e-8c2b-cb4268b67b6b"
+  }
+ ]
+}

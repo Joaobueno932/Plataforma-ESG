@@ -1,0 +1,53 @@
+{
+ "evidence_id": "ev_956995d15d6f93522dc1627d55bcdaf600b176e1c0466c34dfebb87ba6c8f12c",
+ "steps": [
+  {
+   "tag": "00_scenario_start",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/"
+  },
+  {
+   "tag": "01_settle",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/"
+  },
+  {
+   "tag": "02_fill_email",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/"
+  },
+  {
+   "tag": "03_fill_pass",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/"
+  },
+  {
+   "tag": "04_login",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/"
+  },
+  {
+   "tag": "05_after_login",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/companies"
+  },
+  {
+   "tag": "06_goto_settings",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/settings"
+  },
+  {
+   "tag": "07_settings_settle",
+   "status": "completed",
+   "error": null,
+   "url": "http://localhost:3000/settings"
+  }
+ ]
+}

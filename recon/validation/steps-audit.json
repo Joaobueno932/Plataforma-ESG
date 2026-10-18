@@ -1,0 +1,4 @@
+[{"goto":"http://localhost:3000/"},{"wait":1500},{"fill":["input[name=email]","auditor@esgdemo.com.br"]},{"fill":["input[type=password]","123456"]},{"click":"button:has-text('ENTRAR')"},{"waitFor":"tbody tr"},{"wait":1000},{"shot":"01_auditor_companies"},
+{"click":"button:has-text('VISUALIZAR')"},{"waitFor":"text=Tópicos por Usuário"},{"wait":1500},{"click":"button[aria-label='Expandir'] >> nth=0"},{"wait":800},{"shot":"02_auditor_item","full":true},
+{"fill":["textarea[class*=input-base]","Licença verificada e válida."]},{"click":"button:has-text('SALVAR')"},{"wait":3000},{"click":"button[aria-label='Expandir'] >> nth=0"},{"wait":800},{"shot":"03_after_audit","full":true},
+{"click":"button:has-text('Sair')"},{"wait":1200},{"click":"button:has-text('Esqueci a senha')"},{"wait":500},{"fill":["input[type=email]","funcionario@esgdemo.com.br"]},{"shot":"04_forgot"},{"click":"button:has-text('SOLICITAR UMA NOVA SENHA')"},{"wait":2000}]

@@ -1,0 +1,1421 @@
+[
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "document",
+  "transaction_id": "request-1",
+  "url": "https://esg-fiems-stg.sfiec.org.br/"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "document",
+  "transaction_id": "request-1",
+  "url": "https://esg-fiems-stg.sfiec.org.br/"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "font",
+  "transaction_id": "request-2",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/media/4315cd4c2d700e06-s.p.otf"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "font",
+  "transaction_id": "request-3",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/media/7ecbba81ea545b92-s.p.otf"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "image",
+  "transaction_id": "request-4",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fesg_logo_vertical.fc649488.png&w=1920&q=75"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "stylesheet",
+  "transaction_id": "request-5",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/css/fd72792223c777e3.css"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "stylesheet",
+  "transaction_id": "request-6",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/css/0c8f0eb431a36a44.css"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-7",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/webpack-b0655c8730065f95.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-8",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/fd9d1056-748f5724b1020531.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-9",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/596-8734b1d5a2c783ca.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-10",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/main-app-853b5391ea8414d0.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "media",
+  "transaction_id": "request-11",
+  "url": "https://esg-fiems-stg.sfiec.org.br/home-video.mp4"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 206,
+  "resource_type": "media",
+  "transaction_id": "request-11",
+  "url": "https://esg-fiems-stg.sfiec.org.br/home-video.mp4"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "stylesheet",
+  "transaction_id": "request-5",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/css/fd72792223c777e3.css"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-10",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/main-app-853b5391ea8414d0.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "stylesheet",
+  "transaction_id": "request-6",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/css/0c8f0eb431a36a44.css"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-7",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/webpack-b0655c8730065f95.js"
+ },
+ {
+  "kind": "console",
+  "method": null,
+  "status": null,
+  "resource_type": null,
+  "transaction_id": null,
+  "url": "https://esg-fiems-stg.sfiec.org.br/",
+  "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"current-password\"): (More info: https://goo.gl/9p2vKq) %o"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "image",
+  "transaction_id": "request-4",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fesg_logo_vertical.fc649488.png&w=1920&q=75"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-9",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/596-8734b1d5a2c783ca.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "font",
+  "transaction_id": "request-3",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/media/7ecbba81ea545b92-s.p.otf"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "font",
+  "transaction_id": "request-2",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/media/4315cd4c2d700e06-s.p.otf"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-8",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/fd9d1056-748f5724b1020531.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-12",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/0e5ce63c-d970c8feafceaede.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-13",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/bc9c3264-993c6a0fef687d43.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-14",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/00cbbcb7-9481249f8f22fa2b.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-15",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/4f9d9cd8-e2a79581beb1224c.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-16",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/8dc5345f-f72655bf5b9bc6e1.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-17",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/d52199b0-3dfc966c7d62084b.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-18",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/737dfa3e-248d31d8be4ece7b.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-19",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2254-aea96aa777131710.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-20",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2649-4c327f7a927d3c6e.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-21",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/9233-8df08fe78c6b2ce5.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-22",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/6685-a0b42e7976e2d711.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-23",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3222-4ed522beb9ae0733.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-24",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3688-2aafe1f795c78b4f.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-25",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/8920-275417b2df1ac732.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-26",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/1513-e5e35219c45cf984.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-27",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/6155-2bc74b81efbcac0d.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-28",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/8962-2991a39b44eecdcf.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-29",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/layout-7a6233fabef48a2b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-17",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/d52199b0-3dfc966c7d62084b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-15",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/4f9d9cd8-e2a79581beb1224c.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-18",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/737dfa3e-248d31d8be4ece7b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-12",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/0e5ce63c-d970c8feafceaede.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-14",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/00cbbcb7-9481249f8f22fa2b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-13",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/bc9c3264-993c6a0fef687d43.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-16",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/8dc5345f-f72655bf5b9bc6e1.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-25",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/8920-275417b2df1ac732.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-24",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3688-2aafe1f795c78b4f.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-20",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2649-4c327f7a927d3c6e.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-23",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3222-4ed522beb9ae0733.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-22",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/6685-a0b42e7976e2d711.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-27",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/6155-2bc74b81efbcac0d.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-28",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/8962-2991a39b44eecdcf.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-29",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/layout-7a6233fabef48a2b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-26",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/1513-e5e35219c45cf984.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-19",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2254-aea96aa777131710.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-21",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/9233-8df08fe78c6b2ce5.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "other",
+  "transaction_id": "request-30",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/media/favicon.8ccf248b.ico"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-31",
+  "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao?_rsc=acgkz"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "other",
+  "transaction_id": "request-30",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/media/favicon.8ccf248b.ico"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-31",
+  "url": "https://esg-fiems-stg.sfiec.org.br/auto-avaliacao?_rsc=acgkz"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-32",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/auto-avaliacao/layout-291964915470f0f3.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-33",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/auto-avaliacao/page-53ad40c71f4a938e.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-33",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/auto-avaliacao/page-53ad40c71f4a938e.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-32",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/auto-avaliacao/layout-291964915470f0f3.js"
+ },
+ {
+  "kind": "request",
+  "method": "POST",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-34",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/auth/login"
+ },
+ {
+  "kind": "response",
+  "method": "POST",
+  "status": 201,
+  "resource_type": "xhr",
+  "transaction_id": "request-34",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/auth/login"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-35",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies?_rsc=1pmm9"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-35",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies?_rsc=1pmm9"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "stylesheet",
+  "transaction_id": "request-36",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/css/431944509084d071.css"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-37",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/48507feb-830868f128c45e18.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-38",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/ec3863c0-77652ead97f5e2d1.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-39",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/9081a741-8e6cdcba81782518.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-40",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/4cb6dfa8-d81408f0a7bc032f.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-41",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/93854f56-c2f9d74734e15618.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-42",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3342-e54d924755b6dc2b.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-43",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/7321-51ca05c722c6cb26.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-44",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3612-73db7bc6d2571005.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-45",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2235-58b3238d62f23e21.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-46",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/companies/page-8cf6fde8a0a4af06.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-41",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/93854f56-c2f9d74734e15618.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "stylesheet",
+  "transaction_id": "request-36",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/css/431944509084d071.css"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-40",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/4cb6dfa8-d81408f0a7bc032f.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-39",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/9081a741-8e6cdcba81782518.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-38",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/ec3863c0-77652ead97f5e2d1.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-45",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2235-58b3238d62f23e21.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-37",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/48507feb-830868f128c45e18.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-43",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/7321-51ca05c722c6cb26.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-46",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/companies/page-8cf6fde8a0a4af06.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-42",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3342-e54d924755b6dc2b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-44",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/3612-73db7bc6d2571005.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-47",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/light/all"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-48",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-49",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-50",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-51",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "image",
+  "transaction_id": "request-52",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fesg_logo_vertical.fc649488.png&w=256&q=75"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-53",
+  "url": "https://esg-fiems-stg.sfiec.org.br/indicators?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-54",
+  "url": "https://esg-fiems-stg.sfiec.org.br/users?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-55",
+  "url": "https://esg-fiems-stg.sfiec.org.br/settings?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "image",
+  "transaction_id": "request-52",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fesg_logo_vertical.fc649488.png&w=256&q=75"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-55",
+  "url": "https://esg-fiems-stg.sfiec.org.br/settings?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-56",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/settings/page-04e90bc373708552.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-54",
+  "url": "https://esg-fiems-stg.sfiec.org.br/users?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-53",
+  "url": "https://esg-fiems-stg.sfiec.org.br/indicators?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-57",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/1481-9cd9fc2b2ee56017.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-58",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/users/page-5ca68aa6e9277a2b.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-59",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/indicators/page-b4d8a41e4ff7d639.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-47",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/light/all"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-49",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-50",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-56",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/settings/page-04e90bc373708552.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-58",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/users/page-5ca68aa6e9277a2b.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-59",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/indicators/page-b4d8a41e4ff7d639.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-57",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/1481-9cd9fc2b2ee56017.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-51",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-48",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-60",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-61",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/da5e509e-0a08-494e-8c2b-cb4268b67b6b/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-62",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/d5bb5459-52fd-4c3e-8115-d6e0a89a70d4/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-63",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/67762e4a-4461-4e24-9b40-092331122ac3/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-64",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/562fd2d8-5443-4c0c-aa8e-a4a0f91ef08c/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-61",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/da5e509e-0a08-494e-8c2b-cb4268b67b6b/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-65",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/4f2d3b9c-56e6-489b-9f4a-6d459d7da459/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-63",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/67762e4a-4461-4e24-9b40-092331122ac3/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-64",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/562fd2d8-5443-4c0c-aa8e-a4a0f91ef08c/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-66",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/2b1d52bc-3aa8-4b78-bc26-384a16806940/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-67",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/1d7590f4-8ed3-4a7c-83c6-bfd9bf890f92/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-62",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/d5bb5459-52fd-4c3e-8115-d6e0a89a70d4/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-68",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/0e1d55d1-2974-48dd-8ca2-a1d05e1c06d8/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-60",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-69",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/095e5a42-a161-4dbd-bb02-0ef0acc539ce/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-65",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/4f2d3b9c-56e6-489b-9f4a-6d459d7da459/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-66",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/2b1d52bc-3aa8-4b78-bc26-384a16806940/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-67",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/1d7590f4-8ed3-4a7c-83c6-bfd9bf890f92/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-68",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/0e1d55d1-2974-48dd-8ca2-a1d05e1c06d8/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-69",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/095e5a42-a161-4dbd-bb02-0ef0acc539ce/performance-report?_rsc=col48"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-70",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e?_rsc=1e1ik"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-70",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e?_rsc=1e1ik"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-71",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/d622d42c-6088b9fb5a82c730.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-72",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/358ff52d-855572e5af1485b7.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-73",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2957-ce9dab524a373e50.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "script",
+  "transaction_id": "request-74",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/companies/%5Bid%5D/page-126512424cb49fe8.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-72",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/358ff52d-855572e5af1485b7.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-71",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/d622d42c-6088b9fb5a82c730.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-74",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/app/companies/%5Bid%5D/page-126512424cb49fe8.js"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "script",
+  "transaction_id": "request-73",
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/2957-ce9dab524a373e50.js"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-75",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 404,
+  "resource_type": "xhr",
+  "transaction_id": "request-75",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e"
+ },
+ {
+  "kind": "console",
+  "method": null,
+  "status": null,
+  "resource_type": null,
+  "transaction_id": null,
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e",
+  "text": "Failed to load resource: the server responded with a status of 404 ()"
+ },
+ {
+  "kind": "console",
+  "method": null,
+  "status": null,
+  "resource_type": null,
+  "transaction_id": null,
+  "url": "https://esg-fiems-stg.sfiec.org.br/_next/static/chunks/596-8734b1d5a2c783ca.js",
+  "text": "Erro ao obter a Empresa: F"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-76",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/light/all"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-77",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-78",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-79",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-80",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-81",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e/performance-report?_rsc=5b4be"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-76",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/light/all"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-78",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-79",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-81",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/db17e872-0f08-4827-8a7d-2a4f7f7d6d6e/performance-report?_rsc=5b4be"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-80",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-77",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-82",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/light/all"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-83",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-84",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-85",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "xhr",
+  "transaction_id": "request-86",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "request",
+  "method": "GET",
+  "status": null,
+  "resource_type": "fetch",
+  "transaction_id": "request-87",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/831b965c-3336-491f-8fed-c1795d55f884/report?_rsc=1e1ik"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-82",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies/light/all"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-84",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-83",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-87",
+  "url": "https://esg-fiems-stg.sfiec.org.br/companies/831b965c-3336-491f-8fed-c1795d55f884/report?_rsc=1e1ik"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "xhr",
+  "transaction_id": "request-86",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/sectors"
+ },
+ {
+  "kind": "response",
+  "method": "GET",
+  "status": 200,
+  "resource_type": "fetch",
+  "transaction_id": "request-85",
+  "url": "https://esg-fiems-api-stg.sfiec.org.br/companies?page=1&perPage=50"
+ }
+]
