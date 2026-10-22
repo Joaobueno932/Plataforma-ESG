@@ -1,0 +1,212 @@
+# Progresso e plano de execução da reconstrução
+
+Complementa `PROGRESS.md` (histórico da engenharia reversa, preservado) com o plano da
+reconstrução sobre as regras oficiais. Referências `A*` em `diagnostico.md` § 5, regras `C*/P*/N*/F*`
+e pendências `X*` em `regras.md`.
+
+## Registro
+
+| Data | Etapa | O que foi feito | Validação |
+|---|---|---|---|
+| 22/10/2026 | **E0 — Diagnóstico** | Inspeção de `42ba516`; leitura da planilha oficial; mapeamento de frontend, API, autenticação, dados, uploads, catálogo, respostas, auditoria, testes e relatórios; 21 achados confirmados e 5 hipóteses descartadas; regras com origem e critério de aceite; matriz de permissões; tabela de transições; plano de migrações. Nenhuma alteração na aplicação. | `backend npm test` 32/32 · `frontend npm run build` 17 rotas, sem erro · `frontend npm run lint` **inexistente** (sem ESLint) · leitura do banco local somente leitura |
+
+## Ordem do plano e suas dependências
+
+```
+E1 Perfis, vínculos e autorização ──┐
+                                    ├─► E4 Fluxo, bloqueio, rodadas e NA ──┐
+E2 Ciclos e versão de catálogo ─────┤                                      ├─► E6 Publicação, relatórios e certificado
+                                    │                                      │
+E3 Catálogo oficial da planilha ────┴─► E5 Cálculo, elegibilidade e rating ┘
+                                                                            └─► E7 Interface do ciclo (contratos reais)
+E8 Endurecimento e verificações: acompanha E1→E7, fecha ao final
+```
+
+Regra de dependência adotada: **vínculos e ciclos antes do fluxo; catálogo antes do cálculo
+definitivo; fluxo e cálculo antes da publicação; interface ligada aos contratos já reais.**
+
+## Como manter o sistema executável em cada etapa
+
+- Migrações **aditivas** e idempotentes; colunas e rotas antigas permanecem até a última etapa que
+  as usa. Nenhum `DROP` de dado, nenhum seed destrutivo, nenhuma recriação do banco.
+- Cada migração é aplicada primeiro em **cópia** de `backend/storage/esg.sqlite` (hoje só com o
+  seed de demonstração) e nos bancos em memória dos testes.
+- Uma etapa só fecha com `backend npm test` verde e `frontend npm run build` sem erro; os testes que
+  afirmam regras substituídas são reescritos **na etapa que muda a regra** (A11), nunca apagados em
+  bloco.
+- Contratos de API mudam por adição: campo novo ao lado do antigo, remoção apenas depois que a
+  interface deixa de consumi-lo.
+- O seed demonstrativo permanece identificado como demonstrativo enquanto o catálogo oficial não
+  estiver importado; depois disso, continua disponível apenas para testes.
+
+---
+
+## E1 · Perfis, vínculos e autorização no servidor
+
+**Objetivo**: tornar possível representar quem é a pessoa, com que perfil e em qual empresa, e
+verificar isso em todas as rotas.
+
+- Migração **M1**: `user_profiles`, `user_company_links` (perfil, empresa, vigência, concedido por),
+  usuário **ativo/inativo**; backfill de `users.role`/`users.companyId`.
+- Regra de acúmulo: somente **ADMIN + CONSULTOR**; demais combinações recusadas, inclusive entre
+  empresas diferentes.
+- Remover a troca autônoma de empresa (A8); a troca passa a escolher entre vínculos concedidos;
+  `/companies/light/all` limitado aos vínculos do solicitante.
+- Guardião único de autorização: usuário ativo, perfil, vínculo, empresa, ciclo, atribuição e
+  estado — aplicado também a arquivos, downloads, exportações e rotas antigas.
+- Restrição do colaborador (A9) em listagem, item, arquivos e download.
+- Perfis de avaliação e aprovação corrigidos (A4): avaliação e NA só AUDITOR; aprovação de
+  resultado só SUPERVISOR; ADMIN sem poder de aprovação.
+- Reduzir a projeção de dados pessoais nas listas de usuários da empresa (A17).
+
+**Testes de aceite**: acúmulo proibido rejeitado; consultor sem vínculo → 403; colaborador vê e
+responde só o que lhe foi atribuído, inclusive por id direto e download; SUPERVISOR em avaliação →
+403; ADMIN em aprovação → 403.
+**Executável**: `users.role`/`companyId` continuam preenchidos e lidos como fallback.
+**Pendências**: nenhuma bloqueia esta etapa.
+
+## E2 · Ciclos e versão de catálogo
+
+**Objetivo**: permitir mais de uma avaliação por empresa e fixar o catálogo do ciclo (C2).
+
+- Migração **M2**: ciclo com `companyId + cycle`, `catalogVersion`, datas de vigência e estado;
+  remoção do `UNIQUE(companyId)` por recriação com cópia de dados; o relatório atual de cada empresa
+  vira o ciclo 1.
+- `catalogVersion` em `questions`/`answers`; o ciclo passa a referenciar a versão.
+- Retirar a edição de alternativas da tela do ciclo (A15); edição de catálogo gera nova versão.
+
+**Testes de aceite**: empresa com dois ciclos em versões diferentes; editar o catálogo não altera
+resultado nem textos de ciclo já aberto; exclusão de indicador não remove itens de ciclo existente.
+**Executável**: rotas de relatório continuam atendendo pelo ciclo corrente da empresa.
+**Pendências**: regras de **recertificação** (P8/X1) — o modelo suporta ciclos; a política de quando
+e como recertificar não é decidida aqui.
+
+## E3 · Catálogo oficial da planilha
+
+**Objetivo**: substituir os 22 indicadores demonstrativos pelos **139 oficiais** (C1, C3–C11).
+
+- Migração **M3**: `maxPoints`, `topic`, `ods`, `position` nas alternativas, nível mínimo
+  obrigatório, código oficial.
+- Importador versionado, lendo `Indicadores Programa ESG FIEMS 1.xlsx` (abas `Questionário` e
+  `Consolidado`), idempotente, com origem e data registradas na versão do catálogo; a versão
+  demonstrativa é preservada como legada.
+- Validações de importação: 59 + 10 por caderno; 2 a 5 alternativas; soma de máximos por eixo igual
+  a C8; 50 indicadores obrigatórios na distribuição de C6; nenhum ponto derivado de rótulo.
+- Catálogo e cartões passam a ser dirigidos por dados (A10 estrutural, A20); fim do parsing de
+  `"Verificação:"`.
+- Acompanha: consultas agregadas e índices (A16) — com 69 itens por ciclo o N+1 atual deixa de ser
+  tolerável.
+
+**Testes de aceite**: contagens e somas da planilha conferidas por teste; abrir ciclo de empresa do
+caderno B gera 69 itens com códigos `GE*/GS*/GG*/BE*/BS*/BG*`; indicador de máximo 0 fora do
+denominador.
+**Executável**: a importação cria uma versão nova; ciclos abertos continuam na versão legada.
+**Pendências**: **D1/X3** (nome de GS04) — importar com o nome da aba `Consolidado` e marcar o
+indicador como "rótulo pendente de ratificação", sem alterar o conteúdo das alternativas.
+
+## E4 · Fluxo, bloqueio, rodadas e "não se aplica"
+
+**Objetivo**: implementar as transições de `regras.md` § 6 com histórico.
+
+- Migração **M4**: `cycle_rounds`, `answer_versions`/`item_history`, `item_comments`,
+  `item_transitions`, `na_requests`.
+- Bloqueio após o envio (F1) para respostas **e** anexos/GED, com o mesmo guardião (A7).
+- Pedido de retorno pela empresa + retorno autorizado por consultor ou administrador (F2); gestor
+  não retorna; complemento do auditor não desbloqueia (F3, A6).
+- Versão enviada preservada e rodadas legíveis (F4, A12); comentário da empresa separado da
+  observação técnica do auditor; trilha de transições com autor e **função exercida**.
+- NA como pedido com justificativa e evidência, decidido pelo auditor (N1–N4, A13).
+- Reescrita dos testes que afirmam as regras substituídas (A11).
+
+**Testes de aceite**: resposta/anexo em auditoria → 403; retorno por gestor → 403; retorno por
+consultor/admin → nova rodada com versão anterior legível; complemento isolado não desbloqueia; NA
+sem justificativa → 400; decisões de NA registradas com autoria.
+**Executável**: estados antigos continuam aceitos em leitura durante a transição; a interface é
+ajustada junto com cada rota.
+**Pendências**: **F10/X5** — quem submete para auditoria fica isolado em um único ponto de
+autorização (hoje ADMIN), para trocar sem refatorar o fluxo. **F11/X6** — nenhuma devolução é criada
+para o supervisor; se ele não aprovar, o ciclo permanece em "aguardando supervisão" até decisão.
+**F13/X7** — prazo gravado na atribuição, sem efeito automático até a regra existir.
+
+## E5 · Cálculo, elegibilidade e rating
+
+**Objetivo**: substituir a média de níveis pelo cálculo oficial (A3, P1–P5).
+
+- Migração **M5** (parte do resultado): `cycle_results` por eixo (pontos, máximo aplicável,
+  percentual, rating), elegibilidade e lista de obrigatórios não atendidos.
+- Ordem obrigatória do cálculo: **obrigatórios aplicáveis primeiro** → pontos e máximo por eixo
+  (excluindo NA aceito e indicadores de máximo 0) → rating por faixa conforme o porte
+  (`companies.size`) → elegibilidade.
+- Quatro grandezas distintas e nunca derivadas entre si: preenchimento, resultado matemático,
+  conclusão auditada e elegibilidade (P5).
+
+**Testes de aceite**: casos com os números da planilha (setorial A: máximos 170/200/200; limiares
+136/102/51 e 68); obrigatório não atendido com pontuação máxima → inelegível; NA aceito reduz o
+denominador; recusado não reduz; porte muda apenas o limiar de C.
+**Executável**: o campo `evaluation` antigo permanece para leitura do histórico.
+**Pendências**: **D2/X4** — o limiar de rating **C social para micro e pequena** não é escolhido: a
+tabela é carregada como configuração e a célula divergente fica explicitamente marcada como
+pendente; o cálculo das demais dimensões segue. **P6** (faixa abaixo de C) e **P7/X8** (rating
+preliminar com NA pendente): sem decisão, nenhum rating preliminar é exibido.
+
+## E6 · Publicação automática, relatórios finais e certificado
+
+**Objetivo**: F6, F7, F9 e as duas telas que nunca existiram (A14).
+
+- Aprovação do supervisor libera resultado e relatório na mesma transação; remoção da liberação
+  manual (A5) e do teste que a afirmava.
+- Certificado/selo FIEMS disponibilizado automaticamente quando houver concessão elegível;
+  inelegível aprovado → resultado sem concessão (P4).
+- Telas "Extrato Geral" e "Relatório de Auditoria" sobre o resultado calculado; visão geral com
+  andamento antes e resultado depois (F9); correção do contador de respondidos (A19).
+- **Nada** sobre o certificado da Bureau Veritas (F8).
+
+**Testes de aceite**: aprovar → empresa vê resultado, relatório e, se elegível, certificado, sem
+ação adicional; nenhuma rota de liberação manual responde 2xx; busca por "Bureau" na interface sem
+resultados; ciclo sem respostas → 0 respondidos.
+**Pendências**: conteúdo e layout do relatório final dependem de `[DOC]`/`[HTML]` (X1, X2) — a
+estrutura de dados é construída independentemente.
+
+## E7 · Interface do ciclo conforme a organização aprovada
+
+**Objetivo**: A21 e A10 sobre contratos já reais.
+
+- Listagem pesquisável, filtros, agrupamentos, acesso a todas as perguntas permitidas, resposta em
+  qualquer ordem, modal ao clicar em Responder, destaque dos indicadores do setorial.
+- Cartões de alternativa dirigidos por dados, com a paleta da referência; nenhuma cor por nome de
+  nível.
+- Acessibilidade e responsividade verificadas por inspeção funcional e visual.
+
+**Pendências**: **X2** — sem o HTML aprovado e as imagens de referência, a fidelidade visual dos
+cards não pode ser declarada pronta. A estrutura (busca, filtros, agrupamento, modal, destaque) já
+está decidida e avança.
+
+## E8 · Endurecimento e verificações
+
+Acompanha as etapas anteriores e fecha ao final (A16–A19):
+
+- ESLint configurado no frontend (hoje `npm run lint` não verifica nada) e script de verificação
+  compatível registrado.
+- CORS por configuração; limite de tentativas em login e recuperação de senha; token de redefinição
+  de uso único e invalidado na troca de senha; senha atual exigida na troca pelo próprio usuário;
+  validação e limite em `POST /leads`; revogação de sessão ao desativar usuário.
+- Índices, constraints e transações de **M6**; eliminação dos N+1 restantes.
+- **A18 — decisão do responsável**: `recon/api/*` contém 17 e-mails corporativos reais e 2 CNPJs em
+  repositório público. Opções: anonimizar os corpos (estendendo `tools/redact_api.py`) ou retirar
+  `recon/api` do repositório publicado. Nada foi removido nesta etapa.
+
+---
+
+## Decisões realmente ausentes (lista curta)
+
+| # | Decisão ausente | Bloqueia | Módulos que avançam sem ela |
+|---|---|---|---|
+| X1 | `Plataforma esg fiems.docx` indisponível (ratifica F10, F12, F13, P6–P8, recertificação) | conteúdo do relatório final, prazos, recertificação | E1, E2, E3, E4 (núcleo), E5 (exceto P6/P7) |
+| X2 | HTML aprovado e imagens de referência dos cards | fidelidade visual dos cards e layout final | E7 estrutural, E1–E6 por completo |
+| X3 | Nome oficial de **GS04** (D1: "Regularidade" × "Conformidade") | rótulo de um indicador obrigatório | importação dos outros 138 indicadores |
+| X4 | Limiar de **rating C social, micro e pequena** (D2: linha repetida da governança) | rating social de MPE | rating ambiental e de governança, rating social de média/grande, elegibilidade |
+| X5 | Quem **submete para auditoria** | botão/rota de submissão | bloqueio, auditoria, supervisão, publicação |
+| X6 | O que ocorre quando o **supervisor não aprova** | estado terminal alternativo | aprovação e publicação automática |
+| X7 | Regras de **prazo** (quem define, efeito do vencimento, notificação) | automação de prazo | atribuição por indicador, já decidida |
+| X8 | **Rating preliminar** com NA pendente | exibição antes da decisão do auditor | cálculo definitivo após as decisões de NA |
+| X9 | Tratamento dos dados reais em `recon/api` (A18) | limpeza do repositório público | todo o restante |

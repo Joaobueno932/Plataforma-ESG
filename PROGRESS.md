@@ -1,5 +1,12 @@
 # Reconstrução — Plataforma ESG-FIEMS
 
+> **Reconstrução sobre as regras oficiais (a partir de 22/10/2026):** ver `docs/esg/regras.md`
+> (regras com origem e critério de aceite, matriz de permissões, transições autorizadas),
+> `docs/esg/diagnostico.md` (estado real do código e achados) e `docs/esg/progresso.md`
+> (plano de etapas e pendências). O registro abaixo é o histórico da engenharia reversa e
+> permanece como contexto: as regras marcadas **[INF]** nele foram substituídas pelas decisões
+> do responsável.
+
 Registro de progresso da recuperação do sistema a partir do ambiente de staging
 (`https://esg-fiems-stg.sfiec.org.br`, API `https://esg-fiems-api-stg.sfiec.org.br`).
 
