@@ -14,5 +14,8 @@ export const createCompany = (body) => api.post('/companies', body);
 export const updateCompany = (id, body) => api.patch(`/companies/${id}`, body);
 export const deleteCompany = (id) => api.delete(`/companies/${id}`);
 export const getCompanyFiles = async () => (await api.get('/companies/get/files')).data;
-export const submitToAuditor = (companyId) => api.post(`/reports/submit/${companyId}`);
+/** Liberação operacional do processo para auditoria — Administração FIEMS. */
+export const releaseAudit = (companyId) => api.post(`/reports/releaseAudit/${companyId}`);
+/** @deprecated use releaseAudit */
+export const submitToAuditor = (companyId) => api.post(`/reports/releaseAudit/${companyId}`);
 export const giveReportAccess = (companyId) => api.post(`/auditory/givereportaccess/${companyId}`);

@@ -26,15 +26,27 @@ export async function refresh(refreshToken) {
   return res;
 }
 
-export function logout() {
+export async function logout() {
   const cookies = parseCookies();
+  // Encerra a sessão no servidor: o token deixa de valer (sessão revogada).
+  try {
+    if (cookies.token) await api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${cookies.token}` } });
+  } catch {
+    /* a sessão local é limpa de qualquer forma */
+  }
   for (const name in cookies) destroyCookie(null, name, { path: '/' });
   localStorage.removeItem('jwt');
   delete api.defaults.headers.common.authorization;
   delete api.defaults.headers.common.Authorization;
 }
 
-/** Troca de senha do usuário logado (tela Configurações). */
+/** Empresas que o usuário pode escolher como contexto (somente vínculos vigentes). */
+export const getContextOptions = () => api.get('/auth/context/options');
+
+/** Seleciona um vínculo vigente como contexto. Não cria nem amplia acesso. */
+export const selectContext = (companyId) => api.patch('/auth/context', { companyId });
+
+/** Troca de senha do usuário logado (exige a senha atual). */
 export function changeOwnPassword(body) {
   const cookies = parseCookies();
   return api.patch(`/users/${cookies.userId}`, body, { headers: { Authorization: `Bearer ${cookies.token}` } });

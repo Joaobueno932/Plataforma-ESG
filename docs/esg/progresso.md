@@ -9,6 +9,8 @@ e pendências `X*` em `regras.md`.
 | Data | Etapa | O que foi feito | Validação |
 |---|---|---|---|
 | 22/10/2026 | **E0 — Diagnóstico** | Inspeção de `42ba516`; leitura da planilha oficial; mapeamento de frontend, API, autenticação, dados, uploads, catálogo, respostas, auditoria, testes e relatórios; 21 achados confirmados e 5 hipóteses descartadas; regras com origem e critério de aceite; matriz de permissões; tabela de transições; plano de migrações. Nenhuma alteração na aplicação. | `backend npm test` 32/32 · `frontend npm run build` 17 rotas, sem erro · `frontend npm run lint` **inexistente** (sem ESLint) · leitura do banco local somente leitura |
+| 22/10/2026 | **Reconciliação com a especificação** | `Plataforma esg fiems.docx` v1.0 recebida e confrontada com `regras.md`: resolvidas F10 (gestor solicita × Administração libera), F13 (parte), P3/P9/P10 (faixas, precisão, sem base para classificação) e as pendências de permissão; acrescentado § 4.1 com 13 regras de cadastro, vínculo e ciclo; propostas e pendências do documento mantidas como tais. | revisão documental |
+| 22/10/2026 | **E1+E2 — Cadastros, vínculos, autorização e ciclos** | Identidade separada de perfil, vínculo e designação; autorização central aplicada a rotas, downloads, exportações e uploads; delegação com prazo; restrição do colaborador no servidor; acúmulo só ADMIN + CONSULTOR; múltiplos ciclos com versão e caderno congelados; sessões revogáveis; recuperação de uso único; configuração de produção separada; 7 migrações versionadas validadas em cópia. | `backend npm test` **72/72** · `frontend npm run build` 17 rotas, sem erro · `npm run db:dry-run` em cópia: dados preservados, `integrity_check ok`, `foreign_key_check ok` · `npm run migrate` + `db:verify` no banco de trabalho · smoke test da API contra o banco migrado |
 
 ## Ordem do plano e suas dependências
 
@@ -41,10 +43,17 @@ definitivo; fluxo e cálculo antes da publicação; interface ligada aos contrat
 
 ---
 
-## E1 · Perfis, vínculos e autorização no servidor
+## E1 · Perfis, vínculos e autorização no servidor — **concluída em 22/10/2026**
 
 **Objetivo**: tornar possível representar quem é a pessoa, com que perfil e em qual empresa, e
 verificar isso em todas as rotas.
+
+**Entregue**: `src/authz.js` (matriz de ações, principal, escopos, acúmulo, último administrador,
+trilha), `src/auth.js` (sessões revogáveis, recuperação de uso único), `src/migrations/002`,
+`routes/users.js` (perfis e vínculos pela Administração; inativação com histórico),
+`routes/companies.js` (escopo por vínculo), `routes/uploads.js` (upload e download escopados),
+`PATCH /auth/context`, `GET /admin/{review,events,permissions}`. Matriz publicada em
+`GET /admin/permissions` e conferida por teste contra `regras.md` § 5.
 
 - Migração **M1**: `user_profiles`, `user_company_links` (perfil, empresa, vigência, concedido por),
   usuário **ativo/inativo**; backfill de `users.role`/`users.companyId`.
@@ -59,15 +68,22 @@ verificar isso em todas as rotas.
   resultado só SUPERVISOR; ADMIN sem poder de aprovação.
 - Reduzir a projeção de dados pessoais nas listas de usuários da empresa (A17).
 
-**Testes de aceite**: acúmulo proibido rejeitado; consultor sem vínculo → 403; colaborador vê e
-responde só o que lhe foi atribuído, inclusive por id direto e download; SUPERVISOR em avaliação →
-403; ADMIN em aprovação → 403.
-**Executável**: `users.role`/`companyId` continuam preenchidos e lidos como fallback.
-**Pendências**: nenhuma bloqueia esta etapa.
+**Testes de aceite (executados)**: acúmulo proibido rejeitado; consultor sem vínculo → 403;
+colaborador vê e responde só o que lhe foi atribuído, inclusive por id direto e download;
+SUPERVISOR em avaliação → 403; ADMIN em aprovação → 403; vínculo revogado e conta inativada
+derrubam a sessão; recuperação reutilizada → 401. Suíte `test/authz.test.js`.
+**Executável**: `users.role`/`companyId` continuam preenchidos como espelho de leitura.
+**Pendências**: autenticação adicional para a Administração e integração com identidade
+corporativa FIEMS (declaradas como proposta na especificação § 7).
 
-## E2 · Ciclos e versão de catálogo
+## E2 · Ciclos e versão de catálogo — **concluída em 22/10/2026**
 
 **Objetivo**: permitir mais de uma avaliação por empresa e fixar o catálogo do ciclo (C2).
+
+**Entregue**: migrações `004_cycles`, `005_history_integrity` e `007_rounds`;
+`services.createCycleForCompany` (número do ciclo, caderno e versão congelados, ciclo anterior);
+designação de auditor e supervisor por ciclo; rodadas com foto da versão enviada; cascatas
+destrutivas trocadas por `RESTRICT` e rotas de catálogo recusando exclusão de item já avaliado.
 
 - Migração **M2**: ciclo com `companyId + cycle`, `catalogVersion`, datas de vigência e estado;
   remoção do `UNIQUE(companyId)` por recriação com cópia de dados; o relatório atual de cada empresa
@@ -75,11 +91,14 @@ responde só o que lhe foi atribuído, inclusive por id direto e download; SUPER
 - `catalogVersion` em `questions`/`answers`; o ciclo passa a referenciar a versão.
 - Retirar a edição de alternativas da tela do ciclo (A15); edição de catálogo gera nova versão.
 
-**Testes de aceite**: empresa com dois ciclos em versões diferentes; editar o catálogo não altera
-resultado nem textos de ciclo já aberto; exclusão de indicador não remove itens de ciclo existente.
-**Executável**: rotas de relatório continuam atendendo pelo ciclo corrente da empresa.
+**Testes de aceite (executados)**: empresa com dois ciclos relacionados; ciclo em andamento impede
+abrir outro; exclusão de indicador, alternativa, arquivo, empresa ou ciclo com avaliação vinculada
+é recusada; troca de caderno não altera o ciclo aberto; migração sobre cópia representativa
+preserva dados, ids e relacionamentos (`test/migration.test.js`).
+**Executável**: rotas de relatório atendem pelo ciclo corrente da empresa.
 **Pendências**: regras de **recertificação** (P8/X1) — o modelo suporta ciclos; a política de quando
-e como recertificar não é decidida aqui.
+e como recertificar não é decidida aqui. Versões publicáveis do catálogo (rascunho/publicada) vêm
+com E3.
 
 ## E3 · Catálogo oficial da planilha
 
@@ -88,8 +107,12 @@ e como recertificar não é decidida aqui.
 - Migração **M3**: `maxPoints`, `topic`, `ods`, `position` nas alternativas, nível mínimo
   obrigatório, código oficial.
 - Importador versionado, lendo `Indicadores Programa ESG FIEMS 1.xlsx` (abas `Questionário` e
-  `Consolidado`), idempotente, com origem e data registradas na versão do catálogo; a versão
-  demonstrativa é preservada como legada.
+  `Consolidado`), idempotente, com **prévia de validação, relatório de erros e confirmação**
+  (especificação § 14), origem e data registradas na versão do catálogo; a versão demonstrativa é
+  preservada como legada. Detectar códigos repetidos na mesma versão e níveis inconsistentes, e
+  **não** tratar linhas de níveis como indicadores diferentes.
+- **Conferir a correspondência entre os cadernos oficiais em PDF (`Cadernos indicadores/`,
+  entregues em 22/10/2026) e a planilha antes de importar** — exigido pela especificação § 17.
 - Validações de importação: 59 + 10 por caderno; 2 a 5 alternativas; soma de máximos por eixo igual
   a C8; 50 indicadores obrigatórios na distribuição de C6; nenhum ponto derivado de rótulo.
 - Catálogo e cartões passam a ser dirigidos por dados (A10 estrutural, A20); fim do parsing de
@@ -191,9 +214,15 @@ Acompanha as etapas anteriores e fecha ao final (A16–A19):
   de uso único e invalidado na troca de senha; senha atual exigida na troca pelo próprio usuário;
   validação e limite em `POST /leads`; revogação de sessão ao desativar usuário.
 - Índices, constraints e transações de **M6**; eliminação dos N+1 restantes.
-- **A18 — decisão do responsável**: `recon/api/*` contém 17 e-mails corporativos reais e 2 CNPJs em
-  repositório público. Opções: anonimizar os corpos (estendendo `tools/redact_api.py`) ou retirar
-  `recon/api` do repositório publicado. Nada foi removido nesta etapa.
+- **A18 — tarefa obrigatória antes de qualquer novo push** (decisão do responsável pendente):
+  `recon/api/*` contém 17 e-mails corporativos reais e 2 CNPJs em repositório **público**.
+  Opções: anonimizar os corpos (estendendo `tools/redact_api.py`) ou retirar `recon/api` do
+  repositório publicado. Nada foi removido nem reescrito: **retirar da versão atual não elimina as
+  versões anteriores já publicadas** — limpar o histórico é operação separada, destrutiva para
+  quem tem clones, e precisa de autorização expressa.
+- **Arquivos de fonte entregues na raiz** (`Plataforma esg fiems.docx` e a planilha) estão
+  **fora do versionamento** e devem continuar assim: entram em `.gitignore` ou saem da pasta antes
+  do push, porque o repositório é público.
 
 ---
 

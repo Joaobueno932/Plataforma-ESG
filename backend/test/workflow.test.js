@@ -2,129 +2,209 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer } = require('./helpers');
 
-test('fluxo completo do relatório: resposta → validação → auditoria → supervisão', async (t) => {
+/**
+ * Fluxo do ciclo com as regras decididas pelo responsável:
+ *  - solicitar auditoria (gestor) é diferente de liberar o processo (Administração FIEMS);
+ *  - depois da liberação, respostas e anexos ficam bloqueados;
+ *  - o pedido de complemento do auditor, sozinho, não desbloqueia a empresa;
+ *  - consultor e Administração retornam o processo; o gestor não;
+ *  - o supervisor consulta e aprova; a Administração não aprova resultado.
+ */
+test('fluxo do ciclo: resposta → validação → liberação → auditoria → supervisão', async (t) => {
   const s = await startServer();
   t.after(s.close);
-  const admin = await s.login('admin@esgdemo.com.br', 'admin123');
-  const funcionario = await s.login('funcionario@esgdemo.com.br');
+  const admin = await s.loginAdmin();
   const gestor = await s.login('gestor@esgdemo.com.br');
+  const funcionario = await s.login('funcionario@esgdemo.com.br');
   const consultor = await s.login('consultor@esgdemo.com.br');
   const auditor = await s.login('auditor@esgdemo.com.br');
   const supervisor = await s.login('supervisor@esgdemo.com.br');
+  const reportId = s.reportIdOf('demo-company-a');
 
-  const company = (await s.api('GET', '/companies/demo-company-a', { token: admin })).body;
-  const reportId = company.report.id;
-  const employeeId = company.users.find((u) => u.role === 'EMPLOYEE').id;
-  let items = (await s.api('GET', `/reports/company/questions/${reportId}`, { token: admin })).body;
-  const [first, second, ...rest] = items;
+  let items = [];
+  let first;
 
-  await t.test('não-admin lista o relatório da própria empresa sem informar id', async () => {
+  await t.test('empresa lista o ciclo corrente sem informar id', async () => {
     const r = await s.api('GET', '/reports/company/questions/', { token: gestor });
     assert.equal(r.status, 200);
-    assert.equal(r.body.length, items.length);
-    const det = await s.api('GET', `/reports/${reportId}`, { token: gestor });
-    assert.equal(det.body.managers[0].name, 'Gestora Demonstração');
+    assert.equal(r.body.length, 8);
+    items = r.body;
+    first = items[0];
   });
 
-  await t.test('gestor atribui responsável; funcionário responde com arquivo (GED)', async () => {
-    assert.equal((await s.api('PATCH', `/reports/addanswerer/${first.id}`, { token: gestor, body: { user: employeeId } })).status, 200);
+  await t.test('gestor delega indicador com prazo; colaborador responde com arquivo', async () => {
+    const atribuicao = await s.api('PATCH', `/reports/addanswerer/${first.id}`, {
+      token: gestor,
+      body: { user: s.userId('funcionario@esgdemo.com.br'), dueDate: '2026-12-01' },
+    });
+    assert.equal(atribuicao.status, 200);
+    assert.equal(atribuicao.body.answerer.email, 'funcionario@esgdemo.com.br');
+    assert.ok(atribuicao.body.dueDate.startsWith('2026-12-01'));
+    assert.equal(atribuicao.body.assignedBy.name, 'Gestora Demonstração');
+
     const form = new FormData();
     form.append('companyId', 'demo-company-a');
-    form.append('file', new Blob(['conteudo']), 'evidencia.pdf');
+    form.append('file', new Blob([Buffer.from('conteudo')]), 'licenca.pdf');
     const up = await s.api('POST', '/uploads/companyFile', { token: funcionario, form });
     assert.equal(up.status, 201);
-    assert.equal(up.body.url, 'uploads/companyFiles/demo-company-a/evidencia.pdf');
-    const dupForm = new FormData();
-    dupForm.append('companyId', 'demo-company-a');
-    dupForm.append('file', new Blob(['x']), 'evidencia.pdf');
-    assert.equal((await s.api('POST', '/uploads/companyFile', { token: funcionario, form: dupForm })).status, 409);
 
-    const answerId = first.question.answers.find((a) => a.title === 'Conforme').id;
+    const conforme = first.question.answers.find((a) => a.title === 'Conforme');
     const r = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, {
       token: funcionario,
-      body: { answerId, answerText: 'Temos licença vigente', filesToCreate: [up.body], addToGed: true },
+      body: { answerId: conforme.id, answerText: 'Licença vigente', filesToCreate: [up.body], addToGed: true },
     });
     assert.equal(r.status, 200);
     assert.equal(r.body.status, 'PendingValidationByManager');
-    assert.equal(r.body.selectedAnswer.id, answerId);
-    assert.equal(r.body.files[0].file.name, 'evidencia.pdf');
-    const ged = await s.api('GET', '/companies/get/files', { token: gestor });
-    assert.deepEqual(ged.body.map((f) => f.name), ['evidencia.pdf']);
-    const dl = await fetch(`http://127.0.0.1:${s.server.address().port}/${up.body.url}`, { headers: { Authorization: `Bearer ${gestor}` } });
-    assert.equal(await dl.text(), 'conteudo');
+    assert.equal(r.body.files.length, 1);
+    assert.equal(r.body.answeredByRole, 'EMPLOYEE');
+    assert.equal(r.body.answeredBy.email, 'funcionario@esgdemo.com.br');
   });
 
-  await t.test('funcionário não responde indicador de outro responsável', async () => {
-    await s.api('PATCH', `/reports/addanswerer/${second.id}`, { token: gestor, body: { user: company.users.find((u) => u.role === 'MANAGER').id } });
-    const r = await s.api('PATCH', `/reports/answerQuestion/${second.id}`, { token: funcionario, body: { nonApplicable: true } });
+  await t.test('colaborador não responde nem consulta indicador de outro responsável', async () => {
+    const outro = items[1];
+    assert.equal((await s.api('GET', `/reports/questionReports/${outro.id}`, { token: funcionario })).status, 403);
+    const r = await s.api('PATCH', `/reports/answerQuestion/${outro.id}`, { token: funcionario, body: { answerId: outro.question.answers[0].id } });
     assert.equal(r.status, 403);
+    const lista = await s.api('GET', '/reports/company/questions/', { token: funcionario });
+    assert.deepEqual(lista.body.map((i) => i.id), [first.id]);
   });
 
   await t.test('gestor reprova com comentário; consultor aprova', async () => {
-    assert.equal((await s.api('POST', `/reports/validateanswer/${first.id}`, { token: gestor, body: { veredict: false } })).status, 400);
-    const rej = await s.api('POST', `/reports/validateanswer/${first.id}`, { token: gestor, body: { veredict: false, redflag: 'Anexar licença atualizada' } });
-    assert.equal(rej.body.status, 'RejectedByManager');
-    assert.equal(rej.body.redflagIssuer.role, 'MANAGER');
-    const ok = await s.api('POST', `/reports/validateanswer/${first.id}`, { token: consultor, body: { veredict: true } });
-    assert.equal(ok.body.status, 'ApprovedByConsultor');
+    const reprova = await s.api('POST', `/reports/validateanswer/${first.id}`, { token: gestor, body: { veredict: false, redflag: 'Falta anexo do protocolo' } });
+    assert.equal(reprova.status, 201);
+    assert.equal(reprova.body.status, 'RejectedByManager');
+    const aprova = await s.api('POST', `/reports/validateanswer/${first.id}`, { token: consultor, body: { veredict: true } });
+    assert.equal(aprova.body.status, 'ApprovedByConsultor');
   });
 
-  await t.test('submissão para auditoria exige todos aprovados (403 com a mensagem do original)', async () => {
-    const r = await s.api('POST', '/reports/submit/demo-company-a', { token: admin });
-    assert.equal(r.status, 403);
-    assert.equal(r.body.message, 'Ainda existem questões que precisam ser aprovadas pelo cosultor.');
-    for (const it of [second, ...rest]) {
-      await s.api('PATCH', `/reports/answerQuestion/${it.id}`, { token: gestor, body: { nonApplicable: true } });
-      await s.api('POST', `/reports/validateanswer/${it.id}`, { token: gestor, body: { veredict: true } });
+  await t.test('liberação exige solicitação registrada e todos os itens aprovados', async () => {
+    const semSolicitacao = await s.api('POST', `/reports/releaseAudit/demo-company-a`, { token: admin });
+    assert.equal(semSolicitacao.status, 400);
+    assert.match(semSolicitacao.body.message, /solicitação de auditoria/);
+
+    const solicitaAuditor = await s.api('POST', '/reports/requestAudit/demo-company-a', { token: auditor });
+    assert.equal(solicitaAuditor.status, 403, 'auditor não solicita auditoria');
+    const solicita = await s.api('POST', '/reports/requestAudit/demo-company-a', { token: gestor });
+    assert.equal(solicita.status, 201);
+    assert.ok(solicita.body.auditRequestedAt);
+    assert.equal(solicita.body.status, 'Pending', 'solicitar não libera o processo');
+
+    const incompleto = await s.api('POST', '/reports/releaseAudit/demo-company-a', { token: admin });
+    assert.equal(incompleto.status, 403);
+
+    // Gestor não libera: a liberação operacional é da Administração FIEMS.
+    assert.equal((await s.api('POST', '/reports/releaseAudit/demo-company-a', { token: gestor })).status, 403);
+
+    for (const item of items.slice(1)) {
+      await s.api('PATCH', `/reports/answerQuestion/${item.id}`, { token: gestor, body: { answerId: item.question.answers[0].id } });
+      await s.api('POST', `/reports/validateanswer/${item.id}`, { token: gestor, body: { veredict: true } });
     }
-    const ok = await s.api('POST', '/reports/submit/demo-company-a', { token: admin });
-    assert.equal(ok.status, 201);
-    assert.equal(ok.body.status, 'Auditing');
-    items = (await s.api('GET', `/reports/company/questions/${reportId}`, { token: admin })).body;
-    assert.ok(items.every((i) => i.status === 'Auditing'));
-    assert.equal((await s.api('POST', `/reports/validateanswer/${first.id}`, { token: gestor, body: { veredict: true } })).status, 403);
+    const liberado = await s.api('POST', '/reports/releaseAudit/demo-company-a', { token: admin });
+    assert.equal(liberado.status, 201);
+    assert.equal(liberado.body.status, 'Auditing');
+    assert.ok(liberado.body.auditReleasedAt);
   });
 
-  await t.test('auditor pede complemento; empresa complementa; auditor aprova com evidência', async () => {
-    const req = await s.api('POST', `/auditory/evaluatequestion/${first.id}`, { token: auditor, body: { status: 'PendingRevision', redflag: 'Falta assinatura' } });
-    assert.equal(req.body.status, 'PendingRevision');
-    const again = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, {
-      token: funcionario,
-      body: { answerId: first.question.answers.find((a) => a.title === 'Conforme').id, answerText: 'Licença assinada' },
-    });
-    assert.equal(again.body.status, 'Auditing');
+  await t.test('a versão enviada fica preservada e o ciclo bloqueado para a empresa', async () => {
+    const versions = await s.api('GET', `/reports/questionReports/${first.id}/versions`, { token: gestor });
+    assert.equal(versions.status, 200);
+    assert.equal(versions.body.length, 1);
+    assert.equal(versions.body[0].snapshotReason, 'audit-release');
+    assert.equal(versions.body[0].answerText, 'Licença vigente');
+
+    const resposta = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, { token: gestor, body: { answerId: first.question.answers[0].id } });
+    assert.equal(resposta.status, 403);
+    assert.match(resposta.body.message, /bloqueado/);
+
+    const anexo = await s.api('PATCH', `/reports/editQuestionReport/${first.id}`, { token: gestor, body: { filesToAdd: [] } });
+    assert.equal(anexo.status, 403, 'anexos têm o mesmo bloqueio das respostas');
+
     const form = new FormData();
-    form.append('companyId', first.id); // o front original envia o id da questão aqui
-    form.append('file', new Blob(['ev']), 'parecer.pdf');
-    const up = await s.api('POST', '/uploads/companyFile', { token: auditor, form });
-    assert.equal(up.status, 201);
-    const ok = await s.api('POST', `/auditory/evaluatequestion/${first.id}`, {
-      token: auditor,
-      body: { status: 'Approved', redflag: 'Conforme', evidence: [{ fileType: 'application/pdf', name: up.body.name, url: up.body.url }] },
-    });
-    assert.equal(ok.body.status, 'Approved');
-    assert.equal(ok.body.evidences.length, 1);
-    assert.equal((await s.api('POST', '/auditory/submitToSupervisor', { token: auditor })).status, 403);
-    for (const it of items.slice(1)) assert.equal((await s.api('POST', `/auditory/nonApplicable/${it.id}`, { token: auditor })).status, 201);
-    assert.equal((await s.api('POST', '/auditory/submitToSupervisor', { token: auditor })).status, 201);
+    form.append('companyId', 'demo-company-a');
+    form.append('file', new Blob([Buffer.from('x')]), 'outro.pdf');
+    assert.equal((await s.api('POST', '/uploads/companyFile', { token: gestor, form })).status, 403);
+
+    const link = (await s.api('GET', `/reports/questionReports/${first.id}`, { token: gestor })).body.files[0];
+    assert.equal((await s.api('DELETE', `/reports/questionFiles/${link.id}`, { token: gestor })).status, 403);
   });
 
-  await t.test('supervisor finaliza; admin libera o relatório', async () => {
-    assert.equal((await s.api('POST', '/auditory/givereportaccess/demo-company-a', { token: admin })).status, 403);
-    const fin = await s.api('POST', '/auditory/finishAuditory/demo-company-a', { token: supervisor });
-    assert.equal(fin.status, 201);
-    assert.equal(fin.body.status, 'Audited');
-    assert.equal(fin.body.evaluation, 'Conforme');
-    assert.equal((await s.api('POST', '/auditory/givereportaccess/demo-company-a', { token: admin })).status, 201);
-    const list = await s.api('GET', '/companies?page=1&perPage=50', { token: admin });
-    assert.equal(list.body.data.find((c) => c.id === 'demo-company-a').report.status, 'Audited');
+  await t.test('auditor designado avalia; pedido de complemento não desbloqueia a empresa', async () => {
+    const complemento = await s.api('POST', `/auditory/evaluatequestion/${first.id}`, { token: auditor, body: { status: 'PendingRevision', redflag: 'Falta assinatura' } });
+    assert.equal(complemento.status, 201);
+    assert.equal(complemento.body.status, 'PendingRevision');
+
+    const tentativa = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, { token: gestor, body: { answerId: first.question.answers[0].id } });
+    assert.equal(tentativa.status, 403, 'complemento do auditor, sozinho, não reabre a resposta');
+    const tentativaConsultor = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, { token: consultor, body: { answerId: first.question.answers[0].id } });
+    assert.equal(tentativaConsultor.status, 403);
+    const tentativaAdmin = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, { token: admin, body: { answerId: first.question.answers[0].id } });
+    assert.equal(tentativaAdmin.status, 403, 'Administração também respeita o bloqueio antes do retorno registrado');
   });
 
-  await t.test('lembretes (red flag) e reabertura pelo admin', async () => {
-    const other = (await s.api('GET', '/reports/company/questions/', { token: await s.login('gestor.exemplo@esgdemo.com.br') })).body[0];
-    const add = await s.api('PATCH', `/reports/redflag/${other.id}`, { token: admin, body: { redflag: 'Lembrar de revisar' } });
-    assert.equal(add.body.redflag, 'Lembrar de revisar');
-    assert.equal((await s.api('DELETE', `/reports/redflag/${other.id}`, { token: admin })).body.redflag, null);
-    assert.equal((await s.api('PATCH', `/reports/changeQuestionStatus/${other.id}/Pending`, { token: admin })).body.status, 'Pending');
+  await t.test('a empresa solicita o retorno; gestor não retorna; consultor retorna', async () => {
+    const pedido = await s.api('POST', '/reports/requestReturn/demo-company-a', { token: gestor, body: { reason: 'precisamos anexar a assinatura' } });
+    assert.equal(pedido.status, 201);
+    assert.equal(pedido.body.unlocked, false);
+    assert.equal((await s.api('PATCH', `/reports/answerQuestion/${first.id}`, { token: gestor, body: { answerId: first.question.answers[0].id } })).status, 403);
+
+    assert.equal((await s.api('POST', '/reports/return/demo-company-a', { token: gestor, body: { reason: 'x' } })).status, 403);
+    assert.equal((await s.api('POST', '/reports/return/demo-company-a', { token: supervisor, body: { reason: 'x' } })).status, 403);
+
+    const retorno = await s.api('POST', '/reports/return/demo-company-a', { token: consultor, body: { reason: 'complemento solicitado pela auditoria' } });
+    assert.equal(retorno.status, 201);
+    assert.equal(retorno.body.status, 'Pending');
+    assert.equal(retorno.body.round, 2);
+
+    const nova = await s.api('PATCH', `/reports/answerQuestion/${first.id}`, { token: gestor, body: { answerId: first.question.answers[0].id, answerText: 'Licença assinada' } });
+    assert.equal(nova.status, 200);
+    const versions = await s.api('GET', `/reports/questionReports/${first.id}/versions`, { token: gestor });
+    assert.equal(versions.body.length, 2);
+    assert.equal(versions.body[0].answerText, 'Licença vigente', 'a versão analisada continua legível');
+  });
+
+  await t.test('supervisor aprova o resultado; Administração não aprova', async () => {
+    // Nova liberação para concluir a auditoria.
+    await s.api('POST', `/reports/validateanswer/${first.id}`, { token: gestor, body: { veredict: true } });
+    await s.api('POST', '/reports/requestAudit/demo-company-a', { token: gestor });
+    assert.equal((await s.api('POST', '/reports/releaseAudit/demo-company-a', { token: admin })).status, 201);
+
+    for (const item of items) {
+      const r = await s.api('POST', `/auditory/evaluatequestion/${item.id}`, { token: auditor, body: { status: 'Approved', redflag: 'Conforme' } });
+      assert.equal(r.status, 201);
+    }
+    assert.equal((await s.api('POST', '/auditory/submitToSupervisor/demo-company-a', { token: auditor })).status, 201);
+
+    const porAdmin = await s.api('POST', '/auditory/finishAuditory/demo-company-a', { token: admin });
+    assert.equal(porAdmin.status, 403, 'o perfil ADMIN não aprova resultado');
+    const porAuditor = await s.api('POST', '/auditory/finishAuditory/demo-company-a', { token: auditor });
+    assert.equal(porAuditor.status, 403);
+
+    const fim = await s.api('POST', '/auditory/finishAuditory/demo-company-a', { token: supervisor });
+    assert.equal(fim.status, 201);
+    assert.equal(fim.body.status, 'Audited');
+  });
+
+  await t.test('supervisor não faz o trabalho técnico do auditor', async () => {
+    const reportB = s.reportIdOf('demo-company-b');
+    const itemsB = (await s.api('GET', `/reports/company/questions/${reportB}`, { token: admin })).body;
+    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemsB[0].id}`, { token: supervisor, body: { status: 'Approved', redflag: 'x' } })).status, 403);
+    assert.equal((await s.api('POST', `/auditory/nonApplicable/${itemsB[0].id}`, { token: supervisor })).status, 403);
+    assert.equal((await s.api('POST', `/auditory/nonApplicable/${itemsB[0].id}`, { token: admin })).status, 403);
+  });
+
+  await t.test('reabertura administrativa de item só com o ciclo em preenchimento', async () => {
+    const reportB = s.reportIdOf('demo-company-b');
+    const itemB = (await s.api('GET', `/reports/company/questions/${reportB}`, { token: admin })).body[0];
+    const ok = await s.api('PATCH', `/reports/changeQuestionStatus/${itemB.id}/Pending`, { token: admin });
+    assert.equal(ok.status, 200);
+    assert.equal((await s.api('PATCH', `/reports/changeQuestionStatus/${itemB.id}/Auditing`, { token: admin })).status, 400);
+    const emAuditoria = (await s.api('GET', `/reports/company/questions/${reportId}`, { token: admin })).body[0];
+    assert.equal((await s.api('PATCH', `/reports/changeQuestionStatus/${emAuditoria.id}/Pending`, { token: admin })).status, 403);
+  });
+
+  await t.test('observação da auditoria não é apagada pela empresa', async () => {
+    const item = (await s.api('GET', `/reports/company/questions/${reportId}`, { token: admin })).body.find((i) => i.redflagIssuer);
+    const r = await s.api('DELETE', `/reports/redflag/${item.id}`, { token: gestor });
+    assert.equal(r.status, 403);
   });
 });

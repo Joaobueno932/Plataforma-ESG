@@ -247,7 +247,8 @@ function RoleActions({ toRespond, reportIndicator, canResponse }) {
       </Link>
     );
   if (role === 'MANAGER' || role === 'CONSULTOR') return <ValidationActions report={reportIndicator} toRespond={canResponse} />;
-  if ((role === 'AUDITOR' && reportIndicator.status === 'Auditing') || role === 'SUPERVISOR') return <AuditActions report={reportIndicator} />;
+  // O supervisor consulta e aprova; as ações técnicas são do auditor designado.
+  if (role === 'AUDITOR' && reportIndicator.status === 'Auditing') return <AuditActions report={reportIndicator} />;
   return null;
 }
 
@@ -496,7 +497,7 @@ function IndicatorItem({ reportIndicator, remember = false, company }) {
             </div>
           )}
           <div>
-            {(role === 'MANAGER' || role === 'CONSULTOR') &&
+            {role === 'MANAGER' &&
               ['Pending', 'PendingRevision', 'PendingValidationByManager', 'ApprovedByManager', 'RejectedByManager', 'ApprovedByConsultor'].includes(status) && (
                 <Select onValueChange={assign} defaultValue={answerer?.id ?? undefined}>
                   <SelectTrigger className="w-40 mb-5">
@@ -580,7 +581,7 @@ function ReportSummary({ company, reports }) {
 
 function CompanyDetails({ company, reportsIndicator, reports }) {
   const { userLogged } = useAuth();
-  const { submitToAuditor } = useCompanies();
+  const { submitToAuditor, requestAuditory } = useCompanies();
   const { submitReport, finishAuditoryReport } = useIndicators();
   if (!company) return null;
   const role = userLogged?.role;
@@ -593,12 +594,6 @@ function CompanyDetails({ company, reportsIndicator, reports }) {
     <section className="flex flex-col gap-9">
       <div className="flex justify-between">
         <h3 className="font-medium text-2xl text-slate-900">Detalhes da Empresa</h3>
-        {role === 'AUDITOR' && all(['ApprovedByAuditor', 'RejectedByAuditor']) && reports?.status !== 'Audited' && (
-          <Button className="gap-2 px-10" onClick={submitReport}>
-            SUBMETER RELATÓRIO
-            <TbSend size="1.125rem" />
-          </Button>
-        )}
         {role === 'SUPERVISOR' && all(['Approved', 'Rejected']) && reports?.status === 'Auditing' && (
           <Button className="gap-2 px-10" onClick={() => finishAuditoryReport(company.id)}>
             FINALIZAR AUDITORIA
@@ -624,8 +619,16 @@ function CompanyDetails({ company, reportsIndicator, reports }) {
               <h3>Tópicos por Usuário</h3>
             </div>
             <div className="flex items-center gap-20">
-              {role === 'ADMIN' && all(['ApprovedByManager', 'ApprovedByConsultor']) && (
-                <Button onClick={() => submitToAuditor(company.id)}>Submeter para Auditoria</Button>
+              {role === 'MANAGER' && reports?.status === 'Pending' && !reports?.auditRequestedAt && (
+                <Button onClick={() => requestAuditory(company.id)}>Solicitar Auditoria</Button>
+              )}
+              {role === 'MANAGER' && reports?.auditRequestedAt && reports?.status === 'Pending' && (
+                <span className="label-s text-neutral-03">Auditoria solicitada — aguardando liberação da Administração FIEMS</span>
+              )}
+              {role === 'ADMIN' && reports?.status === 'Pending' && all(['ApprovedByManager', 'ApprovedByConsultor', 'Approved', 'Rejected']) && (
+                <Button disabled={!reports?.auditRequestedAt} onClick={() => submitToAuditor(company.id)}>
+                  {reports?.auditRequestedAt ? 'Liberar para Auditoria' : 'Aguardando solicitação da empresa'}
+                </Button>
               )}
             </div>
           </div>

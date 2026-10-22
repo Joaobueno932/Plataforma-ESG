@@ -5,3 +5,10 @@ frontend/.env.local
 env.local
 recon/evidence/
 *.log
+
+# Fontes oficiais entregues para consulta (repositorio publico: nao versionar)
+*.docx
+*.xlsx
+backend/storage/
+*.pdf
+Cadernos indicadores/

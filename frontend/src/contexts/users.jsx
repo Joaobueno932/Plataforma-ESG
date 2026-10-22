@@ -90,6 +90,7 @@ export function UsersProvider({ children }) {
     }
   };
 
+  /** Somente a Administração move o vínculo de um usuário (ver Meu perfil para contexto). */
   const changeCompany = async (userId, companyId) => {
     const id = notify('Mudando de empresa...', 'loading');
     try {
@@ -98,6 +99,30 @@ export function UsersProvider({ children }) {
       reload();
     } catch (err) {
       console.error('Erro ao tentar mudar de empresa:', err);
+      updateToast(id, apiErrorMessage(err), 'error');
+    }
+  };
+
+  const addLink = async (userId, companyId, role) => {
+    const id = notify('Acrescentando vínculo...', 'loading');
+    try {
+      await usersApi.addUserLink(userId, companyId, role);
+      updateToast(id, 'Vínculo concedido.', 'success');
+      reload();
+    } catch (err) {
+      console.error('Erro ao conceder vínculo:', err);
+      updateToast(id, apiErrorMessage(err), 'error');
+    }
+  };
+
+  const removeLink = async (userId, linkId) => {
+    const id = notify('Removendo vínculo...', 'loading');
+    try {
+      await usersApi.removeUserLink(userId, linkId);
+      updateToast(id, 'Vínculo removido; o acesso correspondente foi encerrado.', 'success');
+      reload();
+    } catch (err) {
+      console.error('Erro ao remover vínculo:', err);
       updateToast(id, apiErrorMessage(err), 'error');
     }
   };
@@ -138,6 +163,8 @@ export function UsersProvider({ children }) {
         handleNextPage: goToPage(currentPage + 1, 'próxima página'),
         handlePreviousPage: goToPage(currentPage - 1, 'página anterior'),
         changeCompany,
+        addLink,
+        removeLink,
         requestPasswordChange,
         requestChangePassword,
       }}

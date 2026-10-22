@@ -22,44 +22,97 @@ cd backend && npm install && npm start
 cd frontend && npm install && npm run dev       # ou: npm run build && npm start
 ```
 
-`frontend/.env.local` define `NEXT_PUBLIC_API_URL=http://localhost:3333`. Variáveis da API:
-`PORT`, `DB_FILE`, `UPLOADS_DIR`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_RESET_SECRET`,
-`FRONTEND_URL` (troque os segredos JWT fora do ambiente local).
+`frontend/.env.local` define `NEXT_PUBLIC_API_URL=http://localhost:3333`. A API é configurada por
+ambiente (`NODE_ENV`): em `development`/`test` há segredos locais de conveniência; em `production`
+ela **não sobe** sem `JWT_SECRET`, `JWT_REFRESH_SECRET` e `CORS_ORIGINS`. Variáveis documentadas em
+`backend/.env.example`.
+
+### Banco de dados e migrações
+
+```bash
+cd backend
+npm run db:backup     # cópia consistente em storage/backups/ (VACUUM INTO)
+npm run db:dry-run    # aplica as migrações em CÓPIA isolada e compara as contagens
+npm run migrate       # aplica as migrações pendentes no banco de trabalho
+npm run db:verify     # integrity_check + foreign_key_check + contagens
+npm run db:restore -- storage/backups/<arquivo>.sqlite
+```
+
+As migrações versionadas ficam em `backend/src/migrations/` e são aplicadas também na subida do
+servidor. Faça `db:backup` e `db:dry-run` antes de migrar um banco com dados.
 
 ### Usuários de demonstração
 
-| Papel | E-mail | Senha |
-|---|---|---|
-| Admin | admin@esgdemo.com.br | admin123 |
-| Gestor | gestor@esgdemo.com.br | 123456 |
-| Funcionário | funcionario@esgdemo.com.br | 123456 |
-| Consultor | consultor@esgdemo.com.br | 123456 |
-| Auditor | auditor@esgdemo.com.br | 123456 |
-| Supervisor | supervisor@esgdemo.com.br | 123456 |
+Criados pelo seed **apenas quando o banco está vazio** (bancos já existentes conservam as senhas
+que tinham). Senha mínima de 8 caracteres, exigida pela API.
 
-Para recomeçar do zero, pare a API e apague `backend/storage/`.
+| Perfil | E-mail | Senha | Vínculos |
+|---|---|---|---|
+| Administração | admin@esgdemo.com.br | admin123 | — (alcance global) |
+| Gestor | gestor@esgdemo.com.br | esgdemo123 | Empresa Demonstração |
+| Colaborador | funcionario@esgdemo.com.br | esgdemo123 | Empresa Demonstração |
+| Consultor | consultor@esgdemo.com.br | esgdemo123 | Empresa Demonstração + Indústria Exemplo |
+| Auditor | auditor@esgdemo.com.br | esgdemo123 | Empresa Demonstração (designado no ciclo 1) |
+| Supervisor | supervisor@esgdemo.com.br | esgdemo123 | Empresa Demonstração (designado no ciclo 1) |
+| Gestor (2ª empresa) | gestor.exemplo@esgdemo.com.br | esgdemo123 | Indústria Exemplo |
+| ADMIN + CONSULTOR | admin.consultor@esgdemo.com.br | esgdemo123 | Indústria Exemplo (único acúmulo permitido) |
+
+Para recomeçar do zero, pare a API e apague `backend/storage/`. **Dados reais devem ser migrados,
+não recriados**: use `npm run db:backup` e `npm run db:dry-run`.
 
 ## Testes
 
 ```bash
-cd backend && npm test          # 32 testes de API (banco em memória), incl. o ciclo completo do relatório
+cd backend && npm test          # 72 testes de API (banco em memória): auth e sessões, autorização
+                                # e negações, empresas, pessoas/perfis/vínculos, catálogo,
+                                # fluxo do ciclo e migração sobre banco representativo
 ```
+
+Não há ESLint nem typecheck configurados no projeto (ver `docs/esg/diagnostico.md` A17); as
+verificações compatíveis são `npm test` no backend e `npm run build` no frontend.
 
 Validação visual: `node tools/shot.js <saida> <steps.json>` (roteiros em `recon/validation/steps-*.json`).
 
+## Regras de acesso (resumo)
+
+- **Identidade, perfil e vínculo são separados.** Perfis são concedidos pela Administração
+  (`user_profiles`); o acesso a uma empresa vem de um vínculo vigente (`user_company_links`);
+  auditor e supervisor precisam ainda de **designação no ciclo** (`cycle_professionals`).
+- Usuário da empresa tem **uma** empresa; consultor, auditor e supervisor podem ter **várias** e
+  escolhem o contexto em `PATCH /auth/context` (apenas entre vínculos vigentes — a troca não cria
+  nem amplia acesso).
+- **Colaborador vê e responde somente os indicadores atribuídos a ele**, inclusive por id direto,
+  arquivo, download e exportação.
+- O único acúmulo permitido é **ADMIN + CONSULTOR**; o perfil ADMIN **não aprova** respostas,
+  parecer, aplicabilidade nem resultado.
+- **Solicitar auditoria** é do gestor; **liberar o processo** é da Administração FIEMS (operacional).
+  Depois da liberação, respostas e anexos ficam bloqueados; a empresa pede o retorno e **consultor
+  ou Administração** retornam o processo, preservando a versão enviada.
+- A matriz implementada é publicada em `GET /admin/permissions`; registros legados a conferir, em
+  `GET /admin/review`; a trilha de autoria, em `GET /admin/events`.
+
+Detalhes e origem de cada regra: `docs/esg/regras.md`.
+
 ## Funcionalidades
 
-- **Login** com "Lembre-me" (refresh token), "Esqueci a senha" (link gravado em
-  `backend/storage/mail-outbox.log`, sem SMTP) e página `/recovery-password`.
-- **Empresas**: lista paginada, busca, cadastro (cria o relatório com Caderno Geral + setorial),
-  edição e exclusão.
-- **Usuários**: lista, busca, cadastro, edição (função e empresa) e exclusão.
+- **Login** com "Lembre-me" (refresh token) e **sessão revogável** (`POST /auth/logout`: o token
+  deixa de valer). "Esqueci a senha" usa **link de uso único** gravado em
+  `backend/storage/mail-outbox.log` (**sem SMTP: a recuperação por e-mail não está pronta**) e a
+  página `/recovery-password`.
+- **Empresas**: lista paginada escopada por vínculo, busca por razão social/nome fantasia/CNPJ,
+  filtros por porte, caderno e situação, cadastro com **CNPJ validado** (dígitos verificadores,
+  texto sem máscara) que abre o **ciclo 1** com caderno e versão de catálogo congelados, edição com
+  histórico e **inativação** (preserva avaliações e arquivos).
+- **Pessoas**: lista, busca, cadastro, edição, **perfis concedidos**, **vínculos múltiplos** para
+  profissionais e **inativação com histórico** (nada é apagado; o último administrador ativo é
+  protegido).
 - **Indicadores**: cadernos (com capa), assistente de criação de indicador em 3 passos, edição
   e exclusão de indicadores e respostas.
 - **Relatório da empresa**: atribuição de responsável, resposta com nível de maturidade, texto,
   anexos e GED, lembretes; validação por Gestor/Consultor; submissão para auditoria; avaliação,
   pedido de complemento e evidências do Auditor; finalização pelo Supervisor.
-- **Configurações**: troca de senha; Consultor/Auditor trocam a empresa vinculada.
+- **Meu perfil / Configurações**: dados do próprio usuário e perfis ativos, troca de senha
+  (exige a senha atual) e seleção da **empresa em contexto** entre os vínculos vigentes.
 - **Autoavaliação pública** (`/auto-avaliacao`): dados pessoais, dados da empresa (CNPJ
   validado), 33 perguntas, resultado e resumo; o lead é gravado em `POST /leads`.
 
@@ -69,5 +122,11 @@ Validação visual: `node tools/shot.js <saida> <steps.json>` (roteiros em `reco
   a API de staging respondia 404/500 para relatórios. O seed traz indicadores demonstrativos.
 - As telas **Extrato** (`/companies/:id/performance-report`) e **Relatório Auditoria**
   (`/companies/:id/report`) não existem no build publicado (404 no original) e continuam ausentes.
-- Regras marcadas como **[INF]** em `PROGRESS.md` (transições de status, cálculo da avaliação final,
-  códigos dos indicadores) foram inferidas do front-end, não observadas.
+- Regras marcadas como **[INF]** em `PROGRESS.md` foram inferidas do front-end; as que valem agora
+  estão em `docs/esg/regras.md`, com origem e critério de aceite.
+- O **cálculo final continua sendo a média herdada** — o cálculo oficial por eixo (pontos ÷ máximo
+  aplicável), elegibilidade por obrigatórios e rating por porte é a etapa E5 de
+  `docs/esg/progresso.md`. A publicação automática do resultado e o certificado são E6.
+- **"Não se aplica"** já é decisão exclusiva do auditor designado, mas o pedido com justificativa e
+  evidência e o registro de aceite/recusa entram em E4.
+- Sem ESLint e sem typecheck no projeto.

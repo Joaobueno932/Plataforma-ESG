@@ -1,5 +1,10 @@
 # Diagnóstico do estado atual — 22/10/2026
 
+> **Atualização da etapa 2 (22/10/2026):** a especificação `Plataforma esg fiems.docx` v1.0 foi
+> recebida e reconciliada em `regras.md`. Os achados **A2, A4, A7, A8, A9, A12 (parcial), A16
+> (parcial), A17 (parcial), A18 (pendente de decisão) e A19 (parcial)** foram tratados nesta etapa;
+> o estado de cada um está marcado abaixo. O que mudou no código está em `progresso.md` § E1–E2.
+
 Inspeção do projeto antes de qualquer alteração funcional. Nada da aplicação foi modificado
 nesta etapa: apenas foram executados os comandos de verificação já existentes e criados os
 documentos em `docs/esg/`.
@@ -37,19 +42,20 @@ nunca existiu.
 
 **Disponíveis**
 
-- `Indicadores Programa ESG FIEMS 1.xlsx` em `~/Downloads` — planilha oficial, abas `Questionário`
+- `Plataforma esg fiems.docx` v1.0 (19/10/2026) — especificação oficial, entregue na raiz do
+  repositório em 22/10/2026. **Arquivo não versionado** (ver § 8).
+- `Indicadores Programa ESG FIEMS 1.xlsx` — planilha oficial, abas `Questionário`
   (538 alternativas), `Consolidado` (139 indicadores), `Pontuações` (máximos e limiares de rating),
-  `Caderno Geral` e `A`–`H`. É a fonte do catálogo e do cálculo. **Não está no repositório.**
+  `Caderno Geral` e `A`–`H`. É a fonte do catálogo e do cálculo.
 - Código, `README.md`, `PROGRESS.md` e as evidências de engenharia reversa em `recon/` (contexto histórico).
 
 **Ausentes (entrada necessária)**
 
-- `Plataforma esg fiems.docx` — não encontrado em `Documentos`, `Downloads`, `Desktop` nem no OneDrive.
-- HTML aprovado da listagem e imagens de referência dos cards de alternativa — não encontrados.
-- Cadernos/manuais em PDF — não encontrados.
-
-Impacto no plano: as pendências X1 e X2 de `regras.md` § 8 ficam abertas; os módulos de catálogo,
-vínculos, ciclos, bloqueio e cálculo avançam sem elas.
+- HTML aprovado da listagem e imagens de referência dos cards de alternativa — necessários para a
+  etapa visual (E7), não bloqueiam as anteriores.
+- Cadernos e manuais em PDF, Manual de Certificação, RAC, Regimento Interno e Manual de Marca —
+  citados pela especificação como fontes; não estão no disco. Afetam a ratificação das pendências
+  (recertificação, relatório oficial, identidade visual), não esta etapa.
 
 ## 4. Inventário: o que existe × o que o README descreve
 
@@ -77,6 +83,8 @@ vínculos, ciclos, bloqueio e cálculo avançam sem elas.
 Formato: **impacto** → **correção pretendida** → **migração** → **teste de aceite**.
 
 ### A1 · Catálogo demonstrativo e escala de maturidade padronizada
+
+**Situação (etapa 2):** aberto. O ciclo passou a registrar a versão do catálogo com que foi aberto (`reports.catalogVersion`, hoje `legacy-demo`), de modo que a importação oficial (E3) não altere ciclos existentes.
 `backend/src/seed.js` (`LEVELS`, `DEMO_QUESTIONS`) · `backend/src/routes/questions.js`
 (`LEVELS`, `CATEGORIES`, `validateQuestion`, `nextCode`) · `frontend/src/lib/constants.js`
 (`MATURITY_LEVELS`, `POINTS`) · `frontend/src/lib/format.js` (`LEVEL_ORDER`).
@@ -98,6 +106,8 @@ Formato: **impacto** → **correção pretendida** → **migração** → **test
   C8; nenhum indicador com 6 alternativas; GE03 com 2 alternativas e máximo 0.
 
 ### A2 · Modelo de dados impede vínculos múltiplos e ciclos históricos
+
+**Situação (etapa 2): resolvido.** `user_profiles`, `user_company_links` e ciclos múltiplos por empresa (migrações 002 e 004). `users.role`/`users.companyId` seguem preenchidos apenas como espelho de leitura.
 `backend/src/db.js` — `users.role`/`users.companyId` (linhas 32–34) e
 `reports.companyId TEXT NOT NULL UNIQUE` (linha 69).
 
@@ -117,6 +127,8 @@ Formato: **impacto** → **correção pretendida** → **migração** → **test
   passa a ter dois ciclos com catálogos de versões distintas.
 
 ### A3 · Avaliação final calculada por média de níveis
+
+**Situação (etapa 2):** aberto (cálculo é E5). A autorização foi corrigida: só o supervisor designado aprova o resultado.
 `backend/src/routes/reports.js:229-240` (`POST /auditory/finishAuditory/:companyId`).
 
 - **Impacto**: `avg = média dos pontos das respostas aplicáveis` e
@@ -135,6 +147,8 @@ Formato: **impacto** → **correção pretendida** → **migração** → **test
   NA aceito reduz o denominador; NA recusado não reduz.
 
 ### A4 · Supervisor com ações de auditor; administrador aprovando resultado
+
+**Situação (etapa 2): resolvido.** `audit.evaluate` e `audit.applicability` exigem AUDITOR designado no ciclo; `supervision.approve` exige SUPERVISOR designado; o perfil ADMIN não consta de nenhuma ação de aprovação (`src/authz.js`).
 `backend/src/routes/reports.js:194` (`evaluatequestion` aceita `AUDITOR, SUPERVISOR`),
 `:210` (`nonApplicable` aceita `AUDITOR, SUPERVISOR`), `:229` (`finishAuditory` aceita
 `SUPERVISOR, ADMIN`) · `frontend/src/app/companies/[id]/page.jsx:250,529`.
@@ -150,6 +164,8 @@ Formato: **impacto** → **correção pretendida** → **migração** → **test
   resultado → 403; AUDITOR sem vínculo no ciclo → 403.
 
 ### A5 · Liberação manual do relatório pelo administrador
+
+**Situação (etapa 2):** aberto por decisão de sequência — a publicação automática é E6. A rota segue restrita à Administração e agora grava evento na trilha.
 `backend/src/routes/reports.js:242-247` (`POST /auditory/givereportaccess/:companyId`) ·
 `companies.reportAccess` · `backend/test/workflow.test.js:113,118`.
 
@@ -164,6 +180,8 @@ Formato: **impacto** → **correção pretendida** → **migração** → **test
   responde 2xx.
 
 ### A6 · Complemento do auditor desbloqueia a resposta da empresa
+
+**Situação (etapa 2): resolvido no bloqueio.** `PendingRevision` não reabre a resposta; a empresa pede o retorno (`requestReturn`) e consultor ou Administração retornam o processo (`return`), com foto da versão enviada e nova rodada. O histórico completo de comentários e transições por item continua em E4.
 `backend/src/routes/reports.js:75-76,101-103` (`PATCH /reports/answerQuestion/:id`: permite
 responder quando `report.status === 'Auditing'` e o item está em `PendingRevision`) ·
 `backend/test/workflow.test.js:88-95`.
@@ -181,6 +199,8 @@ responder quando `report.status === 'Auditing'` e o item está em `PendingRevisi
   retorno pelo consultor ou admin → 200 e nova rodada; versão anterior continua legível.
 
 ### A7 · Anexos e GED sem bloqueio e sem verificação de perfil
+
+**Situação (etapa 2): resolvido.** Anexar, desvincular e enviar arquivo passaram pelo mesmo guardião de estado e papel da resposta, com atribuição verificada para o colaborador.
 `backend/src/routes/reports.js:109-119` (`editQuestionReport`), `:121-128`
 (`DELETE /reports/questionFiles/:id`) · `backend/src/routes/uploads.js:34-58`
 (`POST /uploads/companyFile`).
@@ -197,6 +217,8 @@ responder quando `report.status === 'Auditing'` e o item está em `PendingRevisi
   atribuído → 403; auditor anexando como empresa → 403 (a evidência do auditor tem caminho próprio).
 
 ### A8 · Profissional troca a própria empresa sem vínculo concedido
+
+**Situação (etapa 2): resolvido.** A troca autônoma deixou de existir; `PATCH /auth/context` apenas seleciona vínculo vigente e `/companies/light/all` responde só as empresas vinculadas.
 `backend/src/routes/users.js:69-80` (`PATCH /users/changeCompany/:id`, `self` para
 `CONSULTOR`/`AUDITOR`) · `backend/src/routes/companies.js:/companies/light/all`
 (lista todas as empresas para `ADMIN, CONSULTOR, AUDITOR`) · `frontend/src/app/settings/page.jsx:15`
@@ -213,6 +235,8 @@ responder quando `report.status === 'Auditing'` e o item está em `PendingRevisi
   troca entre eles → 200; a lista de empresas do consultor não inclui empresas sem vínculo.
 
 ### A9 · Colaborador vê todos os indicadores do ciclo
+
+**Situação (etapa 2): resolvido.** Filtro por atribuição no servidor na listagem, no item, no download e na exportação da listagem de empresas.
 `backend/src/routes/reports.js:42-53` (`/reports/company/questions` devolve todos os itens),
 `src/serializers.js:questionReport` (devolve descrição, alternativas, comentários, evidências e
 arquivos sempre) · `frontend/src/app/companies/[id]/page.jsx:637-642`.
@@ -229,6 +253,8 @@ arquivos sempre) · `frontend/src/app/companies/[id]/page.jsx:637-642`.
   item → 403; download de arquivo de outro item → 403.
 
 ### A10 · Cartões de alternativa com apresentação e cores fixas
+
+**Situação (etapa 2):** aberto (depende da referência visual, E7).
 `frontend/src/components/indicators/answer-card.jsx` (`cardVariants`, `Engajado: 'bg-violet-400'`)
 · `frontend/src/lib/constants.js` (`LEVEL_LABEL`, `POINTS`) ·
 `frontend/src/app/indicators/response-indicator/[id]/page.jsx:277-298`.
@@ -245,6 +271,8 @@ arquivos sempre) · `frontend/src/app/companies/[id]/page.jsx:637-642`.
   os pontos da planilha; nenhuma cor definida fora do mapa de referência. **Depende de X2.**
 
 ### A11 · Testes que legitimam regras já substituídas
+
+**Situação (etapa 2): resolvido.** A suíte foi reescrita: 72 testes afirmam as regras decididas, incluindo as negações (`test/authz.test.js`).
 `backend/test/workflow.test.js:88-110` (complemento → empresa responde direto),
 `:112-121` (supervisor finaliza e **admin libera**), `:108` (auditor marca NA em massa, sem
 justificativa), `:117` (`evaluation === 'Conforme'` pela média) · `backend/test/users.test.js`
@@ -259,6 +287,8 @@ justificativa), `:117` (`evaluation === 'Conforme'` pela média) · `backend/tes
   continua verde ao fim de cada etapa.
 
 ### A12 · Sem histórico: comentário único e sobrescrita de estado
+
+**Situação (etapa 2): parcial.** Entraram `audit_events` (autoria e função exercida de cada ação), `cycle_rounds` e `item_answer_versions`; a observação da auditoria deixou de poder ser apagada pela empresa. Comentários por item com histórico próprio continuam em E4.
 `backend/src/db.js` (`question_reports.redflag`, `redflag_date`, `redflagIssuerId` — campos
 únicos) · `backend/src/routes/reports.js:30-37` (`setRedflag`, `touch`), `:164-169`
 (`DELETE /reports/redflag/:id` apaga o comentário) · `:172-177`
@@ -276,6 +306,8 @@ justificativa), `:117` (`evaluation === 'Conforme'` pela média) · `backend/tes
   auditor; toda transição aparece na trilha com autor e função.
 
 ### A13 · "Não se aplica" sem pedido, justificativa nem decisão
+
+**Situação (etapa 2): parcial.** A decisão de aplicabilidade passou a ser exclusiva do auditor designado; o pedido com justificativa e evidência e o registro de aceite/recusa são E4.
 `backend/src/routes/reports.js:79-83` (empresa envia `nonApplicable: true` sem justificativa e sem
 alternativa), `:210-216` (`POST /auditory/nonApplicable/:id` marca NA e já grava `Approved`, sem
 justificativa nem evidência) · `frontend/src/app/indicators/response-indicator/[id]/page.jsx:307-317`
@@ -294,6 +326,8 @@ justificativa nem evidência) · `frontend/src/app/indicators/response-indicator
   mantém; obrigatório com NA recusado e sem comprovação → inelegível.
 
 ### A14 · Publicação e relatórios finais não existem
+
+**Situação (etapa 2):** aberto (E6).
 `frontend/src/app/companies/page.jsx:289` (`/companies/:id/performance-report`) e `:305`
 (`/companies/:id/report`) — rotas inexistentes no `next build` (17 rotas, nenhuma das duas).
 
@@ -306,6 +340,8 @@ justificativa nem evidência) · `frontend/src/app/indicators/response-indicator
   em preenchimento vê andamento; nenhuma tela menciona envio externo de selo.
 
 ### A15 · Administrador edita pontos e textos das alternativas do ciclo em andamento
+
+**Situação (etapa 2): resolvido no essencial.** As cascatas viraram `RESTRICT` e as rotas recusam excluir indicador, alternativa, caderno ou arquivo já usados em avaliação; a edição de alternativas saiu da tela do ciclo. O versionamento publicável do catálogo (rascunho/publicada) é E3.
 `frontend/src/app/companies/[id]/page.jsx:255-312` (`EditableAnswerCard`, seletor
 `[0,2,4,6,8,10]`) · `backend/src/routes/questions.js` (`PATCH /questions/answer/:questionId/:answerId`,
 `PATCH /questions/:id`, `DELETE /questions/:id`).
@@ -323,6 +359,8 @@ justificativa nem evidência) · `frontend/src/app/indicators/response-indicator
   novo nasce na versão nova; exclusão não remove itens de relatório existentes.
 
 ### A16 · Consultas N+1 nas telas principais
+
+**Situação (etapa 2): parcial.** A listagem do ciclo passou a carregar as coleções em lote e a de empresas em duas consultas; os índices das migrações 005 e 006 entraram.
 `backend/src/serializers.js:questionReport` (por item: questão, alternativas, relatório, arquivos,
 evidências, autor, emissor) usado por `reports.js:qrList` · `routes/companies.js:listRow`/`detail`
 · `routes/reports.js:235`.
@@ -336,6 +374,8 @@ evidências, autor, emissor) usado por `reports.js:qrList` · `routes/companies.
 - **Teste de aceite**: número de consultas por listagem constante em relação ao número de itens.
 
 ### A17 · Verificações e endurecimentos ausentes
+
+**Situação (etapa 2): parcial.** Resolvidos: CORS por configuração, limite de tentativas (login, recuperação, leads), token de recuperação opaco de uso único, senha atual exigida na troca, sessão revogável, segredos sem valor padrão em produção, bloqueio de executáveis no upload e projeção reduzida de dados pessoais. **Pendentes: ESLint e typecheck** (não existem no projeto; verificação compatível executada = `next build` e a suíte de testes).
 - `frontend`: **sem ESLint configurado** — `npm run lint` não verifica nada; sem typecheck.
 - `backend/src/app.js:9` — `cors()` sem origem definida.
 - `backend/src/routes/auth.js` — sem limite de tentativas em `/auth/login` e
@@ -353,6 +393,8 @@ evidências, autor, emissor) usado por `reports.js:qrList` · `routes/companies.
   `/leads`; introduzir usuário ativo/inativo com revogação; reduzir a projeção de dados pessoais.
 
 ### A18 · Dados reais de identificação no repositório público
+
+**Situação (etapa 2): pendente de decisão do responsável.** Tarefa registrada **antes de qualquer push** (ver `progresso.md`). Nada foi removido nem reescrito: retirar da versão atual não elimina as versões anteriores já publicadas.
 `recon/api/GET_users_page=1_perPage=50.response.json` (17 e-mails corporativos reais e 2 CNPJs),
 `GET_users_page=1_perPage5.response.json`, `GET_auth_me.response.json`,
 `POST_auth_login.{request,response}.json` (e-mail administrativo real; senhas e tokens já
@@ -366,6 +408,8 @@ redigidos por `tools/redact_api.py`).
 - **Teste de aceite**: varredura por e-mail/CNPJ/CPF em `recon/` sem resultados.
 
 ### A19 · Progresso e rótulos incorretos na interface
+
+**Situação (etapa 2): resolvido na API.** `answeredQuestions` conta respostas de fato e `totalQuestions` passou a existir; o botão morto saiu da tela de detalhe. Os rótulos de estado sem contrato são revistos com o fluxo em E4.
 `backend/src/routes/companies.js:listRow` — `_count.answeredQuestions` conta **todos** os itens do
 relatório, não os respondidos (duas empresas com 8 itens cada e nenhuma resposta aparecem como 8).
 `frontend/src/app/companies/[id]/page.jsx:596` — condição `['ApprovedByAuditor','RejectedByAuditor']`
@@ -380,6 +424,8 @@ da linha 644. `frontend/src/lib/constants.js` declara estados que o servidor nun
   estado emitido pelo servidor.
 
 ### A20 · Estrutura do indicador não cobre a fonte oficial
+
+**Situação (etapa 2):** aberto (E3).
 `backend/src/db.js` (`questions`: `description` único, sem máximo, ODS ou ordem; `answers` sem
 posição) · `frontend/src/app/indicators/response-indicator/[id]/page.jsx:206-208` (a descrição é
 partida pela busca do literal `"Verificação:"` dentro do texto).
@@ -393,6 +439,8 @@ partida pela busca do literal `"Verificação:"` dentro do texto).
 - **Teste de aceite**: nenhuma tela depende de marcador textual; tópico e ODS exibidos a partir do campo.
 
 ### A21 · Interface do ciclo sem busca, filtros, agrupamento e modal
+
+**Situação (etapa 2):** aberto (E7).
 `frontend/src/app/companies/[id]/page.jsx:581-650` — lista plana (Geral e depois setorial, ordenada
 por eixo), sem campo de busca, sem filtros, sem agrupamento e sem destaque do setorial; responder
 navega para uma página (`/indicators/response-indicator/[id]`) em vez de abrir modal.
@@ -416,23 +464,36 @@ navega para uma página (`/indicators/response-indicator/[id]`) em vez de abrir 
 
 ## 7. Migrações necessárias (consolidado)
 
-Ordem sugerida, todas aditivas e verificáveis em cópia do banco (o banco local tem apenas o seed):
+**Correção da descrição anterior:** nem todas são aditivas. Remover `UNIQUE(companyId)` de
+`reports` e trocar as cascatas por `RESTRICT` **exige reconstrução de tabela** no SQLite (não há
+`ALTER TABLE` para constraint). A reconstrução preserva dados, ids, relacionamentos, índices e
+constraints, roda com `foreign_keys = OFF` dentro de uma transação e só confirma depois de
+`PRAGMA foreign_key_check` — e é validada em cópia antes do banco de trabalho
+(`npm run db:dry-run`). Constraints necessárias à integridade e à autorização entraram agora, não
+em etapa futura.
 
-1. **M1 — Perfis e vínculos**: `user_profiles`, `user_company_links`; backfill de
-   `users.role`/`users.companyId`; manter colunas antigas durante a transição (A2, A8).
-2. **M2 — Ciclos e versão de catálogo**: `cycles` (ou `reports` + `cycleYear`, `catalogVersion`),
-   remoção do `UNIQUE(companyId)` por recriação de tabela com cópia de dados; `catalogVersion` em
-   `questions`/`answers` (A2, A15).
-3. **M3 — Catálogo oficial**: colunas `maxPoints`, `ods`, `topic`, `position`, nível mínimo
-   obrigatório; importação idempotente da planilha como nova versão, preservando a versão legada
-   (A1, A20).
-4. **M4 — Rodadas, histórico e NA**: `cycle_rounds`, `item_history`/`answer_versions`,
-   `item_comments`, `item_transitions`, `na_requests`; migração do `redflag` atual como primeiro
-   comentário (A6, A12, A13).
-5. **M5 — Resultado e certificado**: `cycle_results` por eixo, elegibilidade, obrigatórios não
-   atendidos, certificado emitido automaticamente (A3, A5, A14).
-6. **M6 — Índices e constraints**: índices de A16; `CHECK` de porte, eixo e estado; transações nas
-   operações compostas.
+Ordem aplicada (migrações 001–007 em `backend/src/migrations/`), verificada em cópia do banco:
 
-Regras para todas: migração versionada e idempotente, aplicada em cópia antes do banco de
-trabalho, sem `DROP` de dados, preservando ids, autoria e datas. Nenhum seed destrutivo.
+1. **001_baseline** — base herdada do commit `42ba516` (inócua em banco existente). ✔ aplicada
+2. **002_identity** — `user_profiles`, `user_company_links`, `sessions`, `password_resets`,
+   `audit_events`, `users.status`, índice único de e-mail sem distinção de caixa; backfill de
+   `users.role`/`users.companyId` com marcação de revisão para vínculos de profissionais (A2, A8). ✔
+3. **003_company_registration** — situação cadastral, autoria do cadastro, origem (`demo`/`legacy`)
+   e unicidade de CNPJ entre empresas não excluídas. ✔
+4. **004_cycles** — **reconstrução de `reports`**: sai `UNIQUE(companyId)`, entram número do ciclo,
+   `previousReportId`, caderno, versão de catálogo, solicitação e liberação de auditoria, origem e
+   revisão; `cycle_professionals` (designações por ciclo). ✔
+5. **005_history_integrity** — **reconstrução de `question_reports`, `answers`,
+   `question_report_files` e `evidences`**: cascatas que apagavam avaliação viraram `RESTRICT`;
+   entram delegação (responsável, quem atribuiu, prazo) e autoria da resposta (A12, A15). ✔
+6. **006_indexes** — índices de apoio à autorização e às listagens (A16). ✔
+7. **007_rounds** — `cycle_rounds`, `item_answer_versions` e `reports.currentRound`: a versão
+   enviada é fotografada na liberação e em cada retorno (A6, F4). ✔
+
+Ainda por fazer: **catálogo oficial versionado** (`maxPoints`, `topic`, `ods`, `position`, nível
+mínimo obrigatório, versões rascunho/publicada — E3), **histórico completo de comentários,
+transições e pedidos de NA** (E4) e **resultado por eixo, elegibilidade e certificado** (E5/E6).
+
+Regras para todas: migração versionada e idempotente, validada em cópia (`npm run db:dry-run`)
+antes do banco de trabalho, sem `DROP` de dados, preservando ids, autoria e datas. Nenhum seed
+destrutivo. Backup e restauração: `npm run db:backup`, `npm run db:verify`, `npm run db:restore`.

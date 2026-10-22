@@ -29,7 +29,7 @@ const ADMIN_PLACEHOLDER = 'randomUUID'; // o original preenche companyId com est
 const userSchema = z.object({
   name: z.string({ required_error: '*O campo nome é obrigatório' }),
   email: z.string({ required_error: '*O campo e-mail é obrigatório' }).email({ message: '*O campo e-mail deve ser um e-mail válido' }),
-  password: z.string({ required_error: '*O campo senha é obrigatório' }).min(4, { message: '*O campo deve ter no minímo 4 caracteres' }),
+  password: z.string({ required_error: '*O campo senha é obrigatório' }).min(8, { message: '*A senha deve ter no mínimo 8 caracteres' }),
   cpf: z.string({ required_error: '*O campo cpf é obrigatório' }).min(14, { message: '*Deve ter no minímo 11 caracteres' }).optional(),
   jobTitle: z.string().optional(),
   role: z.enum(['ADMIN', 'EMPLOYEE', 'MANAGER', 'AUDITOR', 'CONSULTOR', 'SUPERVISOR'], { required_error: '*Por favor selecione um cargo' }),
@@ -189,7 +189,8 @@ function EditUserForm({ userSelected }) {
   const [role, setRole] = useState(userSelected?.role);
   const [editing, setEditing] = useState(false);
   const [companies, setCompanies] = useState([]);
-  const { updateUser, changeCompany } = useUsers();
+  const { updateUser, addLink, removeLink } = useUsers();
+  const links = userSelected?.links;
   const form = useForm({
     resolver: zodResolver(userEditSchema),
     defaultValues: { name: userSelected.name, email: userSelected.email, jobTitle: userSelected.jobTitle ?? '' },
@@ -212,7 +213,10 @@ function EditUserForm({ userSelected }) {
   return (
     <Form {...form}>
       <form noValidate autoComplete="off" className="flex flex-col gap-8 w-full">
-        <p>Empresa: {userSelected?.company?.bussinessName}</p>
+        <p className="text-neutral-03">
+          Situação: <span className="font-semibold">{userSelected?.status === 'INACTIVE' ? 'Inativa' : 'Ativa'}</span> · Perfis:{' '}
+          <span className="font-semibold">{(userSelected?.roles ?? []).map((r) => ROLE_LABEL[r] || r).join(', ')}</span>
+        </p>
         <TextField form={form} name="name" label="Nome Do Usuário" placeholder="Digite o nome de usuário" disabled={!editing} />
         <TextField form={form} name="email" label="E-mail" placeholder="Digite o seu e-mail" type="email" disabled={!editing} />
         <TextField form={form} name="cpf" label="Cpf (somente números)" placeholder="Digite o cpf" mask="cpf" disabled={!editing} defaultValue={userSelected.cpf} />
@@ -243,18 +247,43 @@ function EditUserForm({ userSelected }) {
           </div>
         )}
         {['SUPERVISOR', 'AUDITOR', 'CONSULTOR'].includes(userSelected?.role) ? (
-          <section>
-            <p>Empresa</p>
-            <Combobox
-              disabled={!editing}
-              data={companies}
-              textField="bussinessName"
-              defaultValue={userSelected?.company?.bussinessName}
-              onChange={(c) => setCompany(c)}
-            />
+          <section className="flex flex-col gap-3">
+            <p className="font-semibold">Empresas vinculadas</p>
+            <ul className="flex flex-col gap-2">
+              {(links ?? []).map((l) => (
+                <li key={l.id} className="flex items-center justify-between border border-[#C4C4C4] rounded-sm px-3 py-2">
+                  <span className="text-slate-600">
+                    {l.bussinessName} <span className="text-neutral-03 text-sm">({ROLE_LABEL[l.role] || l.role})</span>
+                    {l.needsReview && <span className="ml-2 text-xs text-semantic-alert">vínculo migrado: confirmar</span>}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="error"
+                    size="sm"
+                    disabled={!editing || links.length <= 1}
+                    onClick={() => removeLink(userSelected.id, l.id)}
+                  >
+                    Remover
+                  </Button>
+                </li>
+              ))}
+              {!links?.length && <li className="text-neutral-03">Nenhum vínculo vigente.</li>}
+            </ul>
+            <p className="text-sm text-neutral-03">Acrescentar empresa (o vínculo anterior é mantido):</p>
+            <Combobox disabled={!editing} data={companies} textField="bussinessName" onChange={(c) => setCompany(c)} />
+            <Button
+              type="button"
+              variant="primary-main"
+              size="lg"
+              className="w-64"
+              disabled={!editing || !company?.id}
+              onClick={() => addLink(userSelected.id, company.id, userSelected.role)}
+            >
+              ACRESCENTAR VÍNCULO
+            </Button>
           </section>
         ) : (
-          <p />
+          <p>Empresa: {userSelected?.company?.bussinessName ?? '—'}</p>
         )}
         {editing ? (
           <Button
@@ -262,10 +291,7 @@ function EditUserForm({ userSelected }) {
             variant="success-2"
             size="lg"
             type="button"
-            onClick={() => {
-              if (company?.id) changeCompany(userSelected.id, company.id);
-              save();
-            }}
+            onClick={save}
           >
             SALVAR ALTERAÇÕES
           </Button>
@@ -283,17 +309,17 @@ function DeleteUserModal({ handleDeleteUser, setOpenModal }) {
   return (
     <Modal.Root closeModal={() => setOpenModal(false)} className="w-fit flex flex-col items-center">
       <Icon icon="ph:x-circle-bold" className="text-semantic-error w-32 h-32" />
-      <Modal.Title classes="text-2xl text-medium">Exclusão de conta</Modal.Title>
+      <Modal.Title classes="text-2xl text-medium">Inativação de conta</Modal.Title>
       <p className="w-[460px] text-center text-neutral-03 text-xl">
-        Tem certeza de que deseja excluir permanentemente essa conta? Esta ação não pode ser desfeita e acarretará na exclusão dos dados
-        compartilhados com essa aplicação.
+        A conta deixa de acessar o sistema e as sessões abertas são encerradas. Respostas, evidências, autoria e histórico são preservados, e a
+        conta pode ser reativada pela Administração.
       </p>
       <Modal.Content className="flex gap-4 mt-16">
         <Button className="w-64 text-sm" variant="primary-main" size="lg" onClick={() => setOpenModal(false)}>
           CANCELAR
         </Button>
         <Button className="w-64 text-sm" variant="error" size="lg" onClick={handleDeleteUser}>
-          DELETAR CONTA
+          INATIVAR CONTA
         </Button>
       </Modal.Content>
     </Modal.Root>
