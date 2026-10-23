@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, shutdown, DEMO_PASSWORD } = require('./helpers');
+const { startServer, shutdown, DEMO_PASSWORD, fileForm } = require('./helpers');
 
 /**
  * Matriz de negação: duas empresas, dois ciclos, acesso direto por id, arquivo e exportação,
@@ -56,10 +56,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const [primeiro, segundo] = itemsA;
     await s.api('PATCH', `/reports/addanswerer/${primeiro.id}`, { token: gestorA, body: { user: await s.userId('funcionario@esgdemo.com.br') } });
 
-    const form = new FormData();
-    form.append('companyId', 'demo-company-a');
-    form.append('file', new Blob([Buffer.from('evidencia')]), 'evidencia-a.pdf');
-    const up = await s.api('POST', '/uploads/companyFile', { token: gestorA, form });
+    const up = await s.api('POST', '/uploads/companyFile', { token: gestorA, form: fileForm('demo-company-a', 'evidencia-a.pdf') });
     assert.equal(up.status, 201);
     // Vinculada a um indicador que NÃO é do colaborador, e fora do GED.
     await s.api('PATCH', `/reports/answerQuestion/${segundo.id}`, {
@@ -216,7 +213,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const reportA = await s.reportIdOf('demo-company-a');
     await s.db.run("UPDATE reports SET status = 'Auditing' WHERE id = ?", reportA);
     const itemA = (await s.db.one('SELECT id FROM question_reports WHERE reportId = ?', reportA)).id;
-    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: auditor.token, body: { status: 'Approved', redflag: 'ok' } })).status, 201);
+    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: auditor.token, body: { status: 'Rejected', redflag: 'sem comprovação' } })).status, 201);
 
     // Sem designação no ciclo: vínculo com a empresa não basta.
     const novoAuditor = await s.api('POST', '/users', {
@@ -225,17 +222,17 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     });
     assert.equal(novoAuditor.status, 201);
     const sem = await s.session('auditor.semdesignacao@x.com', 'senha-123');
-    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Approved', redflag: 'ok' } })).status, 403);
+    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Rejected', redflag: 'sem comprovação' } })).status, 403);
     assert.equal((await s.api('GET', `/reports/${reportA}`, { token: sem.token })).status, 403);
 
     const designa = await s.api('POST', `/reports/${reportA}/professionals`, { token: admin, body: { userId: novoAuditor.body.id, role: 'AUDITOR' } });
     assert.equal(designa.status, 201);
     assert.equal((await s.api('GET', `/reports/${reportA}`, { token: sem.token })).status, 200);
-    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Approved', redflag: 'ok' } })).status, 201);
+    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Rejected', redflag: 'sem comprovação' } })).status, 201);
 
     const remove = await s.api('DELETE', `/reports/${reportA}/professionals/${novoAuditor.body.id}`, { token: admin });
     assert.equal(remove.status, 200);
-    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Approved', redflag: 'ok' } })).status, 403);
+    assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Rejected', redflag: 'sem comprovação' } })).status, 403);
     await s.db.run("UPDATE reports SET status = 'Pending' WHERE id = ?", reportA);
   });
 
@@ -251,7 +248,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     assert.equal(review.status, 200);
     assert.ok(review.body.companies.some((c) => c.origin === 'demo'), 'empresas de demonstração marcadas');
     // O esquema MySQL nasce consolidado; o histórico SQLite fica registrado à parte.
-    assert.deepEqual(review.body.migrations.map((m) => m.id), ['mysql_001_baseline']);
+    assert.deepEqual(review.body.migrations.map((m) => m.id), ['mysql_001_baseline', 'mysql_002_workflow']);
     assert.ok(review.body.legacySqliteHistory.length >= 9, 'histórico da base anterior continua declarado');
     const gestor = await s.login('gestor@esgdemo.com.br');
     assert.equal((await s.api('GET', '/admin/review', { token: gestor })).status, 403);

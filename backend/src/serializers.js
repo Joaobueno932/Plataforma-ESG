@@ -181,26 +181,72 @@ async function question(q, answersByQuestion = null) {
  * Item do ciclo. Aceita um `bundle` pré-carregado para evitar N+1 nas listagens
  * (ver routes/reports.js → loadItems).
  */
-async function questionReport(qr, bundle = null) {
+/** Colunas de arquivo vinculado ao indicador (lista e item usam a mesma projeção). */
+const ITEM_FILE_COLUMNS = `qrf.id, qrf.questionReportId, qrf.fileId, qrf.round, qrf.addedById, qrf.addedByRole, qrf.createdAt AS linkedAt,
+  f.companyId, f.name, f.url, f.fileType, f.sizeBytes, f.description, f.validUntil, f.indefiniteValidity, f.kind,
+  f.version, f.uploadedById, f.uploadedByRole, f.createdAt AS uploadedAt`;
+
+function itemFile(f) {
+  const validUntil = f.validUntil ?? null;
+  return {
+    id: f.id,
+    fileId: f.fileId,
+    round: f.round ?? 1,
+    linkedAt: f.linkedAt ?? null,
+    addedByRole: f.addedByRole ?? null,
+    file: {
+      id: f.fileId,
+      companyId: f.companyId,
+      name: f.name,
+      url: f.url,
+      fileType: f.fileType,
+      sizeBytes: f.sizeBytes ?? null,
+      description: f.description ?? null,
+      kind: f.kind ?? 'evidencia',
+      version: f.version ?? 1,
+      validUntil,
+      indefiniteValidity: bool(f.indefiniteValidity),
+      // Vencimento é informação: não altera pontuação nem reprova automaticamente.
+      expired: !!validUntil && !bool(f.indefiniteValidity) && new Date(validUntil) < new Date(),
+      uploadedAt: f.uploadedAt ?? null,
+    },
+  };
+}
+
+/**
+ * Item do ciclo. Aceita um `bundle` pré-carregado para evitar N+1 nas listagens
+ * (ver routes/reports.js → loadItems).
+ *
+ * `showAudit` controla o que é da auditoria (enquadramento, parecer e evidências do auditor):
+ * a empresa só vê esse conteúdo depois da aprovação do supervisor.
+ */
+async function questionReport(qr, bundle = null, { showAudit = true } = {}) {
   const get = (map, key, fallback) => (bundle ? bundle[map].get(key) || fallback : undefined);
   const q = bundle ? get('questions', qr.questionId) : await db.one('SELECT * FROM questions WHERE id = ?', qr.questionId);
-  const rep = bundle ? bundle.report : await db.one('SELECT id, companyId, status, cycle FROM reports WHERE id = ?', qr.reportId);
+  const rep = bundle ? bundle.report : await db.one('SELECT id, companyId, status, cycle, currentRound FROM reports WHERE id = ?', qr.reportId);
   const files = bundle
     ? get('files', qr.id, [])
     : await db.all(
-        `SELECT qrf.id, qrf.fileId, f.companyId, f.name, f.url, f.fileType
+        `SELECT ${ITEM_FILE_COLUMNS}
            FROM question_report_files qrf JOIN company_files f ON f.id = qrf.fileId
-          WHERE qrf.questionReportId = ? ORDER BY qrf.createdAt`,
+          WHERE qrf.questionReportId = ? AND qrf.removedAt IS NULL ORDER BY qrf.createdAt`,
         qr.id,
       );
-  const evidences = bundle
-    ? get('evidences', qr.id, [])
-    : await db.all('SELECT id, name, url, fileType FROM evidences WHERE questionReportId = ? ORDER BY createdAt', qr.id);
-  const selected = qr.selectedAnswerId
-    ? bundle
-      ? get('answersById', qr.selectedAnswerId)
-      : await db.one('SELECT * FROM answers WHERE id = ?', qr.selectedAnswerId)
-    : null;
+  const evidences = !showAudit
+    ? []
+    : bundle
+      ? get('evidences', qr.id, [])
+      : await db.all('SELECT id, name, url, fileType, sizeBytes, round, createdAt FROM evidences WHERE questionReportId = ? ORDER BY createdAt', qr.id);
+  const answerById = async (id) =>
+    !id ? null : bundle ? get('answersById', id) : await db.one('SELECT * FROM answers WHERE id = ?', id);
+  const selected = await answerById(qr.selectedAnswerId);
+  const audited = showAudit ? await answerById(qr.auditedAnswerId) : null;
+  const na = bundle
+    ? get('na', qr.id, null)
+    : await db.one(
+        'SELECT * FROM na_requests WHERE questionReportId = ? AND withdrawnAt IS NULL ORDER BY requestedAt DESC LIMIT 1',
+        qr.id,
+      );
   const personOf = async (id) => (!id ? null : bundle ? get('people', id) : await db.one('SELECT * FROM users WHERE id = ?', id));
   // Sequencial de propósito: dentro de uma transação todas as consultas compartilham a mesma
   // conexão, e a ordem importa para não concorrer com o comando em curso.
@@ -208,6 +254,7 @@ async function questionReport(qr, bundle = null) {
   const answerer = await personOf(qr.answererId);
   const assignedBy = await personOf(qr.assignedById);
   const answeredBy = await personOf(qr.answeredById);
+  const auditedBy = showAudit ? await personOf(qr.auditedById) : null;
 
   return {
     id: qr.id,
@@ -228,13 +275,42 @@ async function questionReport(qr, bundle = null) {
     answeredByRole: qr.answeredByRole ?? null,
     answeredAt: qr.answeredAt ?? null,
     selectedAnswer: answer(selected),
+    // Estado da declaração da empresa (rascunho × enviada) e versões, para revisão e concorrência.
+    answerState: qr.answerState ?? 'empty',
+    answerVersion: qr.answerVersion ?? 0,
+    reviewedAnswerVersion: qr.reviewedAnswerVersion ?? null,
+    lockVersion: qr.lockVersion ?? 1,
+    round: qr.round ?? 1,
+    draftUpdatedAt: qr.draftUpdatedAt ?? null,
+    submittedAt: qr.submittedAt ?? null,
+    submittedByRole: qr.submittedByRole ?? null,
+    naRequest: na
+      ? {
+          id: na.id,
+          justification: na.justification ?? null,
+          requestedAt: na.requestedAt,
+          requestedByRole: na.requestedByRole ?? null,
+          // A decisão do auditor fica com a auditoria até a aprovação.
+          decision: showAudit ? na.decision ?? null : na.decision ? 'decidido' : null,
+          decisionReason: showAudit ? na.decisionReason ?? null : null,
+          decidedAt: showAudit ? na.decidedAt ?? null : null,
+        }
+      : null,
+    // Enquadramento auditado: registro separado da declaração, com autor e versão analisada.
+    audit: showAudit
+      ? {
+          auditedAnswer: answer(audited),
+          conclusion: qr.auditConclusion ?? null,
+          justification: qr.auditJustification ?? null,
+          answerVersion: qr.auditedAnswerVersion ?? null,
+          valid: qr.auditedAnswerVersion != null && qr.auditedAnswerVersion === qr.answerVersion,
+          auditedBy: brief(auditedBy),
+          auditedAt: qr.auditedAt ?? null,
+        }
+      : null,
     question: await question(q, bundle ? bundle.answersByQuestion : null),
     report: rep,
-    files: files.map((f) => ({
-      id: f.id,
-      fileId: f.fileId,
-      file: { id: f.fileId, companyId: f.companyId, name: f.name, url: f.url, fileType: f.fileType },
-    })),
+    files: files.map(itemFile),
     evidences,
     createdAt: qr.createdAt,
     updatedAt: qr.updatedAt,
@@ -293,4 +369,6 @@ module.exports = {
   question,
   questionReport,
   reportDetail,
+  itemFile,
+  ITEM_FILE_COLUMNS,
 };

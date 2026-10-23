@@ -12,7 +12,7 @@ const policies = require('./policies');
 async function loadCycleItems(reportId) {
   const items = await db.all(
     `SELECT qr.id, qr.questionId, qr.status, qr.selectedAnswerId, qr.auditedAnswerId, qr.auditConclusion,
-            qr.auditedSource, qr.nonApplicable,
+            qr.auditedSource, qr.nonApplicable, qr.answerState,
             q.code, q.codeOriginal, q.title, q.section, q.category AS axis, q.maxPoints, q.mandatoryAnswerId,
             q.hasMandatory
        FROM question_reports qr JOIN questions q ON q.id = qr.questionId
@@ -48,7 +48,9 @@ async function loadCycleItems(reportId) {
     const levels = byQuestion.get(item.questionId) || [];
     const byId = new Map(levels.map((level) => [level.id, level]));
     const minimum = item.mandatoryAnswerId ? byId.get(item.mandatoryAnswerId) : levels.find((level) => level.mandatory === 1);
-    const declaredLevel = item.selectedAnswerId ? byId.get(item.selectedAnswerId) : null;
+    // Rascunho não é declaração: só a versão enviada conta. Itens herdados (sem estado de
+    // rascunho registrado) mantêm a resposta que já tinham.
+    const declaredLevel = item.selectedAnswerId && item.answerState !== 'draft' ? byId.get(item.selectedAnswerId) : null;
     const auditedLevel = item.auditedAnswerId ? byId.get(item.auditedAnswerId) : null;
 
     /**

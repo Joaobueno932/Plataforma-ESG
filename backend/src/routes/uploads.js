@@ -7,6 +7,7 @@ const db = require('../db');
 const { badRequest, conflict, notFound, forbidden, asyncRouter } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
+const files = require('../files');
 
 const router = asyncRouter();
 
@@ -30,22 +31,39 @@ router.post('/uploads/sectorCovers', authenticate, authz.authorize('catalog.mana
   res.status(201).json({ filePath: `static/sectorCovers/${name}` });
 });
 
+const FILE_KINDS = ['evidencia', 'cadastral'];
+
+function parseValidity(body) {
+  const indefinite = String(body.indefiniteValidity ?? '') === 'true';
+  if (indefinite) return { validUntil: null, indefinite: 1 };
+  if (!body.validUntil) return { validUntil: null, indefinite: 0 };
+  const parsed = new Date(body.validUntil);
+  if (Number.isNaN(parsed.getTime())) throw badRequest('validade inválida; use AAAA-MM-DD ou marque prazo indeterminado');
+  return { validUntil: parsed.toISOString(), indefinite: 0 };
+}
+
 /**
- * Arquivo de evidência da empresa.
+ * Arquivo da empresa (evidência ou documento cadastral) ou da auditoria.
  *
  * O campo `companyId` pode trazer o id do indicador (comportamento do front original), então a
  * empresa é resolvida antes da autorização. A partir daqui o envio obedece ao escopo: perfil com
- * vínculo, ciclo em preenchimento e, para colaborador, apenas indicador atribuído. O auditor não
- * envia arquivo em nome da empresa — a evidência da auditoria é registrada na avaliação do item.
+ * vínculo, ciclo em preenchimento e, para colaborador, apenas indicador atribuído.
+ *
+ * O auditor designado envia arquivo **da auditoria** (`kind = auditoria`), com autoria própria
+ * e visibilidade restrita: ele não envia em nome da empresa.
+ *
+ * Campos opcionais: `description`, `validUntil` (AAAA-MM-DD) ou `indefiniteValidity=true`,
+ * `kind` (evidencia | cadastral) e `replacesFileId` (nova versão de um arquivo existente).
  */
 router.post('/uploads/companyFile', authenticate, memory(config.maxCompanyFileBytes), async (req, res) => {
   if (!req.file) throw badRequest('arquivo é obrigatório');
-  const informed = (req.body || {}).companyId;
+  const body = req.body || {};
+  const informed = body.questionReportId || body.companyId;
   let companyId = informed;
   let questionReport = null;
-  if (!await db.one('SELECT id FROM companies WHERE id = ? AND deletedAt IS NULL', companyId)) {
+  if (!(await db.one('SELECT id FROM companies WHERE id = ? AND deletedAt IS NULL', companyId))) {
     questionReport = await db.one(
-      `SELECT qr.id, qr.answererId, r.companyId, r.status
+      `SELECT qr.id, qr.reportId, qr.answererId, r.companyId, r.status
          FROM question_reports qr JOIN reports r ON r.id = qr.reportId WHERE qr.id = ?`,
       informed,
     );
@@ -54,10 +72,12 @@ router.post('/uploads/companyFile', authenticate, memory(config.maxCompanyFileBy
   }
 
   const auditorScope = questionReport
-    ? await authz.can(req.principal, 'audit.evaluate', { companyId, reportId: await db.one('SELECT reportId FROM question_reports WHERE id = ?', questionReport.id).reportId })
+    ? await authz.can(req.principal, 'audit.evaluate', { companyId, reportId: questionReport.reportId })
     : { ok: false };
-  if (auditorScope.ok) {
-    req.actorRole = auditorScope.role; // evidência da auditoria
+  const asAuditor = auditorScope.ok;
+  if (asAuditor) {
+    req.actorRole = auditorScope.role;
+    if (questionReport.status !== 'Auditing') throw forbidden('o envio de arquivos da auditoria só ocorre com o ciclo em auditoria');
   } else {
     await authz.assertCan(req, 'cycle.attach', { companyId });
     if (questionReport) authz.assertItemScope(req, questionReport, { write: true });
@@ -66,26 +86,70 @@ router.post('/uploads/companyFile', authenticate, memory(config.maxCompanyFileBy
       throw forbidden('o ciclo está bloqueado para envio de arquivos; solicite o retorno do processo');
   }
 
-  const name = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+  let name = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
   if (!SAFE_NAME.test(name)) throw badRequest('o nome do arquivo contém caracteres não permitidos');
   if (BLOCKED_EXTENSIONS.has(path.extname(name).toLowerCase())) throw badRequest('tipo de arquivo não permitido');
-  const url = `uploads/companyFiles/${companyId}/${name}`;
+  const checked = files.inspect(name, req.file.buffer);
+  if (!checked.ok) throw badRequest(checked.reason);
+
+  const kind = asAuditor ? 'auditoria' : FILE_KINDS.includes(body.kind) ? body.kind : 'evidencia';
+  const description = String(body.description ?? '').trim().slice(0, 500) || null;
+  const { validUntil, indefinite } = parseValidity(body);
+
+  // Nova versão: o arquivo anterior continua existindo (versões enviadas apontam para ele).
+  let version = 1;
+  let replacesFileId = null;
+  if (body.replacesFileId) {
+    const previous = await db.one('SELECT id, name, version, kind FROM company_files WHERE id = ? AND companyId = ?', body.replacesFileId, companyId);
+    if (!previous) throw badRequest('arquivo a substituir não encontrado');
+    if (previous.kind === 'auditoria' && !asAuditor) throw forbidden('arquivos da auditoria não são substituídos pela empresa');
+    version = (previous.version || 1) + 1;
+    replacesFileId = previous.id;
+    if (name === previous.name || (await db.one('SELECT id FROM company_files WHERE companyId = ? AND name = ?', companyId, name)))
+      name = files.versionedName(previous.name, version);
+  }
   if (await db.one('SELECT id FROM company_files WHERE companyId = ? AND name = ?', companyId, name))
     throw conflict('já existe um arquivo com esse nome');
+
+  const url = `uploads/companyFiles/${companyId}/${name}`;
   const dir = path.join(config.uploadsDir, 'companyFiles', companyId);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, name), req.file.buffer);
-  await db.run(
-    'INSERT INTO company_files (id, companyId, name, url, fileType, inGed, createdAt) VALUES (?, ?, ?, ?, ?, 0, ?)',
-    db.uuid(),
-    companyId,
-    name,
-    url,
-    req.file.mimetype,
-    db.now(),
-  );
-  await authz.audit(req, 'file.upload', { entity: 'company_files', entityId: name, companyId });
-  res.status(201).json({ fileType: req.file.mimetype, name, url });
+  const diskPath = path.join(dir, name);
+  // Grava em arquivo temporário e renomeia: um envio interrompido não deixa arquivo pela metade.
+  const temp = `${diskPath}.${process.pid}.${Date.now()}.part`;
+  fs.writeFileSync(temp, req.file.buffer);
+  const id = db.uuid();
+  try {
+    fs.renameSync(temp, diskPath);
+    await db.run(
+      `INSERT INTO company_files (id, companyId, name, url, fileType, sizeBytes, sha256, description, validUntil, indefiniteValidity,
+                                  uploadedById, uploadedByRole, version, replacesFileId, kind, visibility, inGed, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+      id,
+      companyId,
+      name,
+      url,
+      checked.mime,
+      req.file.size,
+      files.sha256(req.file.buffer),
+      description,
+      validUntil,
+      indefinite,
+      req.principal.user.id,
+      req.actorRole || null,
+      version,
+      replacesFileId,
+      kind,
+      asAuditor ? 'auditoria' : 'empresa',
+      db.now(),
+    );
+  } catch (err) {
+    fs.rmSync(temp, { force: true });
+    fs.rmSync(diskPath, { force: true });
+    throw err;
+  }
+  await authz.audit(req, 'file.upload', { entity: 'company_files', entityId: id, companyId, details: { name, kind, version, sizeBytes: req.file.size } });
+  res.status(201).json({ id, fileType: checked.mime, name, url, sizeBytes: req.file.size, kind, version, description, validUntil, indefiniteValidity: !!indefinite });
 });
 
 /**
@@ -115,6 +179,10 @@ router.get('/uploads/companyFiles/:companyId/:name', authenticate, async (req, r
     req.actorRole = req.principal.roles.includes('AUDITOR') ? 'AUDITOR' : 'SUPERVISOR';
   }
 
+  // Arquivo da auditoria: só auditoria, supervisão e Administração.
+  if (file.visibility === 'auditoria' && !['AUDITOR', 'SUPERVISOR', 'ADMIN'].includes(req.actorRole))
+    throw forbidden('este arquivo pertence ao registro da auditoria');
+
   if (req.actorRole === 'EMPLOYEE' && !file.inGed) {
     const linked = await db.one(
       `SELECT qrf.id FROM question_report_files qrf JOIN question_reports qr ON qr.id = qrf.questionReportId
@@ -127,6 +195,9 @@ router.get('/uploads/companyFiles/:companyId/:name', authenticate, async (req, r
 
   const diskPath = path.join(config.uploadsDir, 'companyFiles', companyId, name);
   if (!fs.existsSync(diskPath)) throw notFound('arquivo não encontrado');
+  // Sempre como anexo e sem adivinhação de tipo: o navegador não executa o conteúdo.
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Cache-Control', 'private, no-store');
   res.download(diskPath, name);
 });
 

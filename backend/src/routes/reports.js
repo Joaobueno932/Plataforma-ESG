@@ -1,4 +1,3 @@
-const express = require('express');
 const db = require('../db');
 const ser = require('../serializers');
 const { badRequest, forbidden, notFound, conflict, asyncRouter } = require('../http');
@@ -6,13 +5,16 @@ const { authenticate } = require('../auth');
 const authz = require('../authz');
 const { loadQuestionReport, currentCycle } = require('../services');
 const scoring = require('../scoring');
+const workflow = require('../workflow');
 
 const router = asyncRouter();
 router.use(['/reports', '/auditory'], authenticate);
 
-const APPROVED_FOR_AUDIT = ['ApprovedByManager', 'ApprovedByConsultor'];
-const AUDIT_FINAL = ['Approved', 'Rejected'];
 const trim = (value) => String(value ?? '').trim();
+
+/** Perfis do lado da empresa: não veem o trabalho da auditoria antes da aprovação. */
+const COMPANY_SIDE = ['MANAGER', 'EMPLOYEE', 'CONSULTOR'];
+const showAuditFor = (role, report) => !COMPANY_SIDE.includes(role) || report.status === workflow.CYCLE.AUDITED;
 
 /* ------------------------------------------------------------------ carregamento */
 
@@ -35,19 +37,23 @@ async function loadItems(report, { onlyAnswererId = null } = {}) {
   const questions = await db.all(`SELECT * FROM questions WHERE id IN (${marks(questionIds)})`, ...questionIds);
   const answers = await db.all(`SELECT * FROM answers WHERE questionId IN (${marks(questionIds)}) ORDER BY position, id`, ...questionIds);
   const files = await db.all(
-    `SELECT qrf.id, qrf.questionReportId, qrf.fileId, f.companyId, f.name, f.url, f.fileType
+    `SELECT ${ser.ITEM_FILE_COLUMNS}
        FROM question_report_files qrf JOIN company_files f ON f.id = qrf.fileId
-      WHERE qrf.questionReportId IN (${marks(ids)}) ORDER BY qrf.createdAt`,
+      WHERE qrf.questionReportId IN (${marks(ids)}) AND qrf.removedAt IS NULL ORDER BY qrf.createdAt`,
     ...ids,
   );
   const evidences = await db.all(
-    `SELECT id, questionReportId, name, url, fileType FROM evidences
+    `SELECT id, questionReportId, name, url, fileType, sizeBytes, round, createdAt FROM evidences
       WHERE questionReportId IN (${marks(ids)}) ORDER BY createdAt`,
+    ...ids,
+  );
+  const naRows = await db.all(
+    `SELECT * FROM na_requests WHERE questionReportId IN (${marks(ids)}) AND withdrawnAt IS NULL ORDER BY requestedAt`,
     ...ids,
   );
   const peopleIds = [
     ...new Set(
-      items.flatMap((i) => [i.answererId, i.redflagIssuerId, i.assignedById, i.answeredById]).filter(Boolean),
+      items.flatMap((i) => [i.answererId, i.redflagIssuerId, i.assignedById, i.answeredById, i.auditedById]).filter(Boolean),
     ),
   ];
   const people = peopleIds.length
@@ -66,12 +72,13 @@ async function loadItems(report, { onlyAnswererId = null } = {}) {
   return {
     items,
     bundle: {
-      report: { id: report.id, companyId: report.companyId, status: report.status, cycle: report.cycle },
+      report: { id: report.id, companyId: report.companyId, status: report.status, cycle: report.cycle, currentRound: report.currentRound },
       questions: new Map(questions.map((q) => [q.id, q])),
       answersByQuestion: group(answers, 'questionId'),
       answersById: new Map(answers.map((a) => [a.id, a])),
       files: group(files, 'questionReportId'),
       evidences: group(evidences, 'questionReportId'),
+      na: new Map(naRows.map((row) => [row.questionReportId, row])), // o último pedido vale
       people: new Map(people.map((p) => [p.id, p])),
     },
   };
@@ -99,79 +106,22 @@ async function assertCycleRead(req, report) {
   return professional.role;
 }
 
-/** Ações da empresa exigem ciclo aberto: depois do envio, só um retorno registrado reabre. */
-function assertOpenCycle(report) {
-  if (!authz.isOpenCycle(report))
-    throw forbidden(
-      'o ciclo está bloqueado para edição; a empresa deve solicitar o retorno do processo ao consultor ou à Administração',
-    );
+/** Item serializado conforme quem está lendo. */
+async function itemView(req, id) {
+  const qr = await db.one('SELECT * FROM question_reports WHERE id = ?', id);
+  const report = await reportById(qr.reportId);
+  return ser.questionReport(qr, null, { showAudit: showAuditFor(req.actorRole, report) });
 }
 
-const touch = async (qrId, fields) => {
-  const keys = Object.keys(fields);
-  await db.run(
-    `UPDATE question_reports SET ${keys.map((k) => `${k} = ?`).join(', ')}, updatedAt = ? WHERE id = ?`,
-    ...keys.map((k) => fields[k]),
-    db.now(),
-    qrId,
-  );
-};
-
-async function setRedflag(qrId, text, userId) {
-  await db.run(
-    'UPDATE question_reports SET redflag = ?, redflag_date = ?, redflagIssuerId = ?, updatedAt = ? WHERE id = ?',
-    text,
-    db.now(),
-    userId,
-    db.now(),
-    qrId,
-  );
+/** Autorização das ações da empresa sobre um indicador (resposta, rascunho e anexos). */
+async function assertItemWrite(req, id, action = 'cycle.answer') {
+  const { qr, report } = await loadQuestionReport(id);
+  const role = await authz.assertCan(req, action, { companyId: report.companyId });
+  authz.assertItemScope(req, qr, { write: true });
+  return { qr, report, role };
 }
 
-/** Fotografa a resposta de cada indicador do ciclo: a versão analisada fica preservada. */
-async function snapshotRound(report, reason) {
-  const items = await db.all('SELECT * FROM question_reports WHERE reportId = ?', report.id);
-  for (const item of items) {
-    const files = (await db.all('SELECT fileId FROM question_report_files WHERE questionReportId = ?', item.id)).map((f) => f.fileId);
-    await db.run(
-      `INSERT INTO item_answer_versions (id, questionReportId, reportId, round, status, selectedAnswerId, answerText,
-                                         nonApplicable, answeredById, answeredByRole, answeredAt, files, snapshotAt, snapshotReason)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      db.uuid(),
-      item.id,
-      report.id,
-      report.currentRound || 1,
-      item.status,
-      item.selectedAnswerId,
-      item.answerText,
-      item.nonApplicable,
-      item.answeredById,
-      item.answeredByRole,
-      item.answeredAt,
-      JSON.stringify(files),
-      db.now(),
-      reason,
-    );
-  }
-  return items.length;
-}
-
-async function openRound(report, req, reason) {
-  const round = (report.currentRound || 1) + 1;
-  await db.run('UPDATE cycle_rounds SET closedAt = ? WHERE reportId = ? AND round = ? AND closedAt IS NULL', db.now(), report.id, report.currentRound || 1);
-  await db.run(
-    'INSERT INTO cycle_rounds (id, reportId, round, openedAt, openedById, openedByRole, reason) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    db.uuid(),
-    report.id,
-    round,
-    db.now(),
-    req.principal.user.id,
-    req.actorRole,
-    reason,
-  );
-  await db.run('UPDATE reports SET currentRound = ?, updatedAt = ? WHERE id = ?', round, db.now(), report.id);
-  return round;
-}
+const lockVersionOf = (body) => (body && body.expectedLockVersion !== undefined ? body.expectedLockVersion : undefined);
 
 /* ------------------------------------------------------------------ leitura */
 
@@ -182,20 +132,152 @@ router.get(['/reports/company/questions', '/reports/company/questions/:reportId'
   const role = await assertCycleRead(req, report);
   // Colaborador: somente os indicadores atribuídos a ele (filtro no servidor, não na tela).
   const { items, bundle } = await loadItems(report, { onlyAnswererId: role === 'EMPLOYEE' ? req.principal.user.id : null });
-  res.json(await Promise.all(items.map((item) => ser.questionReport(item, bundle))));
+  const showAudit = showAuditFor(role, report);
+  res.json(await Promise.all(items.map((item) => ser.questionReport(item, bundle, { showAudit }))));
 });
 
 router.get('/reports/questionReports/:id', async (req, res) => {
   const { qr, report } = await loadQuestionReport(req.params.id);
+  const role = await assertCycleRead(req, report);
+  authz.assertItemScope(req, qr);
+  res.json(await ser.questionReport(qr, null, { showAudit: showAuditFor(role, report) }));
+});
+
+/**
+ * Histórico do indicador: versões enviadas, revisões e decisões (cada uma presa à versão
+ * analisada), comentários, pedidos de NA, pendências e arquivos — inclusive desvinculados.
+ */
+router.get('/reports/questionReports/:id/history', async (req, res) => {
+  const { qr, report } = await loadQuestionReport(req.params.id);
+  const role = await assertCycleRead(req, report);
+  authz.assertItemScope(req, qr);
+  const showAudit = showAuditFor(role, report);
+  const people = async (rows, key) => {
+    const ids = [...new Set(rows.map((r) => r[key]).filter(Boolean))];
+    if (!ids.length) return new Map();
+    const found = await db.all(`SELECT id, name, email FROM users WHERE id IN (${ids.map(() => '?').join(', ')})`, ...ids);
+    return new Map(found.map((p) => [p.id, { id: p.id, name: p.name, email: p.email }]));
+  };
+
+  const versions = await db.all('SELECT * FROM item_answer_versions WHERE questionReportId = ? ORDER BY snapshotAt', qr.id);
+  const reviews = (
+    await db.all('SELECT * FROM item_reviews WHERE questionReportId = ? ORDER BY reviewedAt', qr.id)
+  ).filter((r) => showAudit || r.kind !== 'audit' || r.decision === 'complement');
+  const comments = (await db.all('SELECT * FROM item_comments WHERE questionReportId = ? ORDER BY createdAt', qr.id)).filter(
+    (c) => showAudit || c.visibility !== 'auditoria',
+  );
+  const naRequests = await db.all('SELECT * FROM na_requests WHERE questionReportId = ? ORDER BY requestedAt', qr.id);
+  const pendings = await db.all('SELECT * FROM pendings WHERE questionReportId = ? ORDER BY createdAt', qr.id);
+  const files = await db.all(
+    `SELECT ${ser.ITEM_FILE_COLUMNS}, qrf.removedAt
+       FROM question_report_files qrf JOIN company_files f ON f.id = qrf.fileId
+      WHERE qrf.questionReportId = ? ORDER BY qrf.createdAt`,
+    qr.id,
+  );
+  const reviewers = await people(reviews, 'reviewedById');
+  const authors = await people(comments, 'authorId');
+  const answeredBy = await people(versions, 'answeredById');
+
+  res.json({
+    id: qr.id,
+    answerVersion: qr.answerVersion,
+    answerState: qr.answerState,
+    lockVersion: qr.lockVersion,
+    versions: versions.map((v) => ({
+      ...v,
+      nonApplicable: ser.bool(v.nonApplicable),
+      files: JSON.parse(v.files || '[]'),
+      answeredBy: answeredBy.get(v.answeredById) || null,
+    })),
+    reviews: reviews.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      round: r.round,
+      answerVersion: r.answerVersion,
+      decision: r.decision,
+      auditedAnswerId: r.auditedAnswerId,
+      conclusion: r.conclusion,
+      comment: r.comment,
+      reviewedBy: reviewers.get(r.reviewedById) || null,
+      reviewedByRole: r.reviewedByRole,
+      reviewedAt: r.reviewedAt,
+      // Revisão de versão anterior permanece no histórico, mas não vale para a resposta atual.
+      current: !r.supersededAt && r.answerVersion === qr.answerVersion,
+      supersededAt: r.supersededAt,
+      supersededReason: r.supersededReason,
+    })),
+    comments: comments.map((c) => ({ ...c, author: authors.get(c.authorId) || null })),
+    naRequests: naRequests.map((n) => ({
+      id: n.id,
+      round: n.round,
+      justification: n.justification,
+      requestedAt: n.requestedAt,
+      requestedByRole: n.requestedByRole,
+      withdrawnAt: n.withdrawnAt,
+      decision: showAudit ? n.decision : n.decision ? 'decidido' : null,
+      decisionReason: showAudit ? n.decisionReason : null,
+      decidedAt: showAudit ? n.decidedAt : null,
+    })),
+    pendings,
+    files: files.map((f) => ({ ...ser.itemFile(f), removedAt: f.removedAt ?? null })),
+  });
+});
+
+/**
+ * Versões enviadas de um indicador (uma por envio, em ordem). As fotografias da liberação e do
+ * retorno ficam no histórico completo (`/history`).
+ */
+router.get('/reports/questionReports/:id/versions', async (req, res) => {
+  const { qr, report } = await loadQuestionReport(req.params.id);
   await assertCycleRead(req, report);
   authz.assertItemScope(req, qr);
-  res.json(await ser.questionReport(qr));
+  res.json(
+    (
+      await db.all(
+        "SELECT * FROM item_answer_versions WHERE questionReportId = ? AND snapshotReason = 'submit' ORDER BY answerVersion, snapshotAt",
+        qr.id,
+      )
+    ).map((v) => ({ ...v, nonApplicable: ser.bool(v.nonApplicable), files: JSON.parse(v.files || '[]') })),
+  );
 });
 
 router.get('/reports/:reportId', async (req, res) => {
   const report = await reportById(req.params.reportId);
   await assertCycleRead(req, report);
   res.json(await ser.reportDetail(report));
+});
+
+/**
+ * Situação do fluxo: o que impede liberar ou concluir, para a interface não oferecer uma ação
+ * que a API vai recusar.
+ */
+router.get('/reports/:reportId/workflow', async (req, res) => {
+  const report = await reportById(req.params.reportId);
+  const role = await assertCycleRead(req, report);
+  const items = await db.all(
+    `SELECT qr.*, q.code FROM question_reports qr JOIN questions q ON q.id = qr.questionId WHERE qr.reportId = ? ORDER BY q.position, q.code`,
+    report.id,
+  );
+  const visible = role === 'EMPLOYEE' ? items.filter((i) => i.answererId === req.principal.user.id) : items;
+  const releaseBlockers = visible.map((i) => ({ id: i.id, code: i.code, reason: workflow.releaseBlocker(i) })).filter((b) => b.reason);
+  const professionals = await db.all('SELECT role FROM cycle_professionals WHERE reportId = ? AND revokedAt IS NULL', report.id);
+  res.json({
+    reportId: report.id,
+    status: report.status,
+    round: report.currentRound || 1,
+    lockVersion: report.lockVersion,
+    locked: report.status !== workflow.CYCLE.FILLING,
+    auditRequestedAt: report.auditRequestedAt ?? null,
+    professionals: { auditor: professionals.some((p) => p.role === 'AUDITOR'), supervisor: professionals.some((p) => p.role === 'SUPERVISOR') },
+    counts: {
+      total: visible.length,
+      submitted: visible.filter((i) => i.answerState === 'submitted').length,
+      drafts: visible.filter((i) => i.answerState === 'draft').length,
+      empty: visible.filter((i) => i.answerState === 'empty').length,
+    },
+    releaseBlockers,
+    auditBlockers: showAuditFor(role, report) && report.status === workflow.CYCLE.AUDITING ? await workflow.auditBlockers(report) : [],
+  });
 });
 
 /** Ciclos da empresa (histórico e relação entre eles). */
@@ -209,15 +291,13 @@ router.get('/reports/company/:companyId/cycles', async (req, res) => {
  *
  * `mode=audited` é a conclusão da auditoria; `mode=self` é o autodiagnóstico da empresa, sempre
  * preliminar. Antes da aprovação, a empresa acompanha o andamento (`self`) — o resultado
- * auditado fica restrito a quem conduz o processo, conforme a decisão de só apresentar
- * resultado à empresa depois da aprovação.
+ * auditado fica restrito a quem conduz o processo.
  */
 router.get('/reports/:reportId/result', async (req, res) => {
   const report = await reportById(req.params.reportId);
   const role = await assertCycleRead(req, report);
   const mode = (req.query.mode || 'audited') === 'self' ? 'self' : 'audited';
-  const companyRole = ['MANAGER', 'EMPLOYEE'].includes(role);
-  if (mode === 'audited' && companyRole && report.status !== 'Audited')
+  if (mode === 'audited' && COMPANY_SIDE.includes(role) && report.status !== workflow.CYCLE.AUDITED)
     throw forbidden(
       'o resultado auditado fica disponível para a empresa após a aprovação do supervisor; use mode=self para acompanhar o andamento',
     );
@@ -232,116 +312,96 @@ router.get('/reports/:reportId/result/history', async (req, res) => {
   res.json(await scoring.storedHistory(report.id));
 });
 
-/** Versões preservadas de um indicador (o que foi submetido em cada rodada). */
-router.get('/reports/questionReports/:id/versions', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
-  await assertCycleRead(req, report);
-  authz.assertItemScope(req, qr);
-  res.json(
-    (await db.all('SELECT * FROM item_answer_versions WHERE questionReportId = ? ORDER BY round, snapshotAt', qr.id)).map((v) => ({
-      ...v,
-      nonApplicable: ser.bool(v.nonApplicable),
-      files: JSON.parse(v.files || '[]'),
-    })),
-  );
+/* ------------------------------------------------------------------ preenchimento */
+
+/** Arquivos citados no corpo antigo (`filesToCreate` por url, `filesToAdd` por id). */
+async function fileIdsFromLegacy(body, report) {
+  const ids = [];
+  for (const f of Array.isArray(body.filesToCreate) ? body.filesToCreate : []) {
+    const file = await db.one('SELECT id FROM company_files WHERE companyId = ? AND url = ?', report.companyId, f && f.url);
+    if (file) ids.push(file.id); // o upload (POST /uploads/companyFile) já registrou o arquivo
+  }
+  for (const id of Array.isArray(body.filesToAdd) ? body.filesToAdd : []) ids.push(id);
+  for (const id of Array.isArray(body.fileIds) ? body.fileIds : []) ids.push(id);
+  return [...new Set(ids)];
+}
+
+/** Rascunho: grava sem enviar para revisão. */
+router.patch('/reports/questionReports/:id/draft', async (req, res) => {
+  const { report } = await assertItemWrite(req, req.params.id);
+  const b = req.body || {};
+  await workflow.saveDraft(req, req.params.id, {
+    answerId: b.answerId,
+    answerText: b.answerText,
+    fileIds: await fileIdsFromLegacy(b, report),
+    removeFileIds: b.removeFileIds,
+    naRequest: b.naRequest,
+    expectedLockVersion: lockVersionOf(b),
+  });
+  res.json(await itemView(req, req.params.id));
 });
 
-/* ------------------------------------------------------------------ resposta */
+/** Envio da versão atual para revisão do gestor/consultor. */
+router.post('/reports/questionReports/:id/submit', async (req, res) => {
+  await assertItemWrite(req, req.params.id);
+  await workflow.submit(req, req.params.id, { expectedLockVersion: lockVersionOf(req.body) });
+  res.status(201).json(await itemView(req, req.params.id));
+});
 
+/**
+ * Rota herdada: grava e envia em um passo (o formulário antigo não tinha rascunho). Com
+ * `draft: true` apenas salva. "Não se aplica" vira **pedido** à auditoria, com justificativa.
+ */
 router.patch('/reports/answerQuestion/:id', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
-  const role = await authz.assertCan(req, 'cycle.answer', { companyId: report.companyId });
-  authz.assertItemScope(req, qr, { write: true });
-  await assertOpenCycle(report);
-
+  const { report } = await assertItemWrite(req, req.params.id);
   const b = req.body || {};
   const nonApplicable = !!b.nonApplicable;
-  if (!nonApplicable) {
-    if (!b.answerId) throw badRequest('selecione uma resposta');
-    if (!await db.one('SELECT id FROM answers WHERE id = ? AND questionId = ?', b.answerId, qr.questionId))
-      throw badRequest('resposta inválida para este indicador');
-  }
-  await db.transaction(async () => {
-    for (const f of Array.isArray(b.filesToCreate) ? b.filesToCreate : []) {
-      const file = await db.one('SELECT id FROM company_files WHERE companyId = ? AND url = ?', report.companyId, f.url);
-      if (!file) continue; // o upload (POST /uploads/companyFile) já registrou o arquivo
-      if (b.addToGed) await db.run('UPDATE company_files SET inGed = 1 WHERE id = ?', file.id);
-      await linkFile(qr.id, file.id, req);
-    }
-    for (const fileId of Array.isArray(b.filesToAdd) ? b.filesToAdd : []) {
-      if (!await db.one('SELECT id FROM company_files WHERE id = ? AND companyId = ?', fileId, report.companyId)) continue;
-      await linkFile(qr.id, fileId, req);
-    }
-    await touch(qr.id, {
-      selectedAnswerId: nonApplicable ? null : b.answerId,
-      answerText: b.answerText ?? null,
-      nonApplicable: nonApplicable ? 1 : 0,
-      nonCompliant: b.nonCompliant ? 1 : 0,
-      answererId: qr.answererId || req.principal.user.id,
-      answeredById: req.principal.user.id,
-      answeredByRole: role,
-      answeredAt: db.now(),
-      status: 'PendingValidationByManager',
-    });
-    await authz.audit(req, 'item.answer', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId, details: { round: report.currentRound || 1 } });
+  if (!nonApplicable && !b.answerId && !b.draft) throw badRequest('selecione uma resposta');
+  const fileIds = await fileIdsFromLegacy(b, report);
+  await workflow.saveDraft(req, req.params.id, {
+    answerId: nonApplicable ? null : b.answerId,
+    answerText: b.answerText ?? null,
+    fileIds,
+    naRequest: nonApplicable ? { justification: b.naJustification ?? b.answerText ?? '' } : undefined,
+    expectedLockVersion: lockVersionOf(b),
   });
-  res.json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  if (b.addToGed && fileIds.length)
+    await db.run(`UPDATE company_files SET inGed = 1 WHERE companyId = ? AND id IN (${fileIds.map(() => '?').join(', ')})`, report.companyId, ...fileIds);
+  if (!b.draft) await workflow.submit(req, req.params.id);
+  res.json(await itemView(req, req.params.id));
 });
-
-async function linkFile(questionReportId, fileId, req) {
-  if (await db.one('SELECT id FROM question_report_files WHERE questionReportId = ? AND fileId = ?', questionReportId, fileId)) return;
-  await db.run(
-    'INSERT INTO question_report_files (id, questionReportId, fileId, addedById, addedByRole, createdAt) VALUES (?, ?, ?, ?, ?, ?)',
-    db.uuid(),
-    questionReportId,
-    fileId,
-    req.principal.user.id,
-    req.actorRole,
-    db.now(),
-  );
-}
 
 /** Anexa arquivos do GED ao indicador — sujeito ao mesmo bloqueio da resposta (A7). */
 router.patch('/reports/editQuestionReport/:id', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
-  await authz.assertCan(req, 'cycle.attach', { companyId: report.companyId });
-  authz.assertItemScope(req, qr, { write: true });
-  await assertOpenCycle(report);
-  const ids = Array.isArray((req.body || {}).filesToAdd) ? req.body.filesToAdd : [];
-  for (const fileId of ids) {
-    if (!await db.one('SELECT id FROM company_files WHERE id = ? AND companyId = ?', fileId, report.companyId))
-      throw badRequest('arquivo não encontrado no GED da empresa');
-    await linkFile(qr.id, fileId, req);
-  }
-  await authz.audit(req, 'item.attach', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId, details: { files: ids.length } });
-  res.json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  const { report } = await assertItemWrite(req, req.params.id, 'cycle.attach');
+  const ids = await fileIdsFromLegacy(req.body || {}, report);
+  await workflow.attach(req, req.params.id, ids);
+  await authz.audit(req, 'item.attach', { entity: 'question_reports', entityId: req.params.id, companyId: report.companyId, details: { files: ids.length } });
+  res.json(await itemView(req, req.params.id));
 });
 
+/** Desvincula arquivo do indicador (marcação; a versão enviada continua apontando para ele). */
 router.delete('/reports/questionFiles/:id', async (req, res) => {
   const link = await db.one('SELECT * FROM question_report_files WHERE id = ?', req.params.id);
-  if (!link) throw notFound('file not found');
-  const { qr, report } = await loadQuestionReport(link.questionReportId);
-  await authz.assertCan(req, 'cycle.attach', { companyId: report.companyId });
-  authz.assertItemScope(req, qr, { write: true });
-  await assertOpenCycle(report);
-  await db.run('DELETE FROM question_report_files WHERE id = ?', link.id);
+  if (!link || link.removedAt) throw notFound('file not found');
+  const { report } = await assertItemWrite(req, link.questionReportId, 'cycle.attach');
+  await workflow.detach(req, link.id);
   await authz.audit(req, 'item.detach', { entity: 'question_report_files', entityId: link.id, companyId: report.companyId, details: { fileId: link.fileId } });
   res.json({ id: link.id, deleted: true });
 });
 
-/* ------------------------------------------------------------------ validação interna */
+/* ------------------------------------------------------------------ revisão interna */
 
+/**
+ * Revisão do gestor ou do consultor. A aprovação vale para a versão enviada no momento
+ * (`answerVersion`); se a resposta mudar, volta à revisão.
+ */
 router.post('/reports/validateanswer/:id', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
-  const role = await authz.assertCan(req, 'cycle.validate', { companyId: report.companyId });
-  await assertOpenCycle(report);
-  const { veredict, redflag } = req.body || {};
-  if (!veredict && !redflag) throw badRequest('informe um comentário para reprovar');
-  const by = role === 'MANAGER' ? 'Manager' : 'Consultor';
-  await touch(qr.id, { status: `${veredict ? 'Approved' : 'Rejected'}By${by}` });
-  if (redflag) await setRedflag(qr.id, String(redflag), req.principal.user.id);
-  await authz.audit(req, 'item.validate', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId, details: { veredict: !!veredict } });
-  res.status(201).json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  const { report } = await loadQuestionReport(req.params.id);
+  await authz.assertCan(req, 'cycle.validate', { companyId: report.companyId });
+  const { veredict, redflag, comment, answerVersion } = req.body || {};
+  await workflow.review(req, req.params.id, { veredict: !!veredict, comment: comment ?? redflag, answerVersion });
+  res.status(201).json(await itemView(req, req.params.id));
 });
 
 /* ------------------------------------------------------------------ delegação */
@@ -350,7 +410,7 @@ router.post('/reports/validateanswer/:id', async (req, res) => {
 router.patch('/reports/addanswerer/:id', async (req, res) => {
   const { qr, report } = await loadQuestionReport(req.params.id);
   await authz.assertCan(req, 'item.assign', { companyId: report.companyId });
-  await assertOpenCycle(report);
+  if (!authz.isOpenCycle(report)) throw forbidden('o ciclo está bloqueado para edição; a delegação só muda durante o preenchimento');
   const body = req.body || {};
   const userId = body.user || body.userId;
   if (!userId) throw badRequest('informe o responsável');
@@ -368,9 +428,17 @@ router.patch('/reports/addanswerer/:id', async (req, res) => {
     if (Number.isNaN(parsed.getTime())) throw badRequest('prazo inválido');
     dueDate = parsed.toISOString();
   }
-  await touch(qr.id, { answererId: userId, assignedById: req.principal.user.id, assignedAt: db.now(), dueDate });
+  await db.run(
+    'UPDATE question_reports SET answererId = ?, assignedById = ?, assignedAt = ?, dueDate = ?, lockVersion = lockVersion + 1, updatedAt = ? WHERE id = ?',
+    userId,
+    req.principal.user.id,
+    db.now(),
+    dueDate,
+    db.now(),
+    qr.id,
+  );
   await authz.audit(req, 'item.assign', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId, details: { userId, dueDate } });
-  res.json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  res.json(await itemView(req, qr.id));
 });
 
 /* ------------------------------------------------------------------ lembretes */
@@ -381,8 +449,15 @@ router.patch('/reports/redflag/:id', async (req, res) => {
   authz.assertItemScope(req, qr, { write: true });
   const text = trim((req.body || {}).redflag);
   if (!text) throw badRequest('o lembrete não pode ser vazio');
-  await setRedflag(qr.id, text, req.principal.user.id);
-  res.json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  await db.run(
+    'UPDATE question_reports SET redflag = ?, redflag_date = ?, redflagIssuerId = ?, updatedAt = ? WHERE id = ?',
+    text,
+    db.now(),
+    req.principal.user.id,
+    db.now(),
+    qr.id,
+  );
+  res.json(await itemView(req, qr.id));
 });
 
 router.delete('/reports/redflag/:id', async (req, res) => {
@@ -391,30 +466,74 @@ router.delete('/reports/redflag/:id', async (req, res) => {
   authz.assertItemScope(req, qr, { write: true });
   // Observação técnica do auditor não é lembrete da empresa e não pode ser apagada por aqui.
   if (qr.redflagIssuerId) {
-    const issuer = await db.one('SELECT id FROM users WHERE id = ?', qr.redflagIssuerId);
-    const issuerIsAuditor =
-      issuer &&
-      await db.one("SELECT id FROM user_profiles WHERE userId = ? AND role = 'AUDITOR' AND revokedAt IS NULL", issuer.id);
+    const issuerIsAuditor = await db.one(
+      "SELECT id FROM user_profiles WHERE userId = ? AND role = 'AUDITOR' AND revokedAt IS NULL",
+      qr.redflagIssuerId,
+    );
     if (issuerIsAuditor) throw forbidden('a observação registrada pela auditoria não pode ser removida pela empresa');
   }
-  await touch(qr.id, { redflag: null, redflag_date: null, redflagIssuerId: null });
-  res.json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  await db.run('UPDATE question_reports SET redflag = NULL, redflag_date = NULL, redflagIssuerId = NULL, updatedAt = ? WHERE id = ?', db.now(), qr.id);
+  res.json(await itemView(req, qr.id));
 });
 
 /**
  * Reabertura administrativa de um item: permitida apenas enquanto o ciclo está em
- * preenchimento. A Administração não desfaz enquadramento técnico por edição (decisão do
- * responsável); durante a auditoria, o caminho é o retorno registrado do processo.
+ * preenchimento. Durante a auditoria, o caminho é o retorno registrado do processo.
  */
 router.patch('/reports/changeQuestionStatus/:id/:status', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
+  const { report } = await loadQuestionReport(req.params.id);
   await authz.assertCan(req, 'cycle.answer', { companyId: report.companyId });
   if (!req.principal.isAdmin) throw forbidden('ação restrita à Administração');
   if (req.params.status !== 'Pending') throw badRequest('status inválido: a reabertura devolve o item para "Pending"');
-  await assertOpenCycle(report);
-  await touch(qr.id, { status: 'Pending' });
-  await authz.audit(req, 'item.reopen', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId });
-  res.json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  await workflow.reopenItem(req, req.params.id);
+  res.json(await itemView(req, req.params.id));
+});
+
+/* ------------------------------------------------------------------ pendências */
+
+router.get('/reports/:reportId/pendings', async (req, res) => {
+  const report = await reportById(req.params.reportId);
+  const role = await assertCycleRead(req, report);
+  const rows = await db.all(
+    `SELECT p.*, q.code, qr.answererId FROM pendings p
+       LEFT JOIN question_reports qr ON qr.id = p.questionReportId
+       LEFT JOIN questions q ON q.id = qr.questionId
+      WHERE p.reportId = ? ORDER BY p.status = 'aberta' DESC, p.dueDate IS NULL, p.dueDate, p.createdAt`,
+    report.id,
+  );
+  // Colaborador: só as pendências dos seus indicadores ou atribuídas a ele.
+  const visible =
+    role === 'EMPLOYEE'
+      ? rows.filter((p) => p.responsibleId === req.principal.user.id || p.answererId === req.principal.user.id)
+      : rows;
+  const now = new Date();
+  res.json(
+    visible.map(({ answererId, ...p }) => ({
+      ...p,
+      // Prazo vencido é sinalização: não altera pontuação nem reprova.
+      overdue: !!p.dueDate && ['aberta', 'em-andamento'].includes(p.status) && new Date(p.dueDate) < now,
+    })),
+  );
+});
+
+router.post('/reports/:reportId/pendings', async (req, res) => {
+  const report = await reportById(req.params.reportId);
+  await assertCycleRead(req, report);
+  const id = await workflow.createPending(req, report, req.body || {});
+  res.status(201).json(await db.one('SELECT * FROM pendings WHERE id = ?', id));
+});
+
+router.patch('/reports/pendings/:id', async (req, res) => {
+  const pending = await db.one('SELECT * FROM pendings WHERE id = ?', req.params.id);
+  if (!pending) throw notFound('pendência não encontrada');
+  const report = await reportById(pending.reportId);
+  const role = await assertCycleRead(req, report);
+  if (role === 'EMPLOYEE' && pending.responsibleId !== req.principal.user.id) throw forbidden('você não pode alterar esta pendência');
+  await workflow.updatePending(req, pending.id, req.body || {});
+  res.json({
+    ...(await db.one('SELECT * FROM pendings WHERE id = ?', pending.id)),
+    events: await db.all('SELECT * FROM pending_events WHERE pendingId = ? ORDER BY at', pending.id),
+  });
 });
 
 /* ------------------------------------------------------------------ auditoria: solicitar × liberar */
@@ -426,7 +545,7 @@ router.post('/reports/requestAudit/:companyId', async (req, res) => {
   const asManager = await authz.can(req.principal, 'cycle.requestAudit', { companyId: report.companyId });
   if (asManager.ok) role = req.actorRole = asManager.role;
   else role = await authz.assertCan(req, 'cycle.releaseAudit', {}); // Administração também pode registrar a solicitação
-  await assertOpenCycle(report);
+  if (!authz.isOpenCycle(report)) throw forbidden('o ciclo está bloqueado para edição');
   await db.run('UPDATE reports SET auditRequestedAt = ?, auditRequestedById = ?, updatedAt = ? WHERE id = ?', db.now(), req.principal.user.id, db.now(), report.id);
   await authz.audit(req, 'cycle.auditRequested', { entity: 'reports', entityId: report.id, companyId: report.companyId, details: { role } });
   res.status(201).json(await ser.reportDetail(await reportById(report.id)));
@@ -438,33 +557,7 @@ router.post('/reports/requestAudit/:companyId', async (req, res) => {
  */
 router.post(['/reports/releaseAudit/:companyId', '/reports/submit/:companyId'], authz.authorize('cycle.releaseAudit'), async (req, res) => {
   const report = await currentCycle(req.params.companyId);
-  if (!authz.isOpenCycle(report)) throw conflict('o ciclo não está em preenchimento');
-  if (!report.auditRequestedAt) throw badRequest('registre a solicitação de auditoria da empresa antes de liberar o processo');
-  const items = await db.all('SELECT status FROM question_reports WHERE reportId = ?', report.id);
-  // Itens já decididos pelo auditor em rodada anterior permanecem decididos; os demais
-  // precisam da validação interna concluída.
-  const releasable = [...APPROVED_FOR_AUDIT, ...AUDIT_FINAL];
-  if (!items.length || !items.every((i) => releasable.includes(i.status)))
-    throw forbidden('Ainda existem questões que precisam ser aprovadas pelo cosultor.');
-  await db.transaction(async () => {
-    // A versão enviada é fotografada antes de qualquer alteração posterior.
-    await snapshotRound(report, 'audit-release');
-    await db.run(
-      "UPDATE reports SET status = 'Auditing', auditoryStart = ?, auditReleasedAt = ?, auditReleasedById = ?, updatedAt = ? WHERE id = ?",
-      db.now(),
-      db.now(),
-      req.principal.user.id,
-      db.now(),
-      report.id,
-    );
-    await db.run(
-      `UPDATE question_reports SET status = 'Auditing', updatedAt = ?
-        WHERE reportId = ? AND status NOT IN ('Approved', 'Rejected')`,
-      db.now(),
-      report.id,
-    );
-    await authz.audit(req, 'cycle.auditReleased', { entity: 'reports', entityId: report.id, companyId: report.companyId, details: { round: report.currentRound || 1 } });
-  });
+  await workflow.releaseAudit(req, report.id);
   res.status(201).json(await ser.reportDetail(await reportById(report.id)));
 });
 
@@ -540,148 +633,125 @@ router.post('/reports/requestReturn/:companyId', async (req, res) => {
 router.post('/reports/return/:companyId', async (req, res) => {
   const report = await currentCycle(req.params.companyId);
   await authz.assertCan(req, 'cycle.return', { companyId: report.companyId });
-  if (authz.isOpenCycle(report)) throw conflict('o ciclo já está em preenchimento');
-  const reason = trim((req.body || {}).reason);
-  if (!reason) throw badRequest('registre o motivo do retorno');
-  let round;
-  await db.transaction(async () => {
-    await snapshotRound(report, 'return');
-    round = await openRound(report, req, reason);
-    await db.run("UPDATE reports SET status = 'Pending', updatedAt = ? WHERE id = ?", db.now(), report.id);
-    // Itens em complemento voltam a aguardar resposta; os que ainda não tinham decisão do
-    // auditor retornam à validação interna registrada na foto da liberação. As decisões já
-    // tomadas pelo auditor (aprovado/reprovado) permanecem como estão.
-    await db.run(
-      `UPDATE question_reports SET status = 'Pending', updatedAt = ?
-        WHERE reportId = ? AND status = 'PendingRevision'`,
-      db.now(),
-      report.id,
-    );
-    await db.run(
-      `UPDATE question_reports SET status = COALESCE((
-            SELECT v.status FROM item_answer_versions v
-             WHERE v.questionReportId = question_reports.id AND v.snapshotReason = 'audit-release'
-             ORDER BY v.round DESC, v.snapshotAt DESC LIMIT 1
-          ), 'PendingValidationByManager'),
-          updatedAt = ?
-        WHERE reportId = ? AND status = 'Auditing'`,
-      db.now(),
-      report.id,
-    );
-    await authz.audit(req, 'cycle.returned', { entity: 'reports', entityId: report.id, companyId: report.companyId, details: { reason, round } });
-  });
-  res.status(201).json({ ...(await ser.reportDetail(await reportById(report.id))), round });
+  const body = req.body || {};
+  const outcome = await workflow.returnCycle(req, report.id, { reason: body.reason, items: body.items });
+  res.status(201).json({ ...(await ser.reportDetail(await reportById(report.id))), round: outcome.round, affectedItems: outcome.affectedItems });
 });
 
 /* ------------------------------------------------------------------ auditoria */
 
-router.post('/auditory/evaluatequestion/:id', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
-  await authz.assertCan(req, 'audit.evaluate', { companyId: report.companyId, reportId: report.id });
-  if (report.status !== 'Auditing') throw forbidden('o relatório não está em auditoria');
-  const { status, redflag, evidence } = req.body || {};
-  if (!['Approved', 'Rejected', 'PendingRevision'].includes(status)) throw badRequest('status inválido');
-  if (!redflag) throw badRequest('O campo de Observação é obrigátorio');
-  await db.transaction(async () => {
-    await touch(qr.id, { status });
-    await setRedflag(qr.id, String(redflag), req.principal.user.id);
-    for (const e of Array.isArray(evidence) ? evidence : [])
-      await db.run(
-        'INSERT INTO evidences (id, questionReportId, name, url, fileType, addedById, addedByRole, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        db.uuid(),
-        qr.id,
-        e.name,
-        e.url,
-        e.fileType || null,
-        req.principal.user.id,
-        req.actorRole,
-        db.now(),
-      );
-    await authz.audit(req, 'audit.evaluate', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId, details: { status } });
+async function assertAuditor(req, id, action = 'audit.evaluate') {
+  const { qr, report } = await loadQuestionReport(id);
+  await authz.assertCan(req, action, { companyId: report.companyId, reportId: report.id });
+  return { qr, report };
+}
+
+/** Evidências citadas pelo auditor no corpo antigo (`evidence: [{url}]`). */
+async function evidenceIdsFromLegacy(list, report) {
+  const ids = [];
+  for (const e of Array.isArray(list) ? list : []) {
+    if (e && e.fileId) ids.push(e.fileId);
+    else if (e && e.url) {
+      const file = await db.one('SELECT id FROM company_files WHERE companyId = ? AND url = ?', report.companyId, e.url);
+      if (file) ids.push(file.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Enquadramento auditado. `auditedAnswerId` pode ser diferente da declaração (para cima ou
+ * para baixo); `conclusion: 'not-met'` registra o não atendimento sem comprovação.
+ */
+router.post('/auditory/questionReports/:id/decision', async (req, res) => {
+  const { report } = await assertAuditor(req, req.params.id);
+  const b = req.body || {};
+  await workflow.auditDecision(req, req.params.id, {
+    auditedAnswerId: b.auditedAnswerId,
+    conclusion: b.conclusion,
+    justification: b.justification,
+    evidenceFileIds: [...(Array.isArray(b.evidenceFileIds) ? b.evidenceFileIds : []), ...(await evidenceIdsFromLegacy(b.evidence, report))],
+    expectedLockVersion: lockVersionOf(b),
   });
-  res.status(201).json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+  res.status(201).json(await itemView(req, req.params.id));
+});
+
+/** Pedido de complemento: vira pendência; não desbloqueia a empresa. */
+router.post('/auditory/questionReports/:id/complement', async (req, res) => {
+  await assertAuditor(req, req.params.id);
+  const b = req.body || {};
+  await workflow.requestComplement(req, req.params.id, { description: b.description, dueDate: b.dueDate });
+  res.status(201).json(await itemView(req, req.params.id));
 });
 
 /**
- * Decisão de aplicabilidade pelo auditor. O pedido com justificativa da empresa e o registro
- * completo da decisão (aceite/recusa com fundamento) entram na etapa de fluxo (E4): aqui a
- * correção é de autorização — supervisor e Administração não decidem aplicabilidade.
+ * Rota herdada de avaliação. "Approved" endossa o nível declarado; "Rejected" registra o não
+ * atendimento; "PendingRevision" é o pedido de complemento.
  */
-router.post('/auditory/nonApplicable/:id', async (req, res) => {
-  const { qr, report } = await loadQuestionReport(req.params.id);
-  await authz.assertCan(req, 'audit.applicability', { companyId: report.companyId, reportId: report.id });
-  if (report.status !== 'Auditing') throw forbidden('o relatório não está em auditoria');
-  await touch(qr.id, { nonApplicable: 1, selectedAnswerId: null, status: 'Approved' });
-  await authz.audit(req, 'audit.applicability', { entity: 'question_reports', entityId: qr.id, companyId: report.companyId, details: { decision: 'accepted' } });
-  res.status(201).json(await ser.questionReport(await db.one('SELECT * FROM question_reports WHERE id = ?', qr.id)));
+router.post('/auditory/evaluatequestion/:id', async (req, res) => {
+  const { qr, report } = await assertAuditor(req, req.params.id);
+  const { status, redflag, evidence } = req.body || {};
+  if (!['Approved', 'Rejected', 'PendingRevision'].includes(status)) throw badRequest('status inválido');
+  if (!trim(redflag)) throw badRequest('O campo de Observação é obrigátorio');
+  if (status === 'PendingRevision') await workflow.requestComplement(req, qr.id, { description: redflag });
+  else {
+    if (status === 'Approved' && !qr.selectedAnswerId)
+      throw badRequest('a empresa não declarou nível para este indicador; informe o nível auditado ou conclua pelo não atendimento');
+    await workflow.auditDecision(req, qr.id, {
+      auditedAnswerId: status === 'Approved' ? qr.selectedAnswerId : undefined,
+      conclusion: status === 'Rejected' ? 'not-met' : undefined,
+      justification: redflag,
+      evidenceFileIds: await evidenceIdsFromLegacy(evidence, report),
+    });
+  }
+  res.status(201).json(await itemView(req, qr.id));
 });
 
-/** Auditor encerra sua etapa e envia ao supervisor. */
+/**
+ * Decisão de aplicabilidade pelo auditor designado, sobre o pedido da empresa. Supervisor e
+ * Administração não decidem aplicabilidade.
+ */
+router.post('/auditory/nonApplicable/:id', async (req, res) => {
+  await assertAuditor(req, req.params.id, 'audit.applicability');
+  const b = req.body || {};
+  await workflow.decideNa(req, req.params.id, { decision: b.decision || 'accepted', reason: b.reason ?? b.justification });
+  res.status(201).json(await itemView(req, req.params.id));
+});
+
+/** Auditor encerra sua etapa: o ciclo passa a aguardar a aprovação do supervisor. */
 router.post(['/auditory/submitToSupervisor', '/auditory/submitToSupervisor/:companyId'], async (req, res) => {
   const companyId = req.params.companyId || req.context.companyId;
   if (!companyId) throw badRequest('informe a empresa do ciclo');
   const report = await currentCycle(companyId);
   await authz.assertCan(req, 'audit.conclude', { companyId: report.companyId, reportId: report.id });
-  const items = await db.all('SELECT status FROM question_reports WHERE reportId = ?', report.id);
-  if (report.status !== 'Auditing' || !items.every((i) => AUDIT_FINAL.includes(i.status)))
-    throw forbidden('todos os indicadores precisam ser avaliados antes de submeter');
-  await db.run('UPDATE reports SET auditoryEnd = ?, updatedAt = ? WHERE id = ?', db.now(), db.now(), report.id);
-  await authz.audit(req, 'audit.concluded', { entity: 'reports', entityId: report.id, companyId: report.companyId });
+  await workflow.concludeAudit(req, report.id);
   res.status(201).json(await ser.reportDetail(await reportById(report.id)));
 });
 
 /**
- * Supervisor consulta e aprova o trabalho concluído pelo auditor.
- *
- * A média herdada saiu: o resultado vem do motor único (`src/scoring`), que verifica primeiro
- * os obrigatórios aplicáveis, calcula pontos e máximo aplicável por eixo, define a faixa com
- * precisão inteira e mantém separados rating matemático, elegibilidade e impedimentos. O
- * resultado é gravado com a versão da regra e a política de faixa usadas.
- *
- * A publicação automática do resultado, do relatório e do certificado é a etapa E6.
+ * Supervisor consulta e aprova o trabalho concluído pelo auditor. O resultado vem do motor
+ * único (`src/scoring`) e é gravado com a versão da regra; a aprovação dispara a liberação
+ * final (contrato de publicação).
  */
 router.post('/auditory/finishAuditory/:companyId', async (req, res) => {
   const report = await currentCycle(req.params.companyId);
   await authz.assertCan(req, 'supervision.approve', { companyId: report.companyId, reportId: report.id });
-  const items = await db.all('SELECT * FROM question_reports WHERE reportId = ?', report.id);
-  if (report.status !== 'Auditing' || !items.every((i) => AUDIT_FINAL.includes(i.status)))
-    throw forbidden('todos os indicadores precisam estar aprovados ou rejeitados');
-  let stored;
-  await db.transaction(async () => {
-    await db.run(
-      "UPDATE reports SET status = 'Audited', auditoryEnd = coalesce(auditoryEnd, ?), updatedAt = ? WHERE id = ?",
-      db.now(),
-      db.now(),
-      report.id,
-    );
-    stored = await scoring.persistResult(report.id, { mode: 'audited', computedById: req.principal.user.id });
-    // `evaluation` era o rótulo da média antiga; passa a guardar o rating matemático (ou nada,
-    // quando não há classificação válida), sem substituir o resultado estruturado.
-    await db.run('UPDATE reports SET evaluation = ? WHERE id = ?', stored.result.rating, report.id);
-    await authz.audit(req, 'supervision.approved', {
-      entity: 'reports',
-      entityId: report.id,
-      companyId: report.companyId,
-      details: {
-        ruleVersion: stored.result.ruleVersion,
-        policy: stored.result.policy.id,
-        rating: stored.result.rating,
-        eligible: stored.result.eligible,
-        impediments: stored.result.impediments.map((impediment) => impediment.kind),
-      },
-    });
+  const outcome = await workflow.approve(req, report.id, { onApproved: req.app.locals.onApproved || null });
+  res.status(201).json({
+    ...(await ser.reportDetail(await reportById(report.id))),
+    result: outcome.stored.result,
+    publication: outcome.publication,
   });
-  res.status(201).json({ ...(await ser.reportDetail(await reportById(report.id))), result: stored.result });
 });
 
 /**
  * Liberação do relatório à empresa. A decisão do responsável é que isso seja **automático** na
- * aprovação do supervisor; a troca acontece na etapa de publicação (E6). Até lá a rota segue
+ * aprovação do supervisor; a troca acontece na etapa de publicação. Até lá a rota segue
  * restrita à Administração e registrada na trilha.
  */
 router.post('/auditory/givereportaccess/:companyId', authz.authorize('cycle.releaseAudit'), async (req, res) => {
   const report = await currentCycle(req.params.companyId);
-  if (report.status !== 'Audited') throw forbidden('o relatório só pode ser liberado após a auditoria');
+  if (report.status !== workflow.CYCLE.AUDITED) throw forbidden('o relatório só pode ser liberado após a auditoria');
   await db.run('UPDATE companies SET reportAccess = 1, updatedAt = ? WHERE id = ?', db.now(), req.params.companyId);
   await authz.audit(req, 'cycle.reportReleased', { entity: 'companies', entityId: req.params.companyId, companyId: req.params.companyId });
   res.status(201).json({ companyId: req.params.companyId, reportAccess: true });

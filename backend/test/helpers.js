@@ -104,10 +104,22 @@ async function startServer() {
   };
 }
 
+/** Conteúdo mínimo de PDF válido para os envios de teste (a API confere a assinatura). */
+const pdf = (text = 'evidencia de teste') => Buffer.from(`%PDF-1.4\n% ${text}\n%%EOF\n`);
+
+/** Formulário de envio de arquivo da empresa. */
+function fileForm(companyOrItemId, name, content = pdf(name), fields = {}) {
+  const form = new FormData();
+  form.append('companyId', companyOrItemId);
+  for (const [key, value] of Object.entries(fields)) form.append(key, String(value));
+  form.append('file', new Blob([content]), name);
+  return form;
+}
+
 /** Encerra o pool ao fim da suíte (evita processo pendurado). */
 async function shutdown() {
   if (initialized) await db.close();
   initialized = false;
 }
 
-module.exports = { startServer, shutdown, DEMO_PASSWORD, ADMIN_PASSWORD, tmp };
+module.exports = { startServer, shutdown, DEMO_PASSWORD, ADMIN_PASSWORD, tmp, pdf, fileForm };

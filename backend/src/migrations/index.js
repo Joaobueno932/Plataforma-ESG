@@ -6,7 +6,7 @@
  * (`sqlite/index.js`), usado só para preparar a base herdada antes da transferência feita por
  * `scripts/sqlite-to-mysql.js`. A API em execução nunca aplica aquelas migrações.
  */
-const MIGRATIONS = [require('./mysql/001_baseline')];
+const MIGRATIONS = [require('./mysql/001_baseline'), require('./mysql/002_workflow')];
 
 /** Migrações do histórico SQLite (não executadas; mantidas para leitura e auditoria). */
 const SQLITE_HISTORY = [
