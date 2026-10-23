@@ -26,7 +26,7 @@ const TABLES = [
   'catalog_imports', 'catalog_sections', 'questions', 'answers', 'reports', 'cycle_professionals',
   'cycle_rounds', 'question_reports', 'item_answer_versions', 'item_reviews', 'item_comments',
   'company_files', 'question_report_files', 'evidences', 'na_requests', 'na_request_files',
-  'cycle_results', 'cycle_result_axes', 'pendings', 'pending_events', 'leads', 'sessions', 'audit_events',
+  'cycle_results', 'cycle_result_axes', 'pendings', 'pending_events', 'publications', 'leads', 'sessions', 'audit_events',
 ];
 
 /** Executa um cliente mysql (dump ou restore) sem expor a senha nos argumentos. */

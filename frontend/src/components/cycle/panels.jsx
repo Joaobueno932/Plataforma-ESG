@@ -4,7 +4,7 @@ import { IoCheckmarkCircle, IoCloseCircle, IoPersonAddOutline, IoTrashOutline } 
 import { Badge, Btn, Card, CardHeader, EmptyState, ErrorState, Field, Notice, Progress, SelectInput, SkeletonRows, formatDateTime, formatDay } from '@/components/esg/ui';
 import { AXES } from '@/lib/levels';
 import { PENDING_KIND, PENDING_STATUS, ROLE_NAME } from '@/lib/workflow';
-import { assignCycleProfessional, getResult, removeCycleProfessional, updatePending } from '@/services/reports';
+import { assignCycleProfessional, downloadFile, getPublication, getResult, removeCycleProfessional, updatePending } from '@/services/reports';
 import { apiErrorMessage, notify } from '@/lib/toast';
 
 /* ------------------------------------------------------------------ pendências do ciclo */
@@ -113,6 +113,7 @@ export function ResultPanel({ report, auditedVisible }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {report.status === 'Audited' && <PublicationCard report={report} />}
       {preliminary && (
         <Notice tone="info" title="Resultado preliminar (autodiagnóstico)">
           Calculado só com as respostas enviadas pela empresa. O resultado oficial é o auditado, liberado após a aprovação do supervisor.
@@ -179,6 +180,70 @@ export function ResultPanel({ report, auditedVisible }) {
         {data.policy?.status === 'pending-ratification' && ' (pendente de ratificação pela FIEMS)'} · calculado em {formatDateTime(data.computedAt)}
       </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ publicação */
+
+/**
+ * Documentos liberados automaticamente na aprovação. Mostra só o que existe: relatório quando
+ * gerado; certificado conforme a situação registrada (sem documento enquanto não houver o
+ * modelo oficial).
+ */
+function PublicationCard({ report }) {
+  const [pub, setPub] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = () =>
+    getPublication(report.id)
+      .then(({ data }) => setPub(data))
+      .catch((err) => setError(apiErrorMessage(err)));
+  useEffect(() => {
+    load();
+  }, [report.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const download = async () => {
+    setBusy(true);
+    try {
+      await downloadFile(`reports/${report.id}/publication/report.pdf`, `relatorio-auditoria-ciclo-${report.cycle}.pdf`);
+    } catch (err) {
+      notify(err?.response?.status === 403 ? 'O relatório completo é entregue ao gestor e à consultoria da empresa.' : 'Relatório ainda indisponível; tente em instantes.', 'warning');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error) return <Notice tone="warning">{error}</Notice>;
+  if (!pub) return <SkeletonRows rows={1} />;
+  const cert = pub.certificate;
+  return (
+    <Card>
+      <CardHeader title="Documentos liberados" description={`Publicados automaticamente na aprovação do supervisor em ${formatDateTime(pub.approvedAt)}.`} />
+      <div className="grid gap-4 p-5 md:grid-cols-2">
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4">
+          <span className="text-sm font-semibold text-slate-900">Relatório de auditoria</span>
+          {pub.report.available ? (
+            <>
+              <span className="text-xs text-slate-500">PDF · gerado em {formatDateTime(pub.report.generatedAt)}</span>
+              <Btn size="sm" className="mt-1 self-start" onClick={download} loading={busy}>
+                Baixar relatório
+              </Btn>
+            </>
+          ) : (
+            <span className="text-sm text-amber-800">{pub.retrying ? 'Em geração — nova tentativa automática em andamento.' : 'Falha técnica registrada; a equipe foi avisada. A aprovação continua válida.'}</span>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4">
+          <span className="text-sm font-semibold text-slate-900">Certificado / selo FIEMS</span>
+          <span className="text-sm text-slate-700">{cert.label}</span>
+          {cert.code && (
+            <span className="text-xs text-slate-500">
+              Código de verificação <span className="font-mono font-semibold text-slate-700">{cert.code}</span> · validade {formatDay(cert.validFrom)} a {formatDay(cert.validUntil)}
+            </span>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 

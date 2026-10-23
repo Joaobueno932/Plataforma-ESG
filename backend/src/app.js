@@ -35,6 +35,7 @@ function createApp() {
   );
   app.use('/static', express.static(config.staticDir, { fallthrough: false }));
 
+  app.use(require('./routes/verify'));
   app.use(require('./routes/auth'));
   app.use(require('./routes/users'));
   app.use(require('./routes/companies'));

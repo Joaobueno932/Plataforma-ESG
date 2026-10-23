@@ -248,7 +248,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     assert.equal(review.status, 200);
     assert.ok(review.body.companies.some((c) => c.origin === 'demo'), 'empresas de demonstração marcadas');
     // O esquema MySQL nasce consolidado; o histórico SQLite fica registrado à parte.
-    assert.deepEqual(review.body.migrations.map((m) => m.id), ['mysql_001_baseline', 'mysql_002_workflow']);
+    assert.deepEqual(review.body.migrations.map((m) => m.id), ['mysql_001_baseline', 'mysql_002_workflow', 'mysql_003_publication']);
     assert.ok(review.body.legacySqliteHistory.length >= 9, 'histórico da base anterior continua declarado');
     const gestor = await s.login('gestor@esgdemo.com.br');
     assert.equal((await s.api('GET', '/admin/review', { token: gestor })).status, 403);

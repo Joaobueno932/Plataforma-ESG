@@ -1,5 +1,9 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const config = require('../config');
 const db = require('../db');
 const ser = require('../serializers');
+const publication = require('../publication');
 const { badRequest, forbidden, notFound, conflict, asyncRouter } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
@@ -736,25 +740,83 @@ router.post(['/auditory/submitToSupervisor', '/auditory/submitToSupervisor/:comp
 router.post('/auditory/finishAuditory/:companyId', async (req, res) => {
   const report = await currentCycle(req.params.companyId);
   await authz.assertCan(req, 'supervision.approve', { companyId: report.companyId, reportId: report.id });
-  const outcome = await workflow.approve(req, report.id, { onApproved: req.app.locals.onApproved || null });
+  // A publicação é registrada na mesma transação da aprovação; os documentos são gerados logo
+  // depois do COMMIT. Falha de geração não desfaz a aprovação: fica registrada e é retomada.
+  const outcome = await workflow.approve(req, report.id, { onApproved: publication.register });
+  const published = await publication.generate(outcome.publication.id);
+  await authz.audit(req, 'publication.generated', {
+    entity: 'publications',
+    entityId: published.id,
+    companyId: report.companyId,
+    details: { status: published.status, certificate: published.certificateStatus },
+  });
   res.status(201).json({
     ...(await ser.reportDetail(await reportById(report.id))),
     result: outcome.stored.result,
-    publication: outcome.publication,
+    publication: publication.view(published),
   });
 });
 
+/* ------------------------------------------------------------------ publicação */
+
 /**
- * Liberação do relatório à empresa. A decisão do responsável é que isso seja **automático** na
- * aprovação do supervisor; a troca acontece na etapa de publicação. Até lá a rota segue
- * restrita à Administração e registrada na trilha.
+ * Situação da publicação do ciclo. Só existe depois da aprovação do supervisor; antes disso,
+ * não há resultado nem documento para a empresa.
  */
-router.post('/auditory/givereportaccess/:companyId', authz.authorize('cycle.releaseAudit'), async (req, res) => {
-  const report = await currentCycle(req.params.companyId);
-  if (report.status !== workflow.CYCLE.AUDITED) throw forbidden('o relatório só pode ser liberado após a auditoria');
-  await db.run('UPDATE companies SET reportAccess = 1, updatedAt = ? WHERE id = ?', db.now(), req.params.companyId);
-  await authz.audit(req, 'cycle.reportReleased', { entity: 'companies', entityId: req.params.companyId, companyId: req.params.companyId });
-  res.status(201).json({ companyId: req.params.companyId, reportAccess: true });
+router.get('/reports/:reportId/publication', async (req, res) => {
+  const report = await reportById(req.params.reportId);
+  await assertCycleRead(req, report);
+  let pub = await publication.latestOf(report.id);
+  if (!pub) throw notFound('o resultado ainda não foi aprovado pelo supervisor; não há publicação');
+  pub = await publication.ensure(pub);
+  res.json(publication.view(pub));
+});
+
+/**
+ * Relatório de auditoria (PDF). Autorização conferida a cada download (revogar vínculo retira o
+ * acesso mesmo a documentos já gerados). O relatório completo traz todos os indicadores, por
+ * isso não é entregue ao colaborador, que vê só os indicadores atribuídos a ele.
+ */
+router.get('/reports/:reportId/publication/report.pdf', async (req, res) => {
+  const report = await reportById(req.params.reportId);
+  const role = await assertCycleRead(req, report);
+  if (role === 'EMPLOYEE')
+    throw forbidden('o relatório completo contém indicadores de outros responsáveis; consulte o gestor da empresa');
+  let pub = await publication.latestOf(report.id);
+  if (!pub) throw notFound('o resultado ainda não foi aprovado pelo supervisor; não há relatório');
+  pub = await publication.ensure(pub);
+  if (pub.status !== 'available') {
+    res.set('Retry-After', '30');
+    return res.status(503).json({
+      statusCode: 503,
+      error: 'Service Unavailable',
+      message: pub.attempts >= publication.MAX_ATTEMPTS
+        ? 'o relatório não pôde ser gerado; a falha técnica foi registrada para correção (a aprovação permanece válida)'
+        : 'o relatório está sendo gerado; tente novamente em instantes',
+    });
+  }
+  const file = path.join(config.storageDir, pub.reportPath);
+  if (!fs.existsSync(file)) {
+    // Arquivo perdido (ex.: volume trocado): volta para geração automática.
+    await db.run("UPDATE publications SET status = 'failed', lastError = 'arquivo ausente no armazenamento', updatedAt = ? WHERE id = ?", db.now(), pub.id);
+    throw notFound('o relatório está sendo regenerado; tente novamente em instantes');
+  }
+  await authz.audit(req, 'publication.download', { entity: 'publications', entityId: pub.id, companyId: report.companyId });
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Cache-Control', 'private, no-store');
+  res.download(file, `relatorio-auditoria-ciclo-${report.cycle}.pdf`);
+});
+
+/**
+ * Rota antiga de liberação manual do relatório. A liberação passou a ser **automática** na
+ * aprovação do supervisor; não há mais passo administrativo posterior.
+ */
+router.post('/auditory/givereportaccess/:companyId', async (_req, res) => {
+  res.status(410).json({
+    statusCode: 410,
+    error: 'Gone',
+    message: 'a liberação do resultado e do relatório é automática na aprovação do supervisor; não há liberação manual',
+  });
 });
 
 module.exports = router;

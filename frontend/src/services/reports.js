@@ -41,6 +41,7 @@ export const getResult = (reportId, mode = 'audited') => api.get(`/reports/${rep
 export const getPendings = (reportId) => api.get(`/reports/${reportId}/pendings`);
 export const createPending = (reportId, body) => api.post(`/reports/${reportId}/pendings`, body);
 export const updatePending = (id, body) => api.patch(`/reports/pendings/${id}`, body);
+export const getPublication = (reportId) => api.get(`/reports/${reportId}/publication`);
 export const removeCycleProfessional = (reportId, userId) => api.delete(`/reports/${reportId}/professionals/${userId}`);
 
 /**

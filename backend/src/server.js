@@ -2,6 +2,7 @@ const config = require('./config');
 const db = require('./db');
 const { createApp } = require('./app');
 const { seedIfEmpty } = require('./seed');
+const publication = require('./publication');
 
 // Em produção a API não sobe com segredo padrão, sem banco configurado nem com CORS aberto.
 config.assertOperationalConfig();
@@ -18,6 +19,10 @@ async function start() {
 
   const server = createApp().listen(config.port, () => {
     console.log(`API ESG-FIEMS (${config.env}) ouvindo em http://localhost:${config.port}`);
+    // Retoma publicações que ficaram pendentes ou falharam (ex.: reinício durante a geração).
+    publication
+      .sweep((line) => console.log(line))
+      .catch((err) => console.error(`retomada de publicações falhou: ${err.message}`));
   });
 
   const shutdown = async (signal) => {
