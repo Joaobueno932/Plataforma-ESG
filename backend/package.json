@@ -14,7 +14,8 @@
     "db:backup": "node --no-warnings scripts/backup.js create",
     "db:verify": "node --no-warnings scripts/backup.js verify",
     "db:dry-run": "node --no-warnings scripts/backup.js dry-run",
-    "db:restore": "node --no-warnings scripts/backup.js restore"
+    "db:restore": "node --no-warnings scripts/backup.js restore",
+    "catalog": "node --no-warnings scripts/catalog.js"
   },
   "engines": {
     "node": ">=22.13"

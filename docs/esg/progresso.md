@@ -10,6 +10,7 @@ e pendências `X*` em `regras.md`.
 |---|---|---|---|
 | 22/10/2026 | **E0 — Diagnóstico** | Inspeção de `42ba516`; leitura da planilha oficial; mapeamento de frontend, API, autenticação, dados, uploads, catálogo, respostas, auditoria, testes e relatórios; 21 achados confirmados e 5 hipóteses descartadas; regras com origem e critério de aceite; matriz de permissões; tabela de transições; plano de migrações. Nenhuma alteração na aplicação. | `backend npm test` 32/32 · `frontend npm run build` 17 rotas, sem erro · `frontend npm run lint` **inexistente** (sem ESLint) · leitura do banco local somente leitura |
 | 22/10/2026 | **Reconciliação com a especificação** | `Plataforma esg fiems.docx` v1.0 recebida e confrontada com `regras.md`: resolvidas F10 (gestor solicita × Administração libera), F13 (parte), P3/P9/P10 (faixas, precisão, sem base para classificação) e as pendências de permissão; acrescentado § 4.1 com 13 regras de cadastro, vínculo e ciclo; propostas e pendências do documento mantidas como tais. | revisão documental |
+| 22/10/2026 | **E3 — Catálogo oficial versionado** | Leitor de XLSX próprio (validado contra openpyxl), validação com relatório de erros/divergências/conferências, importação em versões (prévia → rascunho → publicação com confirmação), códigos e alternativas oficiais por indicador, proteção das versões publicadas e conferência contra os cadernos em PDF. Versão oficial importada como **rascunho**. | `backend npm test` **95/95** · `npm run db:dry-run` e `db:verify` com dados preservados · importação real da planilha no banco de trabalho (139 indicadores em rascunho, ciclos demonstrativos intactos) · `tools/catalog_crosscheck.py` contra os 9 cadernos |
 | 22/10/2026 | **E1+E2 — Cadastros, vínculos, autorização e ciclos** | Identidade separada de perfil, vínculo e designação; autorização central aplicada a rotas, downloads, exportações e uploads; delegação com prazo; restrição do colaborador no servidor; acúmulo só ADMIN + CONSULTOR; múltiplos ciclos com versão e caderno congelados; sessões revogáveis; recuperação de uso único; configuração de produção separada; 7 migrações versionadas validadas em cópia. | `backend npm test` **72/72** · `frontend npm run build` 17 rotas, sem erro · `npm run db:dry-run` em cópia: dados preservados, `integrity_check ok`, `foreign_key_check ok` · `npm run migrate` + `db:verify` no banco de trabalho · smoke test da API contra o banco migrado |
 
 ## Ordem do plano e suas dependências
@@ -100,7 +101,22 @@ preserva dados, ids e relacionamentos (`test/migration.test.js`).
 e como recertificar não é decidida aqui. Versões publicáveis do catálogo (rascunho/publicada) vêm
 com E3.
 
-## E3 · Catálogo oficial da planilha
+## E3 · Catálogo oficial da planilha — **implementada em 22/10/2026 (versão oficial em rascunho)**
+
+**Entregue**: leitor de XLSX sem dependências (`src/catalog/xlsx.js`, validado célula a célula
+contra o `openpyxl`: 10.111 células, zero divergências), validação e relatório
+(`src/catalog/parse.js`), importação em versões rastreáveis com prévia, rascunho e publicação
+(`src/catalog/import.js`, `routes/catalog.js`, `scripts/catalog.js`), migração `008`,
+painel administrativo na tela Indicadores e conferência contra os cadernos em PDF
+(`tools/catalog_crosscheck.py`). Relatório completo: [`importacao-catalogo.md`](importacao-catalogo.md).
+
+**Resultado**: 139 indicadores (59 Geral + 80 setoriais), 538 alternativas, 50 mínimos
+obrigatórios (49 deles em nível de zero ponto), soma dos máximos 1250 — todas as 13 conferências
+da especificação conferem. Zero erros de estrutura; 8 divergências entre abas e 2 de pontuação
+contra os cadernos, todas registradas. **A versão oficial permanece rascunho** porque a
+descrição e a orientação de verificação dos indicadores não existem na planilha e não são
+extraíveis dos PDFs com confiança — nada foi preenchido por texto gerado.
+
 
 **Objetivo**: substituir os 22 indicadores demonstrativos pelos **139 oficiais** (C1, C3–C11).
 
@@ -120,12 +136,18 @@ com E3.
 - Acompanha: consultas agregadas e índices (A16) — com 69 itens por ciclo o N+1 atual deixa de ser
   tolerável.
 
-**Testes de aceite**: contagens e somas da planilha conferidas por teste; abrir ciclo de empresa do
-caderno B gera 69 itens com códigos `GE*/GS*/GG*/BE*/BS*/BG*`; indicador de máximo 0 fora do
-denominador.
-**Executável**: a importação cria uma versão nova; ciclos abertos continuam na versão legada.
-**Pendências**: **D1/X3** (nome de GS04) — importar com o nome da aba `Consolidado` e marcar o
-indicador como "rótulo pendente de ratificação", sem alterar o conteúdo das alternativas.
+**Testes de aceite (executados)**: contagens e somas da planilha conferidas por teste; ciclo
+novo na versão publicada gera 69 itens com códigos oficiais e sem indicador de outro setorial;
+indicador binário com "Conforme" de zero ponto, de 4 e de 5 alternativas; mínimo obrigatório
+intermediário (AE03, 4 pontos) e mínimo em nível de zero ponto com máximo 10 (GE01);
+reimportação do mesmo arquivo não duplica; versão publicada recusa edição manual; publicar nova
+versão não altera resposta, critério nem resultado de ciclo anterior. Suíte
+`test/catalog.test.js` (22 testes).
+**Executável**: a importação cria versão nova; ciclos abertos continuam na versão com que foram
+criados; o rascunho não entra em ciclo nenhum.
+**Pendências**: ratificação de D1/D6/D8 (nomes), **D7** (pontuações de AE03 e GE06), conferência
+do mínimo obrigatório contra os cadernos e a **fonte de descrição/verificação** — todas em
+[`importacao-catalogo.md`](importacao-catalogo.md) § 6. O cálculo definitivo (E5) depende de D7.
 
 ## E4 · Fluxo, bloqueio, rodadas e "não se aplica"
 

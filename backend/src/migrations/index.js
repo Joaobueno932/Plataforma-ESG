@@ -15,6 +15,7 @@ const MIGRATIONS = [
   require('./005_history_integrity'),
   require('./006_indexes'),
   require('./007_rounds'),
+  require('./008_catalog_versions'),
 ];
 
 const hasTable = (db, name) =>

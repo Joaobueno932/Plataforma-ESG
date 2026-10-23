@@ -84,7 +84,12 @@ Formato: **impacto** → **correção pretendida** → **migração** → **test
 
 ### A1 · Catálogo demonstrativo e escala de maturidade padronizada
 
-**Situação (etapa 2):** aberto. O ciclo passou a registrar a versão do catálogo com que foi aberto (`reports.catalogVersion`, hoje `legacy-demo`), de modo que a importação oficial (E3) não altere ciclos existentes.
+**Situação (etapa 3): resolvido na estrutura.** O catálogo passou a ser versionado
+(`catalog_versions`, `catalog_imports`, `catalog_sections`) e a planilha oficial foi importada e
+validada: 139 indicadores, 538 alternativas, códigos oficiais, pontos e mínimo obrigatório por
+indicador, sem lista universal de níveis. O catálogo demonstrativo ficou isolado na versão
+`legacy-demo`. **A versão oficial está em rascunho**: a publicação depende das pendências de
+conteúdo listadas em [`importacao-catalogo.md`](importacao-catalogo.md) § 6.
 `backend/src/seed.js` (`LEVELS`, `DEMO_QUESTIONS`) · `backend/src/routes/questions.js`
 (`LEVELS`, `CATEGORIES`, `validateQuestion`, `nextCode`) · `frontend/src/lib/constants.js`
 (`MATURITY_LEVELS`, `POINTS`) · `frontend/src/lib/format.js` (`LEVEL_ORDER`).
@@ -254,7 +259,9 @@ arquivos sempre) · `frontend/src/app/companies/[id]/page.jsx:637-642`.
 
 ### A10 · Cartões de alternativa com apresentação e cores fixas
 
-**Situação (etapa 2):** aberto (depende da referência visual, E7).
+**Situação (etapa 3): parcial.** O cartão passou a ser dirigido por dado (`presentation`/`slug`
+do nível, ordem por `position`, rótulo e pontos vindos do indicador) e o roxo inventado para
+"Engajada" saiu. A paleta definitiva depende da referência visual aprovada (X2, etapa E7).
 `frontend/src/components/indicators/answer-card.jsx` (`cardVariants`, `Engajado: 'bg-violet-400'`)
 · `frontend/src/lib/constants.js` (`LEVEL_LABEL`, `POINTS`) ·
 `frontend/src/app/indicators/response-indicator/[id]/page.jsx:277-298`.
@@ -425,7 +432,11 @@ da linha 644. `frontend/src/lib/constants.js` declara estados que o servidor nun
 
 ### A20 · Estrutura do indicador não cobre a fonte oficial
 
-**Situação (etapa 2):** aberto (E3).
+**Situação (etapa 3): resolvido.** `questions` passou a ter código oficial (com e sem espaço),
+tópico, ODS, máximo do indicador, orientação de verificação, posição, origem e versão;
+`answers` passou a ter posição, slug e apresentação. A tela do indicador deixou de depender do
+marcador textual "Verificação:" e usa os campos próprios. Descrição e verificação do indicador
+continuam nulas por ausência de fonte confiável (ver `importacao-catalogo.md` § 5).
 `backend/src/db.js` (`questions`: `description` único, sem máximo, ODS ou ordem; `answers` sem
 posição) · `frontend/src/app/indicators/response-indicator/[id]/page.jsx:206-208` (a descrição é
 partida pela busca do literal `"Verificação:"` dentro do texto).

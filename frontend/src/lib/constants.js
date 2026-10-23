@@ -17,6 +17,11 @@ export const REPORT_STATUS_COLOR = {
   InRevision: 'bg-rose-700',
 };
 
+/**
+ * Rótulos herdados do catálogo demonstrativo (chaves antigas como `Nao_conforme`).
+ * O catálogo oficial traz o nome do nível no próprio indicador: use `levelLabel(answer)`,
+ * que exibe o que veio da fonte e só recorre a este mapa para os dados legados.
+ */
 export const LEVEL_LABEL = {
   Engajado: 'ENGAJADA',
   Iniciante: 'INICIANTE',
@@ -67,16 +72,20 @@ export const CATEGORIES = [
   { text: 'Governança', value: 'G' },
 ];
 
-export const MATURITY_LEVELS = [
-  { text: 'Engajada', value: 'Engajado' },
+/**
+ * Níveis de maturidade **não** são uma lista universal: cada indicador tem os seus, com
+ * pontos próprios. Os nomes disponíveis para o formulário vêm de `GET /catalog/levels`
+ * (níveis usados pela versão de catálogo em vigor). Esta lista serve apenas como opção
+ * inicial do catálogo de demonstração, quando a API não devolve nada.
+ */
+export const FALLBACK_LEVELS = [
+  { text: 'Não conforme', value: 'Não conforme' },
   { text: 'Iniciante', value: 'Iniciante' },
   { text: 'Sensibilizada', value: 'Sensibilizada' },
   { text: 'Consciente', value: 'Consciente' },
-  { text: 'Não conforme', value: 'Nao_conforme' },
+  { text: 'Engajada', value: 'Engajada' },
   { text: 'Conforme', value: 'Conforme' },
 ];
-
-export const POINTS = ['0', '2', '4', '6', '8', '10'].map((v) => ({ text: v, value: v }));
 
 export const ROLE_OPTIONS = [
   { text: 'Admin', value: 'ADMIN' },

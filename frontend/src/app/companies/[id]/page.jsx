@@ -27,7 +27,7 @@ import { useAuth } from '@/contexts/auth';
 import { useCompanies } from '@/contexts/companies';
 import { useIndicators } from '@/contexts/indicators';
 import { LEVEL_LABEL, QUESTION_STATUS_COLOR, QUESTION_STATUS_LABEL, REPORT_STATUS_LABEL } from '@/lib/constants';
-import { firstName, formatDate, formatMonthDay, levelIndex } from '@/lib/format';
+import { firstName, formatDate, formatMonthDay, levelLabel, levelPresentation, sortAnswers } from '@/lib/format';
 import { notify, updateToast } from '@/lib/toast';
 import { getCompany } from '@/services/companies';
 import { addAnswerer, changeQuestionStatus, uploadCompanyFile } from '@/services/reports';
@@ -275,15 +275,18 @@ function EditableAnswerCard({ answer, reportIndicator }) {
           </Modal.Content>
         </Modal.Root>
       )}
-      <AnswerCard variant={reportIndicator.nonApplicable ? 'disabled' : answer.title}>
-        <AnswerCardTitle>{LEVEL_LABEL[answer.title]}</AnswerCardTitle>
-        <select value={draft.points} onChange={(e) => setDraft({ ...draft, points: parseInt(e.target.value, 10) })} className="text-black p-[8px]  rounded-lg">
-          {[0, 2, 4, 6, 8, 10].map((p) => (
-            <option key={p} value={p}>
-              {p} pts
-            </option>
-          ))}
-        </select>
+      <AnswerCard variant={reportIndicator.nonApplicable ? 'disabled' : levelPresentation(answer)}>
+        <AnswerCardTitle>{levelLabel(answer, LEVEL_LABEL)}</AnswerCardTitle>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          value={draft.points}
+          onChange={(e) => setDraft({ ...draft, points: Number(e.target.value) })}
+          className="text-black p-[8px] rounded-lg w-24 text-center"
+          aria-label="Pontuação do nível"
+        />
         <textarea
           placeholder={answer.description}
           defaultValue={answer.description}
@@ -362,7 +365,7 @@ function IndicatorItem({ reportIndicator, remember = false, company }) {
   const descText = cut >= 0 ? question.description.slice(0, cut) : question.description;
   const verification = cut >= 0 ? question.description.slice(cut) : '';
   const reportStatus = company?.report?.status;
-  const answers = [...question.answers].sort((a, b) => levelIndex(a.title) - levelIndex(b.title));
+  const answers = sortAnswers(question.answers);
 
   const assign = async (userId) => {
     try {
@@ -470,8 +473,8 @@ function IndicatorItem({ reportIndicator, remember = false, company }) {
             {editing
               ? answers.map((a) => <EditableAnswerCard key={a.id} answer={a} reportIndicator={reportIndicator} />)
               : answers.map((a) => (
-                  <AnswerCard key={a.id} variant={reportIndicator.nonApplicable ? 'disabled' : a.title}>
-                    <AnswerCardTitle>{LEVEL_LABEL[a.title]}</AnswerCardTitle>
+                  <AnswerCard key={a.id} variant={reportIndicator.nonApplicable ? 'disabled' : levelPresentation(a)}>
+                    <AnswerCardTitle>{levelLabel(a, LEVEL_LABEL)}</AnswerCardTitle>
                     <AnswerCardPoints>{a.points}</AnswerCardPoints>
                     <AnswerCardText>{a.description}</AnswerCardText>
                     {a.mandatory && <AnswerCardMandatory />}

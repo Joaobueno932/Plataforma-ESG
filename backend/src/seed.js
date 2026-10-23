@@ -12,6 +12,14 @@ const bcrypt = require('bcryptjs');
 const db = require('./db');
 const { createCycleForCompany } = require('./services');
 
+const slug = (value) =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
 const SECTORS = [
   ['All', 'Caderno Geral', 'static/sectorCovers/caderno_geral.jpeg'],
   ['A', 'Alimentos e Bebidas', 'static/sectorCovers/caderno_a.jpeg'],
@@ -70,19 +78,34 @@ function seed() {
     for (const [section, description, avatar] of SECTORS)
       db.run('INSERT OR IGNORE INTO sectors (section, description, avatar) VALUES (?, ?, ?)', section, description, avatar);
 
+    // Catálogo de DEMONSTRAÇÃO: fica na versão 'legacy-demo', separada das versões oficiais
+    // importadas da planilha (ver src/catalog/).
     const counters = {};
+    let position = 0;
     for (const [section, category, subcategory, title, description, mandatory] of DEMO_QUESTIONS) {
       const key = `${section}-${category}`;
       counters[key] = (counters[key] || 0) + 1;
       const id = db.uuid();
+      position += 1;
       const code = `${section === 'All' ? 'CG' : section}-${category}${String(counters[key]).padStart(2, '0')}`;
+      const maxPoints = LEVELS.reduce((acc, [, points]) => Math.max(acc, points), 0);
       db.run(
-        `INSERT INTO questions (id, code, section, title, description, category, subcategory, hasMandatory, createdAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, code, section, title, description, category, subcategory, mandatory ? 1 : 0, db.now(),
+        `INSERT INTO questions (id, versionId, code, codeOriginal, section, title, description, category, subcategory, topic,
+                                maxPoints, hasMandatory, position, origin, createdAt)
+         VALUES (?, 'legacy-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'demo', ?)`,
+        id, code, code, section, title, description, category, subcategory, subcategory, maxPoints, mandatory ? 1 : 0, position, db.now(),
       );
-      for (const [level, points, text] of LEVELS)
-        db.run('INSERT INTO answers (id, questionId, title, points, description, mandatory) VALUES (?, ?, ?, ?, ?, ?)', db.uuid(), id, level, points, text, level === mandatory ? 1 : 0);
+      let mandatoryAnswerId = null;
+      LEVELS.forEach(([level, points, text], index) => {
+        const answerId = db.uuid();
+        const isMinimum = level === mandatory;
+        db.run(
+          'INSERT INTO answers (id, questionId, title, points, description, mandatory, position, slug, presentation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          answerId, id, level, points, text, isMinimum ? 1 : 0, index + 1, slug(level), slug(level),
+        );
+        if (isMinimum) mandatoryAnswerId = answerId;
+      });
+      if (mandatoryAnswerId) db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, id);
     }
 
     const at = db.now();
@@ -119,6 +142,7 @@ function seed() {
     for (const c of DEMO_COMPANIES) {
       const reportId = createCycleForCompany(db.one('SELECT * FROM companies WHERE id = ?', c.id), {
         createdById: userIds['admin@esgdemo.com.br'],
+        catalogVersionId: 'legacy-demo',
       });
       db.run('INSERT OR IGNORE INTO cycle_rounds (id, reportId, round, openedAt, openedById, reason) VALUES (?, ?, 1, ?, ?, ?)', db.uuid(), reportId, at, userIds['admin@esgdemo.com.br'], 'seed');
       if (c.id === 'demo-company-a') {

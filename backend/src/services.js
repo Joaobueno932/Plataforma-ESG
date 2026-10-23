@@ -1,24 +1,30 @@
 const db = require('./db');
 const { notFound, badRequest } = require('./http');
+const catalog = require('./catalog/import');
 
 /** Seções que compõem uma avaliação: Caderno Geral ("All") + o caderno setorial atribuído. */
 const sectionsFor = (section) => ['All', section];
 
 /**
- * Versão do catálogo congelada no ciclo. O catálogo ainda é o demonstrativo herdado
- * (diagnóstico A1); a importação da planilha oficial e o versionamento de catálogo são a
- * etapa seguinte (docs/esg/progresso.md, E3). Enquanto isso, o ciclo registra a versão com
- * que foi aberto, de modo que a troca futura não altere ciclos existentes.
+ * Versão do catálogo congelada no ciclo: a última versão oficial publicada (ou o catálogo
+ * demonstrativo, enquanto nenhuma oficial tiver sido publicada). O ciclo guarda o id e o
+ * rótulo, de modo que publicar outra versão não altere ciclos já abertos.
  */
-const currentCatalogVersion = () => process.env.CATALOG_VERSION || 'legacy-demo';
+function currentCatalogVersion() {
+  const version = catalog.activeVersion();
+  return version ? version.label : catalog.LEGACY_VERSION_ID;
+}
 
 /**
  * Abre um ciclo (avaliação) para a empresa: numeração sequencial, caderno e versão de
  * catálogo congelados e relação com o ciclo anterior.
  */
-function createCycleForCompany(company, { createdById = null, previousReportId = null } = {}) {
+function createCycleForCompany(company, { createdById = null, previousReportId = null, catalogVersionId = null } = {}) {
   const sector = db.one('SELECT section FROM sectors WHERE section = ?', company.section);
   const section = sector ? sector.section : company.section;
+  const version = catalogVersionId ? catalog.versionById(catalogVersionId) : catalog.activeVersion();
+  if (!version) throw badRequest('nenhuma versão de catálogo disponível');
+  if (version.status !== 'published') throw badRequest(`a versão de catálogo "${version.label}" não está publicada`);
   const last = db.one('SELECT id, cycle, status FROM reports WHERE companyId = ? ORDER BY cycle DESC LIMIT 1', company.id);
   if (last && !previousReportId && last.status !== 'Audited')
     throw badRequest('a empresa já possui um ciclo em andamento; conclua-o antes de abrir outro');
@@ -30,15 +36,16 @@ function createCycleForCompany(company, { createdById = null, previousReportId =
   const at = db.now();
   const id = db.uuid();
   db.run(
-    `INSERT INTO reports (id, companyId, cycle, previousReportId, section, catalogVersion, initialYear, finalYear,
+    `INSERT INTO reports (id, companyId, cycle, previousReportId, section, catalogVersion, catalogVersionId, initialYear, finalYear,
                           structure, description, status, origin, needsReview, createdById, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'registered', 0, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'registered', 0, ?, ?, ?)`,
     id,
     company.id,
     cycle,
     previousReportId || (last ? last.id : null),
     section,
-    currentCatalogVersion(),
+    version.label,
+    version.id,
     start.toISOString(),
     end.toISOString(),
     `Programa ESG-FIEMS (Setorial ${section})`,
@@ -47,7 +54,13 @@ function createCycleForCompany(company, { createdById = null, previousReportId =
     at,
     at,
   );
-  const questions = db.all('SELECT id FROM questions WHERE section IN (?, ?)', ...sectionsFor(section));
+  // Somente os indicadores da versão congelada no ciclo.
+  const questions = db.all(
+    'SELECT id FROM questions WHERE versionId = ? AND section IN (?, ?) ORDER BY position, code',
+    version.id,
+    ...sectionsFor(section),
+  );
+  if (!questions.length) throw badRequest(`a versão de catálogo "${version.label}" não tem indicadores para o caderno ${section}`);
   for (const q of questions) addQuestionReport(id, q.id);
   return id;
 }
@@ -65,12 +78,18 @@ function addQuestionReport(reportId, questionId) {
   );
 }
 
-/** Um indicador novo entra nos ciclos em preenchimento do caderno correspondente. */
+/**
+ * Um indicador novo entra nos ciclos em preenchimento do caderno correspondente — e somente
+ * nos ciclos **da mesma versão de catálogo**, para não contaminar ciclos de outra versão nem
+ * os rascunhos.
+ */
 function attachQuestionToReports(question) {
+  if (!question.versionId) return;
   const reports = db.all(
     `SELECT r.id FROM reports r JOIN companies c ON c.id = r.companyId
-      WHERE c.deletedAt IS NULL AND r.status = 'Pending'
+      WHERE c.deletedAt IS NULL AND r.status = 'Pending' AND r.catalogVersionId = ?
         AND (? = 'All' OR r.section = ?)`,
+    question.versionId,
     question.section,
     question.section,
   );
@@ -94,6 +113,7 @@ function currentCycle(companyId) {
 module.exports = {
   sectionsFor,
   currentCatalogVersion,
+  activeCatalogVersion: () => catalog.activeVersion(),
   createCycleForCompany,
   /** @deprecated use createCycleForCompany */
   createReportForCompany: (company, options) => createCycleForCompany(company, options),

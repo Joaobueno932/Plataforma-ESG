@@ -20,7 +20,7 @@ import { FilesTable } from '@/components/indicators/files-table';
 import { GedUpload } from '@/components/indicators/ged-upload';
 import { useIndicators } from '@/contexts/indicators';
 import { LEVEL_LABEL } from '@/lib/constants';
-import { formatDate, levelIndex } from '@/lib/format';
+import { formatDate, levelLabel, levelPresentation, sortAnswers } from '@/lib/format';
 import { getQuestionReport, uploadCompanyFile } from '@/services/reports';
 
 const answerSchema = z.object({ answerText: z.string().optional() });
@@ -193,7 +193,7 @@ export default function ResponseIndicatorPage() {
   useEffect(() => {
     getQuestionReport(id)
       .then(({ data }) => {
-        data.question.answers.sort((a, b) => levelIndex(a.title) - levelIndex(b.title));
+        data.question.answers = sortAnswers(data.question.answers);
         setReport(data);
         setNonApplicable(data.nonApplicable);
         setHasReminder(!!data.redflag);
@@ -203,9 +203,11 @@ export default function ResponseIndicatorPage() {
   }, [id]);
 
   if (!report) return null;
-  const cut = report.question.description.indexOf('Verificação:');
+  // O catálogo oficial tem campos próprios para descrição e verificação; o catálogo
+  // demonstrativo herdado guardava os dois no mesmo texto, separados por "Verificação:".
+  const cut = report.question.verification ? -1 : (report.question.description || '').indexOf('Verificação:');
   const descText = cut >= 0 ? report.question.description.slice(0, cut) : report.question.description;
-  const verification = cut >= 0 ? report.question.description.slice(cut) : '';
+  const verification = report.question.verification || (cut >= 0 ? report.question.description.slice(cut) : '');
 
   const reminderAction = (action) => {
     if (action === 'remove') {
@@ -264,8 +266,16 @@ export default function ResponseIndicatorPage() {
         </Link>
         <div className="space-y-8">
           <h3>
-            {report.question.code}: {report.question.title}
+            {report.question.codeOriginal || report.question.code}: {report.question.title}
           </h3>
+          {(report.question.topic || report.question.ods) && (
+            <p className="text-sm text-neutral-03">
+              {report.question.topic && <span>Tópico: {report.question.topic}</span>}
+              {report.question.topic && report.question.ods && <span> · </span>}
+              {report.question.ods && <span>ODS: {report.question.ods}</span>}
+              {report.question.maxPoints != null && <span> · Máximo: {report.question.maxPoints} pts</span>}
+            </p>
+          )}
           <p>
             <span className="font-bold mr-1">Descrição:</span>
             {descText}
@@ -276,8 +286,8 @@ export default function ResponseIndicatorPage() {
           </p>
           <ul className="flex space-x-3 w-full">
             {report.question.answers.map((a) => (
-              <AnswerCard key={a.id} variant={selected && selected !== a.id ? 'disabled' : a.title}>
-                <AnswerCardTitle>{LEVEL_LABEL[a.title]}</AnswerCardTitle>
+              <AnswerCard key={a.id} variant={selected && selected !== a.id ? 'disabled' : levelPresentation(a)}>
+                <AnswerCardTitle>{levelLabel(a, LEVEL_LABEL)}</AnswerCardTitle>
                 <AnswerCardPoints>{a.points}</AnswerCardPoints>
                 <AnswerCardText>{a.description}</AnswerCardText>
                 {a.mandatory && <AnswerCardMandatory />}

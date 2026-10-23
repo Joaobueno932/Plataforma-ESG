@@ -27,6 +27,29 @@ ambiente (`NODE_ENV`): em `development`/`test` há segredos locais de conveniên
 ela **não sobe** sem `JWT_SECRET`, `JWT_REFRESH_SECRET` e `CORS_ORIGINS`. Variáveis documentadas em
 `backend/.env.example`.
 
+### Catálogo oficial de indicadores
+
+```bash
+cd backend
+npm run catalog -- preview "<planilha.xlsx>"              # valida e mostra o relatório
+npm run catalog -- import  "<planilha.xlsx>" "oficial-X"  # grava como rascunho
+npm run catalog -- versions
+npm run catalog -- publish "oficial-X" --acknowledge      # confirmação administrativa
+```
+
+O catálogo é **versionado**: a importação cria uma versão em rascunho, com relatório de erros,
+divergências e conferências; a publicação é uma ação administrativa. Cada avaliação fixa a
+versão com que foi aberta, então publicar uma versão nova não altera respostas, critérios nem
+resultados de ciclos anteriores. O catálogo demonstrativo fica isolado na versão `legacy-demo`.
+
+Conferência da planilha contra os cadernos oficiais em PDF (somente leitura):
+
+```bash
+python tools/catalog_crosscheck.py "<planilha.xlsx>" "Cadernos indicadores"
+```
+
+Resultado da importação atual e pendências: `docs/esg/importacao-catalogo.md`.
+
 ### Banco de dados e migrações
 
 ```bash
@@ -106,8 +129,10 @@ Detalhes e origem de cada regra: `docs/esg/regras.md`.
 - **Pessoas**: lista, busca, cadastro, edição, **perfis concedidos**, **vínculos múltiplos** para
   profissionais e **inativação com histórico** (nada é apagado; o último administrador ativo é
   protegido).
-- **Indicadores**: cadernos (com capa), assistente de criação de indicador em 3 passos, edição
-  e exclusão de indicadores e respostas.
+- **Indicadores**: cadernos (com capa), **importação do catálogo oficial** (prévia, validação,
+  relatório, rascunho e publicação), assistente de criação de indicador em 3 passos com níveis
+  vindos da versão em vigor, edição e exclusão restritas a rascunhos e ao catálogo de
+  demonstração (versão publicada é imutável).
 - **Relatório da empresa**: atribuição de responsável, resposta com nível de maturidade, texto,
   anexos e GED, lembretes; validação por Gestor/Consultor; submissão para auditoria; avaliação,
   pedido de complemento e evidências do Auditor; finalização pelo Supervisor.
@@ -118,8 +143,11 @@ Detalhes e origem de cada regra: `docs/esg/regras.md`.
 
 ## Limitações conhecidas
 
-- O **banco de indicadores real** (64 do Caderno Geral + 10 por caderno) não pôde ser recuperado:
-  a API de staging respondia 404/500 para relatórios. O seed traz indicadores demonstrativos.
+- O **catálogo oficial** (59 indicadores do Caderno Geral + 10 por caderno setorial = 139) é
+  importado da planilha oficial e fica versionado. A versão importada permanece **em rascunho**
+  enquanto a descrição e a orientação de verificação dos indicadores não tiverem fonte confiável
+  (`docs/esg/importacao-catalogo.md`). O seed segue com indicadores demonstrativos na versão
+  `legacy-demo`, usada apenas pelos ciclos de demonstração.
 - As telas **Extrato** (`/companies/:id/performance-report`) e **Relatório Auditoria**
   (`/companies/:id/report`) não existem no build publicado (404 no original) e continuam ausentes.
 - Regras marcadas como **[INF]** em `PROGRESS.md` foram inferidas do front-end; as que valem agora

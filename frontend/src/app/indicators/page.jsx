@@ -23,6 +23,7 @@ import { uploadSectorCover } from '@/services/reports';
 import { apiAsset } from '@/lib/format';
 import { notify, updateToast } from '@/lib/toast';
 import { PROGRESS, PROGRESS_DATA, sectionSchema } from '@/lib/indicator-schemas';
+import { CatalogImport } from '@/components/indicators/catalog-import';
 
 /** Passo 1 do assistente: escolhe o caderno e segue para "Criar indicadores". */
 function NewIndicatorForm() {
@@ -283,6 +284,9 @@ export default function IndicatorsPage() {
               CADASTRAR NOVO INDICADOR
             </Button>
           </div>
+        </section>
+        <section className="px-2 mb-6">
+          <CatalogImport />
         </section>
         <section className="px-2">
           <Card.Root className="flex justify-center items-top flex-wrap gap-10 py-[61px]">

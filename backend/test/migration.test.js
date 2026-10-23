@@ -88,7 +88,7 @@ test('migração sobre banco representativo preserva dados e aplica as constrain
     );
   });
 
-  await t.test('aplica as 7 migrações com integridade e sem órfãos', () => {
+  await t.test('aplica as migrações com integridade e sem órfãos', () => {
     db.exec('PRAGMA foreign_keys = ON');
     const applied = migrate(db);
     assert.deepEqual(applied, [
@@ -99,6 +99,7 @@ test('migração sobre banco representativo preserva dados e aplica as constrain
       '005_history_integrity',
       '006_indexes',
       '007_rounds',
+      '008_catalog_versions',
     ]);
     assert.equal(Object.values(db.prepare('PRAGMA integrity_check').get())[0], 'ok');
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
@@ -191,9 +192,25 @@ test('migração sobre banco representativo preserva dados e aplica as constrain
 
   await t.test('a trilha registra o que a migração fez', () => {
     const events = db.prepare("SELECT action, entity, details FROM audit_events WHERE action = 'migration.backfill'").all().map((r) => ({ ...r }));
-    assert.equal(events.length, 3);
+    assert.equal(events.length, 4);
     const links = JSON.parse(events.find((e) => e.entity === 'user_company_links').details);
     assert.equal(links.linksNeedingReview, 2);
+  });
+
+  await t.test('catálogo herdado fica isolado na versão legacy-demo', () => {
+    const version = db.prepare("SELECT * FROM catalog_versions WHERE id = 'legacy-demo'").get();
+    assert.equal(version.origin, 'demo');
+    assert.equal(version.status, 'published');
+    const questions = db.prepare('SELECT count(*) AS n FROM questions WHERE versionId = ?').get('legacy-demo').n;
+    assert.equal(questions, 2, 'os indicadores herdados foram atribuídos à versão demonstrativa');
+    const cycles = db.prepare("SELECT count(*) AS n FROM reports WHERE catalogVersionId = 'legacy-demo'").get().n;
+    assert.equal(cycles, 2);
+    // Ordem e máximo preenchidos a partir do que já existia, sem inventar dados.
+    const q = db.prepare("SELECT * FROM questions WHERE code = 'CG-E01'").get();
+    assert.equal(q.maxPoints, 10);
+    assert.equal(q.position, 1);
+    assert.ok(q.mandatoryAnswerId, 'o nível mínimo obrigatório aponta para a alternativa');
+    assert.equal(db.prepare('SELECT title FROM answers WHERE id = ?').get(q.mandatoryAnswerId).title, 'Conforme');
   });
 
   await t.test('arquivo da migração em cópia isolada não tocou o banco de trabalho', () => {

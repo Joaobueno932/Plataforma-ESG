@@ -23,7 +23,7 @@ function loadItems(report, { onlyAnswererId = null } = {}) {
   const items = db.all(
     `SELECT qr.* FROM question_reports qr JOIN questions q ON q.id = qr.questionId
       WHERE qr.reportId = ? ${onlyAnswererId ? 'AND qr.answererId = ?' : ''}
-      ORDER BY q.section = 'All' DESC, q.code`,
+      ORDER BY q.section = 'All' DESC, q.position, q.code`,
     ...(onlyAnswererId ? [report.id, onlyAnswererId] : [report.id]),
   );
   if (!items.length) return { items: [], bundle: null };
@@ -32,7 +32,7 @@ function loadItems(report, { onlyAnswererId = null } = {}) {
   const marks = (list) => list.map(() => '?').join(', ');
   const questionIds = [...new Set(items.map((i) => i.questionId))];
   const questions = db.all(`SELECT * FROM questions WHERE id IN (${marks(questionIds)})`, ...questionIds);
-  const answers = db.all(`SELECT * FROM answers WHERE questionId IN (${marks(questionIds)}) ORDER BY points`, ...questionIds);
+  const answers = db.all(`SELECT * FROM answers WHERE questionId IN (${marks(questionIds)}) ORDER BY position, rowid`, ...questionIds);
   const files = db.all(
     `SELECT qrf.id, qrf.questionReportId, qrf.fileId, f.companyId, f.name, f.url, f.fileType
        FROM question_report_files qrf JOIN company_files f ON f.id = qrf.fileId

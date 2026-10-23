@@ -37,6 +37,7 @@ function report(r) {
     previousReportId: r.previousReportId ?? null,
     section: r.section ?? null,
     catalogVersion: r.catalogVersion ?? null,
+    catalogVersionId: r.catalogVersionId ?? null,
     updatedAt: r.updatedAt,
     initialYear: r.initialYear,
     finalYear: r.finalYear,
@@ -127,23 +128,47 @@ function userWithProfiles(u, { contextCompanyId = null } = {}) {
 /** Compatibilidade com o formato antigo de GET /users e /auth/me. */
 const userWithCompany = (u) => userWithProfiles(u);
 
+/** Alternativa do indicador: ordem, nome, descrição, pontos e apresentação vindos da fonte. */
 function answer(a) {
-  return { id: a.id, questionId: a.questionId, title: a.title, points: a.points, description: a.description, mandatory: bool(a.mandatory) };
+  return {
+    id: a.id,
+    questionId: a.questionId,
+    position: a.position ?? null,
+    title: a.title,
+    slug: a.slug ?? null,
+    presentation: a.presentation ?? null,
+    points: a.points,
+    description: a.description,
+    mandatory: bool(a.mandatory),
+  };
 }
 
+/**
+ * Indicador com as alternativas **próprias** dele, na ordem da fonte. Não existe mais lista
+ * universal de níveis: o que vale é o que está registrado para o indicador da versão.
+ */
 function question(q, answersByQuestion = null) {
   const rows = answersByQuestion
     ? answersByQuestion.get(q.id) || []
-    : db.all('SELECT * FROM answers WHERE questionId = ? ORDER BY points', q.id);
+    : db.all('SELECT * FROM answers WHERE questionId = ? ORDER BY position, rowid', q.id);
   return {
     id: q.id,
+    versionId: q.versionId ?? null,
+    origin: q.origin ?? null,
     code: q.code,
+    codeOriginal: q.codeOriginal ?? q.code,
     section: q.section,
+    position: q.position ?? null,
     title: q.title,
     description: q.description,
+    verification: q.verification ?? null,
     category: q.category,
     subcategory: q.subcategory ?? null,
+    topic: q.topic ?? q.subcategory ?? null,
+    ods: q.ods ?? null,
+    maxPoints: q.maxPoints ?? null,
     hasMandatory: bool(q.hasMandatory),
+    mandatoryAnswerId: q.mandatoryAnswerId ?? null,
     answers: rows.map(answer),
   };
 }
