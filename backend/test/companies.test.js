@@ -1,10 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer } = require('./helpers');
+const { startServer, shutdown } = require('./helpers');
 
 test('módulo empresas', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const admin = await s.loginAdmin();
 
   await t.test('listagem paginada com progresso real e filtros', async () => {

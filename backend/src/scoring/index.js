@@ -9,8 +9,8 @@ const { computeResult } = require('./engine');
 const policies = require('./policies');
 
 /** Carrega tudo do ciclo em poucas consultas (sem uma consulta por indicador). */
-function loadCycleItems(reportId) {
-  const items = db.all(
+async function loadCycleItems(reportId) {
+  const items = await db.all(
     `SELECT qr.id, qr.questionId, qr.status, qr.selectedAnswerId, qr.auditedAnswerId, qr.auditConclusion,
             qr.auditedSource, qr.nonApplicable,
             q.code, q.codeOriginal, q.title, q.section, q.category AS axis, q.maxPoints, q.mandatoryAnswerId,
@@ -24,9 +24,9 @@ function loadCycleItems(reportId) {
 
   const questionIds = [...new Set(items.map((item) => item.questionId))];
   const marks = (list) => list.map(() => '?').join(', ');
-  const answers = db.all(
+  const answers = await db.all(
     `SELECT id, questionId, title, points, position, mandatory FROM answers WHERE questionId IN (${marks(questionIds)})
-      ORDER BY position, rowid`,
+      ORDER BY position, id`,
     ...questionIds,
   );
   const byQuestion = new Map();
@@ -35,7 +35,7 @@ function loadCycleItems(reportId) {
     byQuestion.get(answer.questionId).push(answer);
   }
 
-  const naRows = db.all(
+  const naRows = await db.all(
     `SELECT questionReportId, decision, requestedAt, decidedAt, justification, origin
        FROM na_requests WHERE reportId = ? AND withdrawnAt IS NULL
       ORDER BY requestedAt`,
@@ -93,8 +93,8 @@ function loadCycleItems(reportId) {
   });
 }
 
-function reportById(reportId) {
-  const report = db.one('SELECT * FROM reports WHERE id = ?', reportId);
+async function reportById(reportId) {
+  const report = await db.one('SELECT * FROM reports WHERE id = ?', reportId);
   if (!report) throw notFound("a report with this id wasn't found!");
   return report;
 }
@@ -104,10 +104,10 @@ function reportById(reportId) {
  * @param {string} reportId
  * @param {{mode?: 'audited'|'self', policyId?: string}} options
  */
-function resultOfCycle(reportId, { mode = 'audited', policyId = null } = {}) {
-  const report = reportById(reportId);
-  const company = db.one('SELECT id, size, bussinessName, cnpj, section FROM companies WHERE id = ?', report.companyId);
-  const items = loadCycleItems(reportId);
+async function resultOfCycle(reportId, { mode = 'audited', policyId = null } = {}) {
+  const report = await reportById(reportId);
+  const company = await db.one('SELECT id, size, bussinessName, cnpj, section FROM companies WHERE id = ?', report.companyId);
+  const items = await loadCycleItems(reportId);
   const result = computeResult({ items, size: company ? company.size : null, mode, policyId });
   return {
     ...result,
@@ -145,11 +145,11 @@ function resultOfCycle(reportId, { mode = 'audited', policyId = null } = {}) {
  * Grava o resultado com a versão da regra usada, para que alteração posterior de regra ou de
  * catálogo não reescreva o histórico.
  */
-function persistResult(reportId, { mode = 'audited', policyId = null, computedById = null } = {}) {
-  const report = reportById(reportId);
-  const result = resultOfCycle(reportId, { mode, policyId });
+async function persistResult(reportId, { mode = 'audited', policyId = null, computedById = null } = {}) {
+  const report = await reportById(reportId);
+  const result = await resultOfCycle(reportId, { mode, policyId });
   const id = db.uuid();
-  db.run(
+  await db.run(
     `INSERT INTO cycle_results (id, reportId, round, mode, ruleVersion, policyId, policyStatus, catalogVersionId, size, bracket,
                                 rating, ratingValid, eligible, payload, computedAt, computedById)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -171,7 +171,7 @@ function persistResult(reportId, { mode = 'audited', policyId = null, computedBy
     computedById,
   );
   for (const axis of Object.values(result.axes))
-    db.run(
+    await db.run(
       `INSERT INTO cycle_result_axes (id, cycleResultId, axis, points, maxPoints, percentage, band, valid, reasons)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       db.uuid(),
@@ -185,7 +185,7 @@ function persistResult(reportId, { mode = 'audited', policyId = null, computedBy
       JSON.stringify(axis.reasons),
     );
   if (mode === 'audited')
-    db.run(
+    await db.run(
       'UPDATE reports SET resultRuleVersion = ?, resultPolicyId = ?, resultRating = ?, resultEligible = ?, resultComputedAt = ?, updatedAt = ? WHERE id = ?',
       result.ruleVersion,
       result.policy.id,
@@ -199,8 +199,8 @@ function persistResult(reportId, { mode = 'audited', policyId = null, computedBy
 }
 
 /** Resultado gravado mais recente (histórico preservado). */
-function storedResult(reportId, { mode = 'audited' } = {}) {
-  const row = db.one(
+async function storedResult(reportId, { mode = 'audited' } = {}) {
+  const row = await db.one(
     'SELECT * FROM cycle_results WHERE reportId = ? AND mode = ? ORDER BY computedAt DESC LIMIT 1',
     reportId,
     mode,
@@ -208,8 +208,7 @@ function storedResult(reportId, { mode = 'audited' } = {}) {
   return row ? { ...row, payload: JSON.parse(row.payload) } : null;
 }
 
-const storedHistory = (reportId) =>
-  db.all(
+const storedHistory = async (reportId) => db.all(
     `SELECT id, round, mode, ruleVersion, policyId, policyStatus, rating, ratingValid, eligible, computedAt
        FROM cycle_results WHERE reportId = ? ORDER BY computedAt DESC`,
     reportId,

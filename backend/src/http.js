@@ -38,4 +38,23 @@ function errorHandler(err, req, res, _next) {
   res.status(err.statusCode).json({ message: err.message, error: REASONS[err.statusCode] || 'Error', statusCode: err.statusCode });
 }
 
-module.exports = { HttpError, badRequest, unauthorized, forbidden, notFound, conflict, wrap, errorHandler };
+/**
+ * Router do Express com tratamento de promessa rejeitada.
+ *
+ * Com o acesso ao banco assíncrono, todo handler devolve promessa; o Express 4 não captura
+ * rejeição sozinho. Este router envolve cada handler/middleware em `wrap`, de modo que o erro
+ * chegue ao `errorHandler` em vez de virar "unhandled rejection".
+ */
+function asyncRouter() {
+  const express = require('express');
+  const router = express.Router();
+  const methods = ['use', 'get', 'post', 'put', 'patch', 'delete', 'all'];
+  for (const method of methods) {
+    const original = router[method].bind(router);
+    router[method] = (...args) =>
+      original(...args.map((arg) => (typeof arg === 'function' && arg.length < 4 ? wrap(arg) : arg)));
+  }
+  return router;
+}
+
+module.exports = { HttpError, badRequest, unauthorized, forbidden, notFound, conflict, wrap, asyncRouter, errorHandler };

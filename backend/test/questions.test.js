@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer } = require('./helpers');
+const { startServer, shutdown } = require('./helpers');
 
 const answers = (n = 2) =>
   ['Nao_conforme', 'Iniciante', 'Sensibilizada', 'Consciente', 'Engajado', 'Conforme'].slice(0, n).map((title, i) => ({
@@ -13,6 +13,7 @@ const answers = (n = 2) =>
 test('módulo indicadores / cadernos', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const admin = await s.loginAdmin();
 
   await t.test('GET /sectors devolve os 9 cadernos', async () => {
@@ -76,7 +77,7 @@ test('módulo indicadores / cadernos', async (t) => {
     assert.equal((await s.api('DELETE', `/questions/answer/${novo.answers[0].id}`, { token: admin })).status, 400);
 
     // Depois de escolhida em uma avaliação, a alternativa não pode mais ser excluída.
-    const reportId = s.reportIdOf('demo-company-a');
+    const reportId = await s.reportIdOf('demo-company-a');
     const items = await s.api('GET', `/reports/company/questions/${reportId}`, { token: admin });
     const item = items.body.find((i) => i.questionId === novo.id);
     const escolhida = item.question.answers[0];

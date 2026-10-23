@@ -1,0 +1,91 @@
+# Ambiente local em containers.
+#
+#   docker compose up -d mysql            → só o banco (suficiente para rodar testes e a API local)
+#   docker compose up -d --build          → banco + API + web
+#   docker compose down                   → para tudo (o volume do banco é preservado)
+#   docker compose down -v                → apaga também o volume do banco
+#
+# As credenciais abaixo são de DESENVOLVIMENTO LOCAL e ficam propositalmente visíveis: não há
+# segredo em um banco que só escuta na máquina do desenvolvedor. Em homologação/produção, os
+# valores vêm do ambiente (MYSQL_*, DB_*, JWT_*), nunca deste arquivo.
+#
+# As portas publicadas fogem das usuais para não conflitar com o que já roda na máquina:
+# MySQL em 3307 (3306 ocupado) e a interface em 3001 (3000 ocupado por outro projeto).
+# Para usar as portas padrão, defina MYSQL_PORT/WEB_PORT no ambiente.
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: esg-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --max-connections=${MYSQL_MAX_CONNECTIONS:-200}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-esg-root-local}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-plataforma_esg}
+      MYSQL_USER: ${MYSQL_USER:-esg}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-esg-local-dev}
+    ports:
+      - '${MYSQL_PORT:-3307}:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-u', 'root', '-p${MYSQL_ROOT_PASSWORD:-esg-root-local}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: esg-api
+    restart: unless-stopped
+    init: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3333
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE:-plataforma_esg}
+      DB_USER: ${MYSQL_USER:-esg}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-esg-local-dev}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      RUN_MIGRATIONS: 'true'
+      SEED_ON_EMPTY: ${SEED_ON_EMPTY:-true}
+    ports:
+      - '${API_PORT:-3333}:3333'
+    volumes:
+      - api-storage:/app/storage
+      - ./backend/static:/app/static
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3333}
+    container_name: esg-web
+    restart: unless-stopped
+    init: true
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3333}
+    ports:
+      - '${WEB_PORT:-3001}:3000'
+
+volumes:
+  mysql-data:
+  api-storage:

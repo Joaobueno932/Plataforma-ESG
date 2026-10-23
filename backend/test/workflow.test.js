@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer } = require('./helpers');
+const { startServer, shutdown } = require('./helpers');
 
 /**
  * Fluxo do ciclo com as regras decididas pelo responsável:
@@ -13,13 +13,14 @@ const { startServer } = require('./helpers');
 test('fluxo do ciclo: resposta → validação → liberação → auditoria → supervisão', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const admin = await s.loginAdmin();
   const gestor = await s.login('gestor@esgdemo.com.br');
   const funcionario = await s.login('funcionario@esgdemo.com.br');
   const consultor = await s.login('consultor@esgdemo.com.br');
   const auditor = await s.login('auditor@esgdemo.com.br');
   const supervisor = await s.login('supervisor@esgdemo.com.br');
-  const reportId = s.reportIdOf('demo-company-a');
+  const reportId = await s.reportIdOf('demo-company-a');
 
   let items = [];
   let first;
@@ -35,7 +36,7 @@ test('fluxo do ciclo: resposta → validação → liberação → auditoria →
   await t.test('gestor delega indicador com prazo; colaborador responde com arquivo', async () => {
     const atribuicao = await s.api('PATCH', `/reports/addanswerer/${first.id}`, {
       token: gestor,
-      body: { user: s.userId('funcionario@esgdemo.com.br'), dueDate: '2026-12-01' },
+      body: { user: await s.userId('funcionario@esgdemo.com.br'), dueDate: '2026-12-01' },
     });
     assert.equal(atribuicao.status, 200);
     assert.equal(atribuicao.body.answerer.email, 'funcionario@esgdemo.com.br');
@@ -185,7 +186,7 @@ test('fluxo do ciclo: resposta → validação → liberação → auditoria →
   });
 
   await t.test('supervisor não faz o trabalho técnico do auditor', async () => {
-    const reportB = s.reportIdOf('demo-company-b');
+    const reportB = await s.reportIdOf('demo-company-b');
     const itemsB = (await s.api('GET', `/reports/company/questions/${reportB}`, { token: admin })).body;
     assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemsB[0].id}`, { token: supervisor, body: { status: 'Approved', redflag: 'x' } })).status, 403);
     assert.equal((await s.api('POST', `/auditory/nonApplicable/${itemsB[0].id}`, { token: supervisor })).status, 403);
@@ -193,7 +194,7 @@ test('fluxo do ciclo: resposta → validação → liberação → auditoria →
   });
 
   await t.test('reabertura administrativa de item só com o ciclo em preenchimento', async () => {
-    const reportB = s.reportIdOf('demo-company-b');
+    const reportB = await s.reportIdOf('demo-company-b');
     const itemB = (await s.api('GET', `/reports/company/questions/${reportB}`, { token: admin })).body[0];
     const ok = await s.api('PATCH', `/reports/changeQuestionStatus/${itemB.id}/Pending`, { token: admin });
     assert.equal(ok.status, 200);

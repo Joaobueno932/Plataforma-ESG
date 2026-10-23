@@ -3,6 +3,7 @@ node_modules/
 backend/storage/
 frontend/.env.local
 env.local
+backend/.env
 recon/evidence/
 *.log
 

@@ -2,10 +2,9 @@ const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Isola banco e uploads de cada execução de teste.
+// Isola armazenamento de arquivos de cada execução de teste.
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'esg-test-'));
 process.env.NODE_ENV = 'test';
-process.env.DB_FILE = ':memory:';
 process.env.UPLOADS_DIR = path.join(tmp, 'uploads');
 process.env.STORAGE_DIR = tmp;
 process.env.STATIC_DIR = path.join(tmp, 'static');
@@ -13,6 +12,7 @@ process.env.BACKUPS_DIR = path.join(tmp, 'backups');
 // Limite alto: os testes fazem muitos logins em sequência.
 process.env.RATE_LIMIT_MAX = process.env.RATE_LIMIT_MAX || '500';
 
+const config = require('../src/config');
 const db = require('../src/db');
 const { createApp } = require('../src/app');
 const { seed } = require('../src/seed');
@@ -21,11 +21,33 @@ const { seed } = require('../src/seed');
 const DEMO_PASSWORD = 'esgdemo123';
 const ADMIN_PASSWORD = 'admin123';
 
+let initialized = false;
+
+/**
+ * Os testes rodam no MySQL, na **base de testes** (`plataforma_esg_test`), que é limpa a cada
+ * `startServer()`. Sem o banco no ar, a falha é explícita — nenhum teste é silenciosamente
+ * ignorado.
+ */
+async function ensureDatabase() {
+  if (initialized) return;
+  try {
+    await db.init({ runMigrations: true });
+  } catch (err) {
+    throw new Error(
+      `não foi possível conectar ao MySQL de teste (${config.db.user}@${config.db.host}:${config.db.port}/${config.db.name}): ` +
+        `${err.code || err.message}. Suba o banco com "docker compose up -d mysql" na raiz do projeto.`,
+    );
+  }
+  initialized = true;
+}
+
 async function startServer() {
-  db.use(db.open(':memory:'));
-  seed();
+  await ensureDatabase();
+  await db.truncateAll();
+  await seed();
+
   const server = createApp().listen(0);
-  await new Promise((r) => server.once('listening', r));
+  await new Promise((resolve) => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
 
   async function api(method, url, { token, body, form } = {}) {
@@ -57,16 +79,35 @@ async function startServer() {
   const login = async (email, password = DEMO_PASSWORD) => (await session(email, password)).token;
   const loginAdmin = () => login('admin@esgdemo.com.br', ADMIN_PASSWORD);
 
-  const userId = (email) => db.one('SELECT id FROM users WHERE lower(email) = lower(?)', email).id;
-  const reportIdOf = (companyId, cycle = null) =>
-    db.one(
-      cycle
-        ? 'SELECT id FROM reports WHERE companyId = ? AND cycle = ?'
-        : 'SELECT id FROM reports WHERE companyId = ? ORDER BY cycle DESC LIMIT 1',
-      ...(cycle ? [companyId, cycle] : [companyId]),
+  const userId = async (email) => (await db.one('SELECT id FROM users WHERE lower(email) = lower(?)', email)).id;
+  const reportIdOf = async (companyId, cycle = null) =>
+    (
+      await db.one(
+        cycle
+          ? 'SELECT id FROM reports WHERE companyId = ? AND cycle = ?'
+          : 'SELECT id FROM reports WHERE companyId = ? ORDER BY cycle DESC LIMIT 1',
+        ...(cycle ? [companyId, cycle] : [companyId]),
+      )
     ).id;
 
-  return { server, api, login, loginAdmin, session, db, userId, reportIdOf, close: () => new Promise((r) => server.close(r)) };
+  return {
+    server,
+    api,
+    login,
+    loginAdmin,
+    session,
+    db,
+    userId,
+    reportIdOf,
+    base,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
 }
 
-module.exports = { startServer, DEMO_PASSWORD, ADMIN_PASSWORD, tmp };
+/** Encerra o pool ao fim da suíte (evita processo pendurado). */
+async function shutdown() {
+  if (initialized) await db.close();
+  initialized = false;
+}
+
+module.exports = { startServer, shutdown, DEMO_PASSWORD, ADMIN_PASSWORD, tmp };

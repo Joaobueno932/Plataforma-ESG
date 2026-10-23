@@ -19,19 +19,19 @@ const LEGACY_VERSION_ID = 'legacy-demo';
 
 const nowIso = () => db.now();
 
-const versionById = (id) => db.one('SELECT * FROM catalog_versions WHERE id = ?', id);
+const versionById = async (id) => db.one('SELECT * FROM catalog_versions WHERE id = ?', id);
 
 /** Versão oficial em uso: a última publicada. Sem nenhuma, cai no catálogo demonstrativo. */
-function activeVersion() {
-  const official = db.one(
+async function activeVersion() {
+  const official = await db.one(
     "SELECT * FROM catalog_versions WHERE status = 'published' AND origin = 'official' ORDER BY publishedAt DESC, createdAt DESC LIMIT 1",
   );
-  return official || versionById(LEGACY_VERSION_ID) || null;
+  return official || await versionById(LEGACY_VERSION_ID) || null;
 }
 
-function recordImport({ versionId = null, source, actorId, status, report }) {
+async function recordImport({ versionId = null, source, actorId, status, report }) {
   const id = db.uuid();
-  db.run(
+  await db.run(
     `INSERT INTO catalog_imports (id, versionId, sourceFile, sourceHash, sourceBytes, startedAt, finishedAt, actorId, status, errorCount, warningCount, divergenceCount, report)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
@@ -52,13 +52,13 @@ function recordImport({ versionId = null, source, actorId, status, report }) {
 }
 
 /** Lê e valida sem gravar catálogo (o resultado da leitura fica registrado). */
-function preview(input, { sourceFile = null, actorId = null, record = true } = {}) {
+async function preview(input, { sourceFile = null, actorId = null, record = true } = {}) {
   const { source, report, indicators, sections } = parseCatalog(input, { sourceFile });
-  const existing = db.one(
+  const existing = await db.one(
     `SELECT v.id, v.label, v.status FROM catalog_versions v WHERE v.sourceHash = ? ORDER BY v.createdAt DESC LIMIT 1`,
     source.hash,
   );
-  const importId = record ? recordImport({ source, actorId, status: 'preview', report }) : null;
+  const importId = record ? await recordImport({ source, actorId, status: 'preview', report }) : null;
   return {
     importId,
     source: { file: source.file, hash: source.hash, bytes: source.bytes },
@@ -94,32 +94,32 @@ const summarize = (indicator) => ({
  * Grava uma versão em **rascunho**. Repetir o mesmo arquivo não duplica o catálogo: devolve o
  * rascunho existente, ou recusa quando o arquivo já foi publicado.
  */
-function createDraft(input, { sourceFile = null, label = null, actorId = null, force = false } = {}) {
+async function createDraft(input, { sourceFile = null, label = null, actorId = null, force = false } = {}) {
   const { source, report, indicators, sections } = parseCatalog(input, { sourceFile });
 
   if (report.errors.length) {
-    recordImport({ source, actorId, status: 'rejected', report });
+    await recordImport({ source, actorId, status: 'rejected', report });
     throw badRequest(
       `a planilha tem ${report.errors.length} erro(s) e não pode ser importada; consulte o relatório da prévia`,
     );
   }
 
-  const sameSource = db.one('SELECT * FROM catalog_versions WHERE sourceHash = ? ORDER BY createdAt DESC LIMIT 1', source.hash);
+  const sameSource = await db.one('SELECT * FROM catalog_versions WHERE sourceHash = ? ORDER BY createdAt DESC LIMIT 1', source.hash);
   if (sameSource && !force) {
     if (sameSource.status === 'draft')
-      return { version: sameSource, report: JSON.parse(db.one('SELECT report FROM catalog_imports WHERE versionId = ? ORDER BY startedAt DESC LIMIT 1', sameSource.id).report), reused: true };
+      return { version: sameSource, report: JSON.parse((await db.one('SELECT report FROM catalog_imports WHERE versionId = ? ORDER BY startedAt DESC LIMIT 1', sameSource.id)).report), reused: true };
     throw conflict(
       `este arquivo já foi importado como a versão "${sameSource.label}" (${sameSource.status}); use outro arquivo ou confirme a reimportação explicitamente`,
     );
   }
 
-  const versionLabel = (label || '').trim() || defaultLabel(source);
-  if (db.one('SELECT id FROM catalog_versions WHERE label = ?', versionLabel))
+  const versionLabel = (label || '').trim() || await defaultLabel(source);
+  if (await db.one('SELECT id FROM catalog_versions WHERE label = ?', versionLabel))
     throw conflict(`já existe uma versão com o rótulo "${versionLabel}"`);
 
   const versionId = db.uuid();
-  db.transaction(() => {
-    db.run(
+  await db.transaction(async () => {
+    await db.run(
       `INSERT INTO catalog_versions (id, label, origin, status, sourceFile, sourceHash, sourceSheets, counts, notes, createdAt, createdById)
        VALUES (?, ?, 'official', 'draft', ?, ?, ?, ?, ?, ?, ?)`,
       versionId,
@@ -133,11 +133,11 @@ function createDraft(input, { sourceFile = null, label = null, actorId = null, f
       actorId,
     );
     for (const section of sections)
-      db.run('INSERT INTO catalog_sections (id, versionId, section, name, position) VALUES (?, ?, ?, ?, ?)', db.uuid(), versionId, section.section, section.name, section.position);
+      await db.run('INSERT INTO catalog_sections (id, versionId, section, name, position) VALUES (?, ?, ?, ?, ?)', db.uuid(), versionId, section.section, section.name, section.position);
 
     for (const indicator of indicators) {
       const questionId = db.uuid();
-      db.run(
+      await db.run(
         `INSERT INTO questions (id, versionId, code, codeOriginal, section, title, description, verification, category, subcategory, topic, ods,
                                 maxPoints, hasMandatory, position, origin, createdAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'official', ?)`,
@@ -161,7 +161,7 @@ function createDraft(input, { sourceFile = null, label = null, actorId = null, f
       let mandatoryAnswerId = null;
       for (const level of indicator.levels) {
         const answerId = db.uuid();
-        db.run(
+        await db.run(
           `INSERT INTO answers (id, questionId, title, points, description, mandatory, position, slug, presentation)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           answerId,
@@ -177,22 +177,23 @@ function createDraft(input, { sourceFile = null, label = null, actorId = null, f
         if (level.isMandatoryMinimum) mandatoryAnswerId = answerId;
       }
       // O mínimo obrigatório aponta para o nível exigido — nunca é inferido da pontuação.
-      if (mandatoryAnswerId) db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, questionId);
+      if (mandatoryAnswerId) await db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, questionId);
     }
-    recordImport({ versionId, source, actorId, status: 'draft', report });
+    await recordImport({ versionId, source, actorId, status: 'draft', report });
   });
 
-  return { version: versionById(versionId), report, reused: false };
+  return { version: await versionById(versionId), report, reused: false };
 }
 
-const defaultLabel = (source) => {
+const defaultLabel = async (source) => {
   const base = `oficial-${new Date().toISOString().slice(0, 10)}`;
   let label = base;
   let n = 2;
-  while (db.one('SELECT id FROM catalog_versions WHERE label = ?', label)) label = `${base}-${n++}`;
+  while (await db.one('SELECT id FROM catalog_versions WHERE label = ?', label)) label = `${base}-${n++}`;
   return label;
 };
 
+/** Observações da versão: texto derivado do relatório, sem consulta ao banco. */
 function buildNotes(report) {
   const notes = [];
   if (report.divergences.length) notes.push(`${report.divergences.length} divergência(s) entre as abas da fonte registradas no relatório.`);
@@ -205,13 +206,13 @@ function buildNotes(report) {
  * Publica o rascunho. Com divergências registradas, exige confirmação explícita
  * (`acknowledge`) — o administrador assume a divergência, que continua no relatório.
  */
-function publish(versionId, { actorId = null, acknowledge = false } = {}) {
-  const version = versionById(versionId);
+async function publish(versionId, { actorId = null, acknowledge = false } = {}) {
+  const version = await versionById(versionId);
   if (!version) throw notFound('versão de catálogo não encontrada');
   if (version.status === 'published') return version;
   if (version.status !== 'draft') throw conflict(`a versão "${version.label}" está ${version.status} e não pode ser publicada`);
 
-  const lastImport = db.one('SELECT * FROM catalog_imports WHERE versionId = ? ORDER BY startedAt DESC LIMIT 1', versionId);
+  const lastImport = await db.one('SELECT * FROM catalog_imports WHERE versionId = ? ORDER BY startedAt DESC LIMIT 1', versionId);
   const report = lastImport ? JSON.parse(lastImport.report) : null;
   if (report && report.errors.length) throw conflict('a versão tem erros registrados e não pode ser publicada');
   if (report && (report.divergences.length || report.missingSources.length) && !acknowledge)
@@ -219,54 +220,54 @@ function publish(versionId, { actorId = null, acknowledge = false } = {}) {
       `a versão tem ${report.divergences.length} divergência(s) e ${report.missingSources.length} fonte(s) ausente(s); confirme explicitamente (acknowledge) para publicar`,
     );
 
-  const indicators = db.one('SELECT count(*) AS n FROM questions WHERE versionId = ?', versionId).n;
+  const indicators = (await db.one('SELECT count(*) AS n FROM questions WHERE versionId = ?', versionId)).n;
   if (!indicators) throw conflict('a versão não tem indicadores');
 
-  db.transaction(() => {
-    db.run(
+  await db.transaction(async () => {
+    await db.run(
       "UPDATE catalog_versions SET status = 'archived', archivedAt = ? WHERE status = 'published' AND origin = 'official' AND id <> ?",
       nowIso(),
       versionId,
     );
-    db.run("UPDATE catalog_versions SET status = 'published', publishedAt = ?, publishedById = ? WHERE id = ?", nowIso(), actorId, versionId);
+    await db.run("UPDATE catalog_versions SET status = 'published', publishedAt = ?, publishedById = ? WHERE id = ?", nowIso(), actorId, versionId);
     // Denominação oficial dos cadernos da versão publicada (sem apagar capas já cadastradas).
-    for (const section of db.all('SELECT section, name FROM catalog_sections WHERE versionId = ?', versionId)) {
-      const existing = db.one('SELECT section FROM sectors WHERE section = ?', section.section);
-      if (existing) db.run('UPDATE sectors SET description = ? WHERE section = ?', section.name, section.section);
-      else db.run('INSERT INTO sectors (section, description, avatar) VALUES (?, ?, ?)', section.section, section.name, 'static/sectorCovers/caderno_geral.jpeg');
+    for (const section of await db.all('SELECT section, name FROM catalog_sections WHERE versionId = ?', versionId)) {
+      const existing = await db.one('SELECT section FROM sectors WHERE section = ?', section.section);
+      if (existing) await db.run('UPDATE sectors SET description = ? WHERE section = ?', section.name, section.section);
+      else await db.run('INSERT INTO sectors (section, description, avatar) VALUES (?, ?, ?)', section.section, section.name, 'static/sectorCovers/caderno_geral.jpeg');
     }
-    if (lastImport) db.run("UPDATE catalog_imports SET status = 'published' WHERE id = ?", lastImport.id);
+    if (lastImport) await db.run("UPDATE catalog_imports SET status = 'published' WHERE id = ?", lastImport.id);
   });
-  return versionById(versionId);
+  return await versionById(versionId);
 }
 
-function discardDraft(versionId) {
-  const version = versionById(versionId);
+async function discardDraft(versionId) {
+  const version = await versionById(versionId);
   if (!version) throw notFound('versão de catálogo não encontrada');
   if (version.status !== 'draft') throw conflict('somente rascunhos podem ser descartados');
-  const used = db.one('SELECT count(*) AS n FROM reports WHERE catalogVersionId = ?', versionId).n;
+  const used = (await db.one('SELECT count(*) AS n FROM reports WHERE catalogVersionId = ?', versionId)).n;
   if (used) throw conflict('a versão já está em uso por avaliações e não pode ser descartada');
-  db.transaction(() => {
-    db.run('DELETE FROM answers WHERE questionId IN (SELECT id FROM questions WHERE versionId = ?)', versionId);
-    db.run('DELETE FROM questions WHERE versionId = ?', versionId);
-    db.run('DELETE FROM catalog_sections WHERE versionId = ?', versionId);
-    db.run("UPDATE catalog_imports SET status = 'rejected' WHERE versionId = ?", versionId);
-    db.run('UPDATE catalog_imports SET versionId = NULL WHERE versionId = ?', versionId);
-    db.run('DELETE FROM catalog_versions WHERE id = ?', versionId);
+  await db.transaction(async () => {
+    await db.run('DELETE FROM answers WHERE questionId IN (SELECT id FROM questions WHERE versionId = ?)', versionId);
+    await db.run('DELETE FROM questions WHERE versionId = ?', versionId);
+    await db.run('DELETE FROM catalog_sections WHERE versionId = ?', versionId);
+    await db.run("UPDATE catalog_imports SET status = 'rejected' WHERE versionId = ?", versionId);
+    await db.run('UPDATE catalog_imports SET versionId = NULL WHERE versionId = ?', versionId);
+    await db.run('DELETE FROM catalog_versions WHERE id = ?', versionId);
   });
   return { id: versionId, discarded: true };
 }
 
 /** Indicadores de uma versão, com as alternativas próprias de cada um. */
-function indicatorsOf(versionId, { section = null } = {}) {
-  const questions = db.all(
+async function indicatorsOf(versionId, { section = null } = {}) {
+  const questions = await db.all(
     `SELECT * FROM questions WHERE versionId = ? ${section ? 'AND section IN (?, ?)' : ''} ORDER BY position, code`,
     ...(section ? [versionId, 'All', section] : [versionId]),
   );
   if (!questions.length) return [];
   const marks = questions.map(() => '?').join(', ');
-  const answers = db.all(
-    `SELECT * FROM answers WHERE questionId IN (${marks}) ORDER BY position, rowid`,
+  const answers = await db.all(
+    `SELECT * FROM answers WHERE questionId IN (${marks}) ORDER BY position, id`,
     ...questions.map((q) => q.id),
   );
   const byQuestion = new Map();
@@ -278,8 +279,8 @@ function indicatorsOf(versionId, { section = null } = {}) {
 }
 
 /** Níveis distintos usados por uma versão (substitui a antiga lista universal de níveis). */
-function levelsOf(versionId) {
-  return db.all(
+async function levelsOf(versionId) {
+  return await db.all(
     `SELECT a.title AS name, a.slug, a.points, count(*) AS indicators
        FROM answers a JOIN questions q ON q.id = a.questionId
       WHERE q.versionId = ?

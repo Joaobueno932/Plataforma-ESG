@@ -2,18 +2,18 @@ const express = require('express');
 const db = require('../db');
 const ser = require('../serializers');
 const { paginate } = require('../pagination');
-const { badRequest, notFound, conflict } = require('../http');
+const { badRequest, notFound, conflict, asyncRouter } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
 const v = require('../validators');
 const { createCycleForCompany } = require('../services');
 
-const router = express.Router();
+const router = asyncRouter();
 router.use('/companies', authenticate);
 
 const trim = (value) => String(value ?? '').trim();
 
-/** Linha da listagem, no formato consumido pela interface. */
+/** Linha da listagem, no formato consumido pela interface (projeção pura, sem consulta). */
 function listRow(c, progress) {
   const p = progress.get(c.id) || { status: 'Pending', answered: 0, total: 0 };
   return {
@@ -33,18 +33,18 @@ function listRow(c, progress) {
  * Progresso real por empresa (respondidos × total), em duas consultas — a contagem anterior
  * devolvia o total como se fosse "respondidos" (diagnóstico A19).
  */
-function progressByCompany(companyIds) {
+async function progressByCompany(companyIds) {
   const result = new Map();
   if (!companyIds.length) return result;
   const marks = companyIds.map(() => '?').join(', ');
-  const cycles = db.all(
+  const cycles = await db.all(
     `SELECT r.id, r.companyId, r.status, r.cycle FROM reports r
       WHERE r.companyId IN (${marks})
         AND r.cycle = (SELECT max(cycle) FROM reports WHERE companyId = r.companyId)`,
     ...companyIds,
   );
   if (!cycles.length) return result;
-  const counts = db.all(
+  const counts = await db.all(
     `SELECT reportId,
             count(*) AS total,
             sum(CASE WHEN selectedAnswerId IS NOT NULL OR nonApplicable = 1 THEN 1 ELSE 0 END) AS answered
@@ -60,8 +60,8 @@ function progressByCompany(companyIds) {
   return result;
 }
 
-const findCompany = (id) => {
-  const c = db.one('SELECT * FROM companies WHERE id = ? AND deletedAt IS NULL', id);
+const findCompany = async (id) => {
+  const c = await db.one('SELECT * FROM companies WHERE id = ? AND deletedAt IS NULL', id);
   if (!c) throw notFound('company not found');
   return c;
 };
@@ -72,7 +72,7 @@ const findCompany = (id) => {
  * Administração enxerga a carteira completa; os demais perfis enxergam **apenas** as empresas
  * com vínculo vigente (a lista aberta a consultor/auditor era parte da brecha A8).
  */
-router.get('/companies', (req, res) => {
+router.get('/companies', async (req, res) => {
   const scope = authz.visibleCompanyIds(req.principal);
   if (scope && !scope.length) return res.json(paginate(req, [], { defaultPerPage: 5, basePath: '/companies' }));
   const term = trim(req.query.bussinessName || req.query.q).toLowerCase();
@@ -102,8 +102,8 @@ router.get('/companies', (req, res) => {
     where.push('status = ?');
     params.push(status);
   }
-  const rows = db.all(`SELECT * FROM companies WHERE ${where.join(' AND ')} ORDER BY createdAt DESC`, ...params);
-  const progress = progressByCompany(rows.map((r) => r.id));
+  const rows = await db.all(`SELECT * FROM companies WHERE ${where.join(' AND ')} ORDER BY createdAt DESC`, ...params);
+  const progress = await progressByCompany(rows.map((r) => r.id));
   const data = rows.map((c) => listRow(c, progress));
   if (req.query.nonPaginate === 'true')
     return res.json({ ...paginate(req, data, { defaultPerPage: data.length || 1, basePath: '/companies' }), data });
@@ -111,13 +111,13 @@ router.get('/companies', (req, res) => {
 });
 
 /** Empresas selecionáveis como contexto (somente vínculos vigentes; Administração: todas). */
-router.get('/companies/light/all', (req, res) => {
+router.get('/companies/light/all', async (req, res) => {
   const scope = authz.visibleCompanyIds(req.principal);
   if (!scope)
-    return res.json(db.all('SELECT id, legalName, bussinessName FROM companies WHERE deletedAt IS NULL ORDER BY bussinessName'));
+    return res.json(await db.all('SELECT id, legalName, bussinessName FROM companies WHERE deletedAt IS NULL ORDER BY bussinessName'));
   if (!scope.length) return res.json([]);
   res.json(
-    db.all(
+    await db.all(
       `SELECT id, legalName, bussinessName FROM companies
         WHERE deletedAt IS NULL AND id IN (${scope.map(() => '?').join(', ')}) ORDER BY bussinessName`,
       ...scope,
@@ -126,34 +126,34 @@ router.get('/companies/light/all', (req, res) => {
 });
 
 /** GED da empresa em contexto. */
-router.get('/companies/get/files', (req, res) => {
+router.get('/companies/get/files', async (req, res) => {
   const companyId = trim(req.query.companyId) || req.context.companyId;
-  authz.assertCompanyScope(req, companyId, 'cycle.ged.read');
+  await authz.assertCompanyScope(req, companyId, 'cycle.ged.read');
   res.json(
-    db.all(
+    await db.all(
       'SELECT id, companyId, name, url, fileType, createdAt FROM company_files WHERE companyId = ? AND inGed = 1 ORDER BY name',
       companyId,
     ),
   );
 });
 
-router.get('/companies/:id', (req, res) => {
-  const c = findCompany(req.params.id);
-  const role = authz.assertCompanyScope(req, c.id, 'company.read');
-  const out = ser.company(c, { withReport: true, withCycles: true });
-  const progress = progressByCompany([c.id]).get(c.id);
+router.get('/companies/:id', async (req, res) => {
+  const c = await findCompany(req.params.id);
+  const role = await authz.assertCompanyScope(req, c.id, 'company.read');
+  const out = await ser.company(c, { withReport: true, withCycles: true });
+  const progress = (await progressByCompany([c.id])).get(c.id);
   if (out.report && progress) out.report._count = { answeredQuestions: progress.answered, totalQuestions: progress.total };
   // A relação de pessoas da empresa não é aberta ao colaborador.
-  const canSeePeople = authz.can(req.principal, 'company.users.read', { companyId: c.id }).ok;
+  const canSeePeople = (await authz.can(req.principal, 'company.users.read', { companyId: c.id })).ok;
   out.users = canSeePeople
-    ? db
-        .all(
+    ? (
+        await db.all(
           `SELECT DISTINCT u.id, u.name, u.email, u.jobTitle, u.status, l.role
              FROM user_company_links l JOIN users u ON u.id = l.userId
             WHERE l.companyId = ? AND l.revokedAt IS NULL AND u.deletedAt IS NULL ORDER BY u.name`,
           c.id,
         )
-        .map((u) => ({ ...u, companyId: c.id }))
+      ).map((u) => ({ ...u, companyId: c.id }))
     : [];
   out.viewerRole = role;
   res.json(out);
@@ -161,7 +161,7 @@ router.get('/companies/:id', (req, res) => {
 
 /* ------------------------------------------------------------------ cadastro */
 
-router.post('/companies', authz.authorize('companies.manage'), (req, res) => {
+router.post('/companies', authz.authorize('companies.manage'), async (req, res) => {
   const b = req.body || {};
   for (const field of ['legalName', 'bussinessName', 'email', 'cnpj', 'accessDate', 'size', 'section'])
     if (!b[field]) throw badRequest(`o campo ${field} é obrigatório`);
@@ -169,15 +169,15 @@ router.post('/companies', authz.authorize('companies.manage'), (req, res) => {
   if (!v.isValidEmail(b.email)) throw badRequest('informe um e-mail válido');
   const cnpj = v.onlyDigits(b.cnpj);
   if (!v.isValidCnpj(cnpj)) throw badRequest('CNPJ inválido: confira os 14 dígitos e os dígitos verificadores');
-  if (!db.one('SELECT section FROM sectors WHERE section = ? AND section <> ?', b.section, 'All'))
+  if (!await db.one('SELECT section FROM sectors WHERE section = ? AND section <> ?', b.section, 'All'))
     throw badRequest('caderno setorial inválido');
-  const duplicated = db.one('SELECT id, bussinessName FROM companies WHERE cnpj = ? AND deletedAt IS NULL', cnpj);
+  const duplicated = await db.one('SELECT id, bussinessName FROM companies WHERE cnpj = ? AND deletedAt IS NULL', cnpj);
   if (duplicated) throw conflict(`já existe uma empresa com esse CNPJ (${duplicated.bussinessName}); edite o cadastro existente`);
 
   const id = db.uuid();
-  db.transaction(() => {
+  await db.transaction(async () => {
     const at = db.now();
-    db.run(
+    await db.run(
       `INSERT INTO companies (id, bussinessName, legalName, email, cnpj, accessDate, size, section, avatar, access, reportAccess, status, origin, createdById, updatedById, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 'ACTIVE', 'registered', ?, ?, ?, ?)`,
       id,
@@ -194,14 +194,14 @@ router.post('/companies', authz.authorize('companies.manage'), (req, res) => {
       at,
       at,
     );
-    createCycleForCompany(db.one('SELECT * FROM companies WHERE id = ?', id), { createdById: req.principal.user.id });
+    await createCycleForCompany(await db.one('SELECT * FROM companies WHERE id = ?', id), { createdById: req.principal.user.id });
   });
-  authz.audit(req, 'company.create', { entity: 'companies', entityId: id, companyId: id, details: { section: b.section, size: b.size } });
-  res.status(201).json(ser.company(findCompany(id), { withReport: true, withCycles: true }));
+  await authz.audit(req, 'company.create', { entity: 'companies', entityId: id, companyId: id, details: { section: b.section, size: b.size } });
+  res.status(201).json(await ser.company(await findCompany(id), { withReport: true, withCycles: true }));
 });
 
-router.patch('/companies/:id', authz.authorize('companies.manage'), (req, res) => {
-  const c = findCompany(req.params.id);
+router.patch('/companies/:id', authz.authorize('companies.manage'), async (req, res) => {
+  const c = await findCompany(req.params.id);
   const b = req.body || {};
   const patch = {};
   for (const field of ['bussinessName', 'legalName', 'avatar'])
@@ -213,7 +213,7 @@ router.patch('/companies/:id', authz.authorize('companies.manage'), (req, res) =
   if (b.cnpj !== undefined && b.cnpj !== '') {
     const cnpj = v.onlyDigits(b.cnpj);
     if (!v.isValidCnpj(cnpj)) throw badRequest('CNPJ inválido: confira os 14 dígitos e os dígitos verificadores');
-    const other = db.one('SELECT id FROM companies WHERE cnpj = ? AND deletedAt IS NULL', cnpj);
+    const other = await db.one('SELECT id FROM companies WHERE cnpj = ? AND deletedAt IS NULL', cnpj);
     if (other && other.id !== c.id) throw conflict('já existe uma empresa com esse CNPJ; edite o cadastro existente');
     patch.cnpj = cnpj;
   }
@@ -222,7 +222,7 @@ router.patch('/companies/:id', authz.authorize('companies.manage'), (req, res) =
     patch.size = b.size;
   }
   if (b.section !== undefined && b.section !== c.section) {
-    if (!db.one('SELECT section FROM sectors WHERE section = ? AND section <> ?', b.section, 'All'))
+    if (!await db.one('SELECT section FROM sectors WHERE section = ? AND section <> ?', b.section, 'All'))
       throw badRequest('caderno setorial inválido');
     // Troca de caderno vale para a próxima avaliação: ciclos existentes mantêm o seu caderno.
     patch.section = b.section;
@@ -241,43 +241,43 @@ router.patch('/companies/:id', authz.authorize('companies.manage'), (req, res) =
   if (keys.length) {
     patch.updatedById = req.principal.user.id;
     const fields = Object.keys(patch);
-    db.run(
+    await db.run(
       `UPDATE companies SET ${fields.map((k) => `${k} = ?`).join(', ')}, updatedAt = ? WHERE id = ?`,
       ...fields.map((k) => patch[k]),
       db.now(),
       c.id,
     );
-    authz.audit(req, 'company.update', {
+    await authz.audit(req, 'company.update', {
       entity: 'companies',
       entityId: c.id,
       companyId: c.id,
       details: { fields: keys, before: Object.fromEntries(keys.map((k) => [k, c[k] ?? null])), after: Object.fromEntries(keys.map((k) => [k, patch[k]])) },
     });
   }
-  res.json(ser.company(findCompany(c.id), { withReport: true, withCycles: true }));
+  res.json(await ser.company(await findCompany(c.id), { withReport: true, withCycles: true }));
 });
 
 /**
  * Inativação cadastral. Não há exclusão: avaliações, arquivos, vínculos e autoria permanecem
  * (as chaves estrangeiras passaram a RESTRICT justamente para impedir perda de histórico).
  */
-router.delete('/companies/:id', authz.authorize('companies.manage'), (req, res) => {
-  const c = findCompany(req.params.id);
-  db.run(
+router.delete('/companies/:id', authz.authorize('companies.manage'), async (req, res) => {
+  const c = await findCompany(req.params.id);
+  await db.run(
     "UPDATE companies SET status = 'INACTIVE', access = 0, statusChangedAt = ?, statusChangedById = ?, updatedAt = ? WHERE id = ?",
     db.now(),
     req.principal.user.id,
     db.now(),
     c.id,
   );
-  db.run(
+  await db.run(
     `UPDATE sessions SET revokedAt = ?, revokedReason = 'company-inactivated'
       WHERE revokedAt IS NULL AND userId IN (
         SELECT userId FROM user_company_links WHERE companyId = ? AND revokedAt IS NULL AND role IN ('MANAGER', 'EMPLOYEE'))`,
     db.now(),
     c.id,
   );
-  authz.audit(req, 'company.inactivate', { entity: 'companies', entityId: c.id, companyId: c.id });
+  await authz.audit(req, 'company.inactivate', { entity: 'companies', entityId: c.id, companyId: c.id });
   res.json({ id: c.id, deleted: true, inactivated: true });
 });
 

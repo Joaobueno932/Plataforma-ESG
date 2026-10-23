@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, DEMO_PASSWORD } = require('./helpers');
+const { startServer, shutdown, DEMO_PASSWORD } = require('./helpers');
 
 /**
  * Matriz de negação: duas empresas, dois ciclos, acesso direto por id, arquivo e exportação,
@@ -11,15 +11,16 @@ const { startServer, DEMO_PASSWORD } = require('./helpers');
 test('autorização: escopo, vínculos, contexto e negações', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const admin = await s.loginAdmin();
 
   await t.test('duas empresas e dois ciclos por empresa', async () => {
     // Conclui o ciclo 1 da empresa B para abrir o ciclo 2 (recertificação).
-    const reportB1 = s.reportIdOf('demo-company-b');
-    s.db.run("UPDATE reports SET status = 'Audited' WHERE id = ?", reportB1);
-    const company = s.db.one('SELECT * FROM companies WHERE id = ?', 'demo-company-b');
+    const reportB1 = await s.reportIdOf('demo-company-b');
+    await s.db.run("UPDATE reports SET status = 'Audited' WHERE id = ?", reportB1);
+    const company = await s.db.one('SELECT * FROM companies WHERE id = ?', 'demo-company-b');
     const { createCycleForCompany } = require('../src/services');
-    const reportB2 = createCycleForCompany(company, { createdById: s.userId('admin@esgdemo.com.br') });
+    const reportB2 = await createCycleForCompany(company, { createdById: await s.userId('admin@esgdemo.com.br') });
 
     const cycles = await s.api('GET', '/reports/company/demo-company-b/cycles', { token: admin });
     assert.equal(cycles.status, 200);
@@ -27,13 +28,13 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     assert.equal(cycles.body[1].previousReportId, reportB1, 'o ciclo novo aponta para o anterior');
     assert.equal(cycles.body[1].id, reportB2);
     // Um ciclo em andamento impede abrir outro.
-    assert.throws(() => createCycleForCompany(company, {}), /ciclo em andamento/);
+    await assert.rejects(() => createCycleForCompany(company, {}), /ciclo em andamento/);
   });
 
   await t.test('acesso direto por id: empresa A não alcança a empresa B', async () => {
     const gestorA = await s.login('gestor@esgdemo.com.br');
-    const reportB = s.reportIdOf('demo-company-b');
-    const itemB = s.db.one('SELECT id FROM question_reports WHERE reportId = ?', reportB).id;
+    const reportB = await s.reportIdOf('demo-company-b');
+    const itemB = (await s.db.one('SELECT id FROM question_reports WHERE reportId = ?', reportB)).id;
 
     assert.equal((await s.api('GET', '/companies/demo-company-b', { token: gestorA })).status, 403);
     assert.equal((await s.api('GET', `/reports/${reportB}`, { token: gestorA })).status, 403);
@@ -53,7 +54,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
 
     const itemsA = (await s.api('GET', '/reports/company/questions/', { token: gestorA })).body;
     const [primeiro, segundo] = itemsA;
-    await s.api('PATCH', `/reports/addanswerer/${primeiro.id}`, { token: gestorA, body: { user: s.userId('funcionario@esgdemo.com.br') } });
+    await s.api('PATCH', `/reports/addanswerer/${primeiro.id}`, { token: gestorA, body: { user: await s.userId('funcionario@esgdemo.com.br') } });
 
     const form = new FormData();
     form.append('companyId', 'demo-company-a');
@@ -89,16 +90,16 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const funcionario = await s.login('funcionario@esgdemo.com.br');
     const itemsA = (await s.api('GET', '/reports/company/questions/', { token: await s.login('gestor@esgdemo.com.br') })).body;
     const alvo = itemsA[2];
-    const r = await s.api('PATCH', `/reports/addanswerer/${alvo.id}`, { token: funcionario, body: { user: s.userId('funcionario@esgdemo.com.br') } });
+    const r = await s.api('PATCH', `/reports/addanswerer/${alvo.id}`, { token: funcionario, body: { user: await s.userId('funcionario@esgdemo.com.br') } });
     assert.equal(r.status, 403, 'colaborador não delega indicador (nem para si)');
     // Consultor também não delega: a delegação é do gestor (ver docs/esg/regras.md).
     const consultor = await s.login('consultor@esgdemo.com.br');
-    assert.equal((await s.api('PATCH', `/reports/addanswerer/${alvo.id}`, { token: consultor, body: { user: s.userId('funcionario@esgdemo.com.br') } })).status, 403);
+    assert.equal((await s.api('PATCH', `/reports/addanswerer/${alvo.id}`, { token: consultor, body: { user: await s.userId('funcionario@esgdemo.com.br') } })).status, 403);
     // E o gestor só delega a quem tem vínculo vigente com a empresa.
     const gestorA = await s.login('gestor@esgdemo.com.br');
     const forasteiro = await s.api('PATCH', `/reports/addanswerer/${alvo.id}`, {
       token: gestorA,
-      body: { user: s.userId('gestor.exemplo@esgdemo.com.br') },
+      body: { user: await s.userId('gestor.exemplo@esgdemo.com.br') },
     });
     assert.equal(forasteiro.status, 400);
   });
@@ -136,7 +137,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const sess = consultor || (await s.session('consultor@esgdemo.com.br', DEMO_PASSWORD));
     assert.equal((await s.api('GET', '/companies/demo-company-b', { token: sess.token })).status, 200);
 
-    const userId = s.userId('consultor@esgdemo.com.br');
+    const userId = await s.userId('consultor@esgdemo.com.br');
     const links = (await s.api('GET', `/users/${userId}`, { token: admin })).body.links;
     const linkB = links.find((l) => l.companyId === 'demo-company-b');
     const revoga = await s.api('DELETE', `/users/${userId}/links/${linkB.id}`, { token: admin });
@@ -151,7 +152,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
 
   await t.test('conta inativa não entra e perde a sessão', async () => {
     const sess = await s.session('gestor.exemplo@esgdemo.com.br');
-    const userId = s.userId('gestor.exemplo@esgdemo.com.br');
+    const userId = await s.userId('gestor.exemplo@esgdemo.com.br');
     assert.equal((await s.api('DELETE', `/users/${userId}`, { token: admin })).status, 200);
     assert.equal((await s.api('GET', '/auth/me', { token: sess.token })).status, 401);
     const login = await s.api('POST', '/auth/login', { body: { email: 'gestor.exemplo@esgdemo.com.br', password: DEMO_PASSWORD } });
@@ -160,7 +161,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
   });
 
   await t.test('alteração de perfil muda o que a pessoa pode fazer', async () => {
-    const userId = s.userId('gestor.exemplo@esgdemo.com.br');
+    const userId = await s.userId('gestor.exemplo@esgdemo.com.br');
     const antes = await s.session('gestor.exemplo@esgdemo.com.br');
     assert.equal((await s.api('GET', '/users', { token: antes.token })).status, 403);
 
@@ -170,7 +171,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const depois = await s.session('gestor.exemplo@esgdemo.com.br');
     assert.deepEqual(depois.user.roles, ['EMPLOYEE']);
     // Como colaborador, não valida respostas nem solicita auditoria.
-    const itemB = s.db.one('SELECT id FROM question_reports WHERE reportId = ?', s.reportIdOf('demo-company-b')).id;
+    const itemB = (await s.db.one('SELECT id FROM question_reports WHERE reportId = ?', await s.reportIdOf('demo-company-b'))).id;
     assert.equal((await s.api('POST', `/reports/validateanswer/${itemB}`, { token: depois.token, body: { veredict: true } })).status, 403);
     assert.equal((await s.api('POST', '/reports/requestAudit/demo-company-b', { token: depois.token })).status, 403);
   });
@@ -179,7 +180,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const sess = await s.session('admin.consultor@esgdemo.com.br');
     assert.deepEqual(sess.user.roles.sort(), ['ADMIN', 'CONSULTOR']);
     // Função efetivamente exercida: consultor na empresa vinculada (autoria registrada).
-    const reportB = s.reportIdOf('demo-company-b');
+    const reportB = await s.reportIdOf('demo-company-b');
     const itemB = (await s.api('GET', `/reports/company/questions/${reportB}`, { token: sess.token })).body[0];
     const resposta = await s.api('PATCH', `/reports/answerQuestion/${itemB.id}`, {
       token: sess.token,
@@ -197,7 +198,7 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
   });
 
   await t.test('ADMIN isolado: acesso operacional amplo, nenhuma aprovação', async () => {
-    const reportB = s.reportIdOf('demo-company-b');
+    const reportB = await s.reportIdOf('demo-company-b');
     const itemB = (await s.api('GET', `/reports/company/questions/${reportB}`, { token: admin })).body[1];
     // Preenche em nome da empresa, com autoria.
     const resposta = await s.api('PATCH', `/reports/answerQuestion/${itemB.id}`, { token: admin, body: { answerId: itemB.question.answers[0].id } });
@@ -212,9 +213,9 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
 
   await t.test('auditor precisa de designação no ciclo, não só de vínculo', async () => {
     const auditor = await s.session('auditor@esgdemo.com.br');
-    const reportA = s.reportIdOf('demo-company-a');
-    s.db.run("UPDATE reports SET status = 'Auditing' WHERE id = ?", reportA);
-    const itemA = s.db.one('SELECT id FROM question_reports WHERE reportId = ?', reportA).id;
+    const reportA = await s.reportIdOf('demo-company-a');
+    await s.db.run("UPDATE reports SET status = 'Auditing' WHERE id = ?", reportA);
+    const itemA = (await s.db.one('SELECT id FROM question_reports WHERE reportId = ?', reportA)).id;
     assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: auditor.token, body: { status: 'Approved', redflag: 'ok' } })).status, 201);
 
     // Sem designação no ciclo: vínculo com a empresa não basta.
@@ -235,12 +236,12 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const remove = await s.api('DELETE', `/reports/${reportA}/professionals/${novoAuditor.body.id}`, { token: admin });
     assert.equal(remove.status, 200);
     assert.equal((await s.api('POST', `/auditory/evaluatequestion/${itemA}`, { token: sem.token, body: { status: 'Approved', redflag: 'ok' } })).status, 403);
-    s.db.run("UPDATE reports SET status = 'Pending' WHERE id = ?", reportA);
+    await s.db.run("UPDATE reports SET status = 'Pending' WHERE id = ?", reportA);
   });
 
   await t.test('o mesmo profissional não acumula consultor e auditor na mesma empresa', async () => {
-    const consultorId = s.userId('consultor@esgdemo.com.br');
-    const reportA = s.reportIdOf('demo-company-a');
+    const consultorId = await s.userId('consultor@esgdemo.com.br');
+    const reportA = await s.reportIdOf('demo-company-a');
     const r = await s.api('POST', `/reports/${reportA}/professionals`, { token: admin, body: { userId: consultorId, role: 'AUDITOR' } });
     assert.equal(r.status, 400, 'sem vínculo de auditor não há designação');
   });
@@ -249,7 +250,9 @@ test('autorização: escopo, vínculos, contexto e negações', async (t) => {
     const review = await s.api('GET', '/admin/review', { token: admin });
     assert.equal(review.status, 200);
     assert.ok(review.body.companies.some((c) => c.origin === 'demo'), 'empresas de demonstração marcadas');
-    assert.ok(review.body.migrations.length >= 7);
+    // O esquema MySQL nasce consolidado; o histórico SQLite fica registrado à parte.
+    assert.deepEqual(review.body.migrations.map((m) => m.id), ['mysql_001_baseline']);
+    assert.ok(review.body.legacySqliteHistory.length >= 9, 'histórico da base anterior continua declarado');
     const gestor = await s.login('gestor@esgdemo.com.br');
     assert.equal((await s.api('GET', '/admin/review', { token: gestor })).status, 403);
   });

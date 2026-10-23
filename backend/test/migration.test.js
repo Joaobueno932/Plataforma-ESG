@@ -3,24 +3,37 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { DatabaseSync } = require('node:sqlite');
 
-const BASELINE = require('../src/migrations/001_baseline');
-const { migrate } = require('../src/migrations');
+process.env.NODE_ENV = 'test';
+
+const BASELINE_SQLITE = require('../src/migrations/sqlite/001_baseline');
+const sqliteMigrations = require('../src/migrations/sqlite');
+const migrations = require('../src/migrations');
+const config = require('../src/config');
+const db = require('../src/db');
+
+const ROOT = path.resolve(__dirname, '..');
 
 /**
- * Migração sobre cópia representativa do banco anterior: esquema herdado (com
- * `reports.companyId UNIQUE` e cascatas), dados preenchidos, e então as migrações.
- * Verifica preservação de dados, ids e relacionamentos, e as constraints novas.
+ * Duas garantias, nesta ordem:
+ *
+ * 1. o histórico SQLite congelado continua levando uma base representativa do sistema antigo
+ *    ao estado final, preservando dados, ids e relacionamentos (é o pré-requisito da
+ *    transferência);
+ * 2. o esquema MySQL recebe essa base por `scripts/sqlite-to-mysql.js` sem perder nada e com
+ *    as constraints novas valendo — ciclo por empresa, e-mail e CNPJ ativos únicos, e as
+ *    cascatas que apagavam avaliação convertidas em RESTRICT.
  */
 function legacyDatabase() {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'esg-mig-')), 'legacy.sqlite');
-  const db = new DatabaseSync(file);
-  db.exec('PRAGMA foreign_keys = ON');
-  BASELINE.up(db); // esquema antigo, sem as tabelas novas
+  const legacy = new DatabaseSync(file);
+  legacy.exec('PRAGMA foreign_keys = ON');
+  BASELINE_SQLITE.up(legacy); // esquema antigo, sem as tabelas novas
 
   const at = '2026-01-10T12:00:00.000Z';
-  db.exec(`
+  legacy.exec(`
     INSERT INTO companies (id, bussinessName, legalName, email, cnpj, accessDate, size, section, access, reportAccess, createdAt, updatedAt)
     VALUES ('c1', 'Alfa', 'Alfa Ltda', 'a@a.com', '11222333000181', '${at}', 'MEDIA', 'A', 1, 0, '${at}', '${at}'),
            ('c2', 'Beta', 'Beta Ltda', 'b@b.com', '44555666000181', '${at}', 'GRANDE', 'B', 1, 0, '${at}', '${at}');
@@ -59,27 +72,27 @@ function legacyDatabase() {
     INSERT INTO question_report_files (id, questionReportId, fileId, createdAt) VALUES ('qrf1', 'qr1', 'f1', '${at}');
     INSERT INTO evidences (id, questionReportId, name, url, fileType, createdAt) VALUES ('e1', 'qr1', 'parecer.pdf', 'u/p.pdf', 'application/pdf', '${at}');
   `);
-  return { file, db };
+  return { file, legacy };
 }
 
-test('migração sobre banco representativo preserva dados e aplica as constraints', async (t) => {
-  const { file, db } = legacyDatabase();
-  t.after(() => db.close());
+test('histórico SQLite congelado prepara a base herdada sem perder nada', async (t) => {
+  const { file, legacy } = legacyDatabase();
+  t.after(() => legacy.close());
 
   const before = {
-    companies: db.prepare('SELECT count(*) AS n FROM companies').get().n,
-    users: db.prepare('SELECT count(*) AS n FROM users').get().n,
-    reports: db.prepare('SELECT count(*) AS n FROM reports').get().n,
-    items: db.prepare('SELECT count(*) AS n FROM question_reports').get().n,
-    answers: db.prepare('SELECT count(*) AS n FROM answers').get().n,
-    files: db.prepare('SELECT count(*) AS n FROM question_report_files').get().n,
-    evidences: db.prepare('SELECT count(*) AS n FROM evidences').get().n,
+    companies: legacy.prepare('SELECT count(*) AS n FROM companies').get().n,
+    users: legacy.prepare('SELECT count(*) AS n FROM users').get().n,
+    reports: legacy.prepare('SELECT count(*) AS n FROM reports').get().n,
+    items: legacy.prepare('SELECT count(*) AS n FROM question_reports').get().n,
+    answers: legacy.prepare('SELECT count(*) AS n FROM answers').get().n,
+    files: legacy.prepare('SELECT count(*) AS n FROM question_report_files').get().n,
+    evidences: legacy.prepare('SELECT count(*) AS n FROM evidences').get().n,
   };
 
   await t.test('o esquema antigo realmente impedia um segundo ciclo', () => {
     assert.throws(
       () =>
-        db
+        legacy
           .prepare(
             "INSERT INTO reports (id, companyId, initialYear, finalYear, structure, description, status, createdAt, updatedAt) VALUES ('r1b','c1','x','x','s','d','Pending','x','x')",
           )
@@ -88,134 +101,204 @@ test('migração sobre banco representativo preserva dados e aplica as constrain
     );
   });
 
-  await t.test('aplica as migrações com integridade e sem órfãos', () => {
-    db.exec('PRAGMA foreign_keys = ON');
-    const applied = migrate(db);
-    assert.deepEqual(applied, [
-      '001_baseline',
-      '002_identity',
-      '003_company_registration',
-      '004_cycles',
-      '005_history_integrity',
-      '006_indexes',
-      '007_rounds',
-      '008_catalog_versions',
-      '009_scoring',
-    ]);
-    assert.equal(Object.values(db.prepare('PRAGMA integrity_check').get())[0], 'ok');
-    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+  await t.test('aplica o histórico com integridade e sem órfãos', () => {
+    legacy.exec('PRAGMA foreign_keys = ON');
+    const applied = sqliteMigrations.migrate(legacy);
+    assert.deepEqual(applied, migrations.SQLITE_HISTORY);
+    assert.equal(Object.values(legacy.prepare('PRAGMA integrity_check').get())[0], 'ok');
+    assert.deepEqual(legacy.prepare('PRAGMA foreign_key_check').all(), []);
     // Idempotente: rodar de novo não aplica nada.
-    assert.deepEqual(migrate(db), []);
+    assert.deepEqual(sqliteMigrations.migrate(legacy), []);
   });
 
   await t.test('dados, ids e relacionamentos preservados', () => {
     const after = {
-      companies: db.prepare('SELECT count(*) AS n FROM companies').get().n,
-      users: db.prepare('SELECT count(*) AS n FROM users').get().n,
-      reports: db.prepare('SELECT count(*) AS n FROM reports').get().n,
-      items: db.prepare('SELECT count(*) AS n FROM question_reports').get().n,
-      answers: db.prepare('SELECT count(*) AS n FROM answers').get().n,
-      files: db.prepare('SELECT count(*) AS n FROM question_report_files').get().n,
-      evidences: db.prepare('SELECT count(*) AS n FROM evidences').get().n,
+      companies: legacy.prepare('SELECT count(*) AS n FROM companies').get().n,
+      users: legacy.prepare('SELECT count(*) AS n FROM users').get().n,
+      reports: legacy.prepare('SELECT count(*) AS n FROM reports').get().n,
+      items: legacy.prepare('SELECT count(*) AS n FROM question_reports').get().n,
+      answers: legacy.prepare('SELECT count(*) AS n FROM answers').get().n,
+      files: legacy.prepare('SELECT count(*) AS n FROM question_report_files').get().n,
+      evidences: legacy.prepare('SELECT count(*) AS n FROM evidences').get().n,
     };
     assert.deepEqual(after, before);
-    const item = db.prepare('SELECT * FROM question_reports WHERE id = ?').get('qr1');
+    const item = legacy.prepare('SELECT * FROM question_reports WHERE id = ?').get('qr1');
     assert.equal(item.answerText, 'resposta preservada');
     assert.equal(item.selectedAnswerId, 'a2');
     assert.equal(item.answererId, 'u-func');
     assert.equal(item.answeredById, 'u-func', 'autoria conhecida foi preenchida a partir do responsável');
-    assert.equal(db.prepare('SELECT questionReportId FROM question_report_files WHERE id = ?').get('qrf1').questionReportId, 'qr1');
-    assert.equal(db.prepare('SELECT questionReportId FROM evidences WHERE id = ?').get('e1').questionReportId, 'qr1');
+    assert.equal(legacy.prepare('SELECT questionReportId FROM question_report_files WHERE id = ?').get('qrf1').questionReportId, 'qr1');
+    assert.equal(legacy.prepare('SELECT questionReportId FROM evidences WHERE id = ?').get('e1').questionReportId, 'qr1');
   });
 
   await t.test('perfis e vínculos migrados do modelo antigo, profissionais marcados para revisão', () => {
-    const profiles = db.prepare('SELECT userId, role FROM user_profiles ORDER BY userId').all().map((r) => ({ ...r }));
+    const profiles = legacy.prepare('SELECT userId, role FROM user_profiles ORDER BY userId').all().map((r) => ({ ...r }));
     assert.equal(profiles.length, 5);
     assert.deepEqual(
       profiles.find((p) => p.userId === 'u-gestor'),
       { userId: 'u-gestor', role: 'MANAGER' },
     );
-    const links = db.prepare('SELECT userId, companyId, role, needsReview FROM user_company_links ORDER BY userId').all().map((r) => ({ ...r }));
+    const links = legacy.prepare('SELECT userId, companyId, role, needsReview FROM user_company_links ORDER BY userId').all().map((r) => ({ ...r }));
     assert.equal(links.length, 4, 'o administrador não tem vínculo de empresa');
     assert.equal(links.find((l) => l.userId === 'u-cons').needsReview, 1, 'vínculo de consultor exige confirmação');
     assert.equal(links.find((l) => l.userId === 'u-aud').needsReview, 1);
     assert.equal(links.find((l) => l.userId === 'u-gestor').needsReview, 0);
     // Nenhuma designação de ciclo foi inventada.
-    assert.equal(db.prepare('SELECT count(*) AS n FROM cycle_professionals').get().n, 0);
+    assert.equal(legacy.prepare('SELECT count(*) AS n FROM cycle_professionals').get().n, 0);
   });
 
-  await t.test('ciclos: UNIQUE(companyId) removido, caderno e versão registrados', () => {
-    const r1 = db.prepare('SELECT * FROM reports WHERE id = ?').get('r1');
+  await t.test('ciclos, caderno e versão de catálogo registrados', () => {
+    const r1 = legacy.prepare('SELECT * FROM reports WHERE id = ?').get('r1');
     assert.equal(r1.cycle, 1);
     assert.equal(r1.section, 'A');
     assert.equal(r1.catalogVersion, 'legacy-demo');
     assert.equal(r1.origin, 'legacy');
     assert.equal(r1.needsReview, 1);
     assert.equal(r1.currentRound, 1);
-    db.prepare(
-      `INSERT INTO reports (id, companyId, cycle, previousReportId, section, catalogVersion, initialYear, finalYear, structure, description, status, createdAt, updatedAt)
-       VALUES ('r1b', 'c1', 2, 'r1', 'A', 'legacy-demo', 'x', 'x', 's', 'd', 'Pending', 'x', 'x')`,
-    ).run();
-    assert.equal(db.prepare('SELECT count(*) AS n FROM reports WHERE companyId = ?').get('c1').n, 2);
-    assert.throws(
-      () =>
-        db
-          .prepare(
-            `INSERT INTO reports (id, companyId, cycle, section, catalogVersion, initialYear, finalYear, structure, description, status, createdAt, updatedAt)
-             VALUES ('r1c', 'c1', 2, 'A', 'legacy-demo', 'x', 'x', 's', 'd', 'Pending', 'x', 'x')`,
-          )
-          .run(),
-      /UNIQUE/i,
-      'ciclo duplicado para a mesma empresa continua barrado',
-    );
-    db.prepare('DELETE FROM reports WHERE id = ?').run('r1b');
-  });
-
-  await t.test('cascatas que apagavam avaliação viraram RESTRICT', () => {
-    assert.throws(() => db.prepare('DELETE FROM questions WHERE id = ?').run('q1'), /FOREIGN KEY/i);
-    assert.throws(() => db.prepare('DELETE FROM answers WHERE id = ?').run('a2'), /FOREIGN KEY/i);
-    assert.throws(() => db.prepare('DELETE FROM companies WHERE id = ?').run('c1'), /FOREIGN KEY/i);
-    assert.throws(() => db.prepare('DELETE FROM company_files WHERE id = ?').run('f1'), /FOREIGN KEY/i);
-    assert.throws(() => db.prepare('DELETE FROM reports WHERE id = ?').run('r1'), /FOREIGN KEY/i);
-    // O histórico continua lá depois das tentativas.
-    assert.equal(db.prepare('SELECT count(*) AS n FROM question_reports').get().n, before.items);
-  });
-
-  await t.test('e-mail duplicado passa a ser impedido no banco', () => {
-    assert.throws(
-      () =>
-        db
-          .prepare("INSERT INTO users (id, name, email, password, role, createdAt, updatedAt) VALUES ('u-dup','Dup','GESTOR@X.COM','h','MANAGER','x','x')")
-          .run(),
-      /UNIQUE/i,
-    );
   });
 
   await t.test('a trilha registra o que a migração fez', () => {
-    const events = db.prepare("SELECT action, entity, details FROM audit_events WHERE action = 'migration.backfill'").all().map((r) => ({ ...r }));
+    const events = legacy.prepare("SELECT action, entity, details FROM audit_events WHERE action = 'migration.backfill'").all().map((r) => ({ ...r }));
     assert.equal(events.length, 5);
     const links = JSON.parse(events.find((e) => e.entity === 'user_company_links').details);
     assert.equal(links.linksNeedingReview, 2);
   });
 
   await t.test('catálogo herdado fica isolado na versão legacy-demo', () => {
-    const version = db.prepare("SELECT * FROM catalog_versions WHERE id = 'legacy-demo'").get();
+    const version = legacy.prepare("SELECT * FROM catalog_versions WHERE id = 'legacy-demo'").get();
     assert.equal(version.origin, 'demo');
     assert.equal(version.status, 'published');
-    const questions = db.prepare('SELECT count(*) AS n FROM questions WHERE versionId = ?').get('legacy-demo').n;
-    assert.equal(questions, 2, 'os indicadores herdados foram atribuídos à versão demonstrativa');
-    const cycles = db.prepare("SELECT count(*) AS n FROM reports WHERE catalogVersionId = 'legacy-demo'").get().n;
-    assert.equal(cycles, 2);
+    assert.equal(legacy.prepare('SELECT count(*) AS n FROM questions WHERE versionId = ?').get('legacy-demo').n, 2);
+    assert.equal(legacy.prepare("SELECT count(*) AS n FROM reports WHERE catalogVersionId = 'legacy-demo'").get().n, 2);
     // Ordem e máximo preenchidos a partir do que já existia, sem inventar dados.
-    const q = db.prepare("SELECT * FROM questions WHERE code = 'CG-E01'").get();
+    const q = legacy.prepare("SELECT * FROM questions WHERE code = 'CG-E01'").get();
     assert.equal(q.maxPoints, 10);
     assert.equal(q.position, 1);
     assert.ok(q.mandatoryAnswerId, 'o nível mínimo obrigatório aponta para a alternativa');
-    assert.equal(db.prepare('SELECT title FROM answers WHERE id = ?').get(q.mandatoryAnswerId).title, 'Conforme');
+    assert.equal(legacy.prepare('SELECT title FROM answers WHERE id = ?').get(q.mandatoryAnswerId).title, 'Conforme');
   });
 
-  await t.test('arquivo da migração em cópia isolada não tocou o banco de trabalho', () => {
+  await t.test('a cópia de trabalho não é o arquivo herdado configurado', () => {
     assert.ok(fs.existsSync(file));
-    assert.notEqual(path.resolve(file), path.resolve(require('../src/config').dbFile));
+    assert.notEqual(path.resolve(file), path.resolve(config.legacySqliteFile));
+  });
+});
+
+test('transferência SQLite → MySQL preserva a base herdada e aplica as constraints novas', async (t) => {
+  const { file, legacy } = legacyDatabase();
+  legacy.close(); // a transferência trabalha sobre uma cópia; o arquivo fica livre
+
+  try {
+    await db.init({ runMigrations: true });
+  } catch (err) {
+    throw new Error(
+      `não foi possível conectar ao MySQL de teste (${config.db.user}@${config.db.host}:${config.db.port}/${config.db.name}): ` +
+        `${err.code || err.message}. Suba o banco com "docker compose up -d mysql" na raiz do projeto.`,
+    );
+  }
+  t.after(() => db.close());
+
+  await t.test('o esquema MySQL nasce consolidado e é idempotente', async () => {
+    assert.deepEqual(await db.pendingMigrations(), [], 'baseline já aplicada');
+    assert.deepEqual(await migrations.migrate(db), []);
+    const { n } = await db.one(
+      "SELECT count(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'",
+    );
+    assert.ok(Number(n) >= 31, `esquema com ${n} tabelas`);
+  });
+
+  await t.test('o script transfere tudo, em ensaio e depois aplicando', async () => {
+    const run = (args) =>
+      execFileSync(process.execPath, ['--no-warnings', '--env-file-if-exists=.env', 'scripts/sqlite-to-mysql.js', ...args], {
+        cwd: ROOT,
+        env: { ...process.env, NODE_ENV: 'test', LEGACY_SQLITE_FILE: file },
+        encoding: 'utf8',
+      });
+
+    const dry = run([]);
+    assert.match(dry, /modo\s+: ENSAIO/);
+    assert.match(dry, /Ensaio concluído/);
+    assert.match(dry, /o arquivo de origem não é alterado/);
+
+    const applied = run(['--apply', '--truncate', '--confirm']);
+    assert.match(applied, /destino limpo \(\d+ tabelas\)/);
+    assert.match(applied, /migrações SQLite aplicadas na cópia: .*009_scoring/);
+    assert.match(applied, /referências adiadas preenchidas: 1/, 'mandatoryAnswerId só pode ser preenchido depois das alternativas');
+    assert.match(applied, /RESULTADO: todas as tabelas transferidas/);
+  });
+
+  await t.test('dados, ids, autoria e relacionamentos chegaram íntegros', async () => {
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM companies')).n), 2);
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM users')).n), 5);
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM question_reports')).n), 3);
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM user_profiles')).n), 5);
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM user_company_links')).n), 4);
+
+    const item = await db.one('SELECT * FROM question_reports WHERE id = ?', 'qr1');
+    assert.equal(item.answerText, 'resposta preservada');
+    assert.equal(item.selectedAnswerId, 'a2');
+    assert.equal(item.answererId, 'u-func');
+    assert.equal(item.answeredById, 'u-func');
+    assert.equal((await db.one('SELECT questionReportId FROM evidences WHERE id = ?', 'e1')).questionReportId, 'qr1');
+    const r1 = await db.one('SELECT * FROM reports WHERE id = ?', 'r1');
+    assert.equal(r1.cycle, 1);
+    assert.equal(r1.catalogVersionId, 'legacy-demo');
+    assert.equal(r1.needsReview, 1);
+  });
+
+  await t.test('recertificação liberada, ciclo duplicado barrado', async () => {
+    await db.run(
+      `INSERT INTO reports (id, companyId, cycle, previousReportId, section, catalogVersion, catalogVersionId, initialYear, finalYear, structure, description, status, createdAt, updatedAt)
+       VALUES ('r1b', 'c1', 2, 'r1', 'A', 'legacy-demo', 'legacy-demo', 'x', 'x', 's', 'd', 'Pending', 'x', 'x')`,
+    );
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM reports WHERE companyId = ?', 'c1')).n), 2);
+    await assert.rejects(
+      () =>
+        db.run(
+          `INSERT INTO reports (id, companyId, cycle, section, catalogVersion, catalogVersionId, initialYear, finalYear, structure, description, status, createdAt, updatedAt)
+           VALUES ('r1c', 'c1', 2, 'A', 'legacy-demo', 'legacy-demo', 'x', 'x', 's', 'd', 'Pending', 'x', 'x')`,
+        ),
+      /ER_DUP_ENTRY|Duplicate entry/i,
+      'ciclo duplicado para a mesma empresa continua barrado',
+    );
+    await db.run('DELETE FROM reports WHERE id = ?', 'r1b');
+  });
+
+  await t.test('cascatas que apagavam avaliação viraram RESTRICT', async () => {
+    const barrado = /ER_ROW_IS_REFERENCED|foreign key constraint fails/i;
+    await assert.rejects(() => db.run('DELETE FROM questions WHERE id = ?', 'q1'), barrado);
+    await assert.rejects(() => db.run('DELETE FROM answers WHERE id = ?', 'a2'), barrado);
+    await assert.rejects(() => db.run('DELETE FROM companies WHERE id = ?', 'c1'), barrado);
+    await assert.rejects(() => db.run('DELETE FROM company_files WHERE id = ?', 'f1'), barrado);
+    await assert.rejects(() => db.run('DELETE FROM reports WHERE id = ?', 'r1'), barrado);
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM question_reports')).n), 3, 'o histórico continua lá');
+  });
+
+  await t.test('e-mail e CNPJ únicos apenas entre cadastros ativos', async () => {
+    await assert.rejects(
+      () =>
+        db.run(
+          "INSERT INTO users (id, name, email, password, role, createdAt, updatedAt) VALUES ('u-dup','Dup','GESTOR@X.COM','h','MANAGER','x','x')",
+        ),
+      /ER_DUP_ENTRY|Duplicate entry/i,
+      'e-mail ativo duplicado é impedido no banco, independente de caixa',
+    );
+    await assert.rejects(
+      () =>
+        db.run(
+          `INSERT INTO companies (id, bussinessName, legalName, email, cnpj, accessDate, size, section, access, reportAccess, createdAt, updatedAt)
+           VALUES ('c-dup','Alfa 2','Alfa 2 Ltda','a2@a.com','11222333000181','x','MEDIA','A',1,0,'x','x')`,
+        ),
+      /ER_DUP_ENTRY|Duplicate entry/i,
+    );
+    // Depois de inativar, o mesmo CNPJ pode ser cadastrado de novo (o índice só vale para ativos).
+    await db.run('UPDATE companies SET deletedAt = ? WHERE id = ?', '2026-02-01T00:00:00.000Z', 'c2');
+    await db.run(
+      `INSERT INTO companies (id, bussinessName, legalName, email, cnpj, accessDate, size, section, access, reportAccess, createdAt, updatedAt)
+       VALUES ('c2-novo','Beta Nova','Beta Nova Ltda','b2@b.com','44555666000181','x','GRANDE','B',1,0,'x','x')`,
+    );
+    assert.equal(Number((await db.one('SELECT count(*) AS n FROM companies WHERE cnpj = ?', '44555666000181')).n), 2);
+    await db.run('DELETE FROM companies WHERE id = ?', 'c2-novo');
+    await db.run('UPDATE companies SET deletedAt = NULL WHERE id = ?', 'c2');
   });
 });

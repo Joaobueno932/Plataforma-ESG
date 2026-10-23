@@ -1,12 +1,12 @@
 const express = require('express');
 const db = require('../db');
-const { badRequest } = require('../http');
+const { badRequest, asyncRouter } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
 const limiter = require('../ratelimit');
 const v = require('../validators');
 
-const router = express.Router();
+const router = asyncRouter();
 
 const parse = (row) => ({ ...row, answers: JSON.parse(row.answers), companyData: JSON.parse(row.companyData), address: JSON.parse(row.address) });
 
@@ -15,7 +15,7 @@ const parse = (row) => ({ ...row, answers: JSON.parse(row.answers), companyData:
  * Rota aberta — com limite de requisições por origem e validação de formato, por gravar
  * dados pessoais.
  */
-router.post('/leads', limiter.limit('leads', { max: 5 }), (req, res) => {
+router.post('/leads', limiter.limit('leads', { max: 5 }), async (req, res) => {
   const b = req.body || {};
   for (const f of ['first_name', 'last_name', 'email']) if (!b[f]) throw badRequest(`o campo ${f} é obrigatório`);
   if (!v.isValidEmail(b.email)) throw badRequest('informe um e-mail válido');
@@ -30,7 +30,7 @@ router.post('/leads', limiter.limit('leads', { max: 5 }), (req, res) => {
     return s;
   };
   const id = db.uuid();
-  db.run(
+  await db.run(
     `INSERT INTO leads (id, first_name, last_name, email, phone, mobile, role, department, knowledgeMethod, answers, companyData, address, createdAt)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
@@ -47,11 +47,11 @@ router.post('/leads', limiter.limit('leads', { max: 5 }), (req, res) => {
     json(b.address),
     db.now(),
   );
-  res.status(201).json(parse(db.one('SELECT * FROM leads WHERE id = ?', id)));
+  res.status(201).json(parse(await db.one('SELECT * FROM leads WHERE id = ?', id)));
 });
 
-router.get('/leads', authenticate, authz.authorize('leads.read'), (_req, res) => {
-  res.json(db.all('SELECT * FROM leads ORDER BY createdAt DESC').map(parse));
+router.get('/leads', authenticate, authz.authorize('leads.read'), async (_req, res) => {
+  res.json((await db.all('SELECT * FROM leads ORDER BY createdAt DESC')).map(parse));
 });
 
 module.exports = router;

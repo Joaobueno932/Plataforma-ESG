@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { startServer, DEMO_PASSWORD, ADMIN_PASSWORD, tmp } = require('./helpers');
+const { startServer, shutdown, DEMO_PASSWORD, ADMIN_PASSWORD, tmp } = require('./helpers');
 
 /** Último link de recuperação gravado no outbox (envio real de e-mail não configurado). */
 function lastResetToken() {
@@ -13,6 +13,7 @@ function lastResetToken() {
 test('módulo auth e sessões', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
 
   await t.test('login devolve tokens, perfis concedidos e vínculos vigentes', async () => {
     const r = await s.api('POST', '/auth/login', { body: { email: 'admin@esgdemo.com.br', password: ADMIN_PASSWORD } });

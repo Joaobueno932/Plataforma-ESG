@@ -1,13 +1,13 @@
 const express = require('express');
 const db = require('../db');
 const ser = require('../serializers');
-const { badRequest, notFound, conflict } = require('../http');
+const { badRequest, notFound, conflict, asyncRouter } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
 const { attachQuestionToReports } = require('../services');
 const catalog = require('../catalog/import');
 
-const router = express.Router();
+const router = asyncRouter();
 
 const CATEGORIES = ['E', 'S', 'G'];
 
@@ -15,8 +15,8 @@ const CATEGORIES = ['E', 'S', 'G'];
  * Versões oficiais publicadas são imutáveis: alteração vira **versão nova** (importação).
  * A edição manual fica disponível em rascunhos e no catálogo de demonstração.
  */
-function assertEditableVersion(versionId) {
-  const version = versionId ? catalog.versionById(versionId) : catalog.activeVersion();
+async function assertEditableVersion(versionId) {
+  const version = versionId ? await catalog.versionById(versionId) : await catalog.activeVersion();
   if (!version) throw badRequest('nenhuma versão de catálogo disponível');
   if (version.origin === 'official' && version.status !== 'draft')
     throw conflict(
@@ -27,35 +27,35 @@ function assertEditableVersion(versionId) {
 
 /* ---------- Cadernos (setores) ---------- */
 
-router.get('/sectors', authenticate, (_req, res) => {
-  res.json(db.all('SELECT section, description, avatar FROM sectors ORDER BY section'));
+router.get('/sectors', authenticate, async (_req, res) => {
+  res.json(await db.all('SELECT section, description, avatar FROM sectors ORDER BY section'));
 });
 
-router.post('/sectors', authenticate, authz.authorize('catalog.manage'), (req, res) => {
+router.post('/sectors', authenticate, authz.authorize('catalog.manage'), async (req, res) => {
   const { section, description, avatar } = req.body || {};
   const code = String(section || '').trim().toUpperCase();
   if (!/^[A-Z]$/.test(code)) throw badRequest('o setor deve ser uma letra de A a Z');
   if (!description || !avatar) throw badRequest('descrição e capa são obrigatórias');
-  if (db.one('SELECT section FROM sectors WHERE section = ?', code)) throw conflict('já existe um caderno para esse setor');
-  db.run('INSERT INTO sectors (section, description, avatar) VALUES (?, ?, ?)', code, String(description).trim(), avatar);
-  res.status(201).json(db.one('SELECT section, description, avatar FROM sectors WHERE section = ?', code));
+  if (await db.one('SELECT section FROM sectors WHERE section = ?', code)) throw conflict('já existe um caderno para esse setor');
+  await db.run('INSERT INTO sectors (section, description, avatar) VALUES (?, ?, ?)', code, String(description).trim(), avatar);
+  res.status(201).json(await db.one('SELECT section, description, avatar FROM sectors WHERE section = ?', code));
 });
 
 /* ---------- Indicadores ---------- */
 
 router.use('/questions', authenticate, authz.authorize('catalog.manage'));
 
-function nextCode(versionId, section, category) {
+async function nextCode(versionId, section, category) {
   const prefix = `${section === 'All' ? 'CG' : section}-${category}`;
-  const n = db.one(
+  const n = (await db.one(
     'SELECT count(*) AS n FROM questions WHERE versionId = ? AND section = ? AND category = ?',
     versionId,
     section,
     category,
-  ).n;
+  )).n;
   let code = `${prefix}${String(n + 1).padStart(2, '0')}`;
   let extra = n + 2;
-  while (db.one('SELECT id FROM questions WHERE versionId = ? AND code = ?', versionId, code))
+  while (await db.one('SELECT id FROM questions WHERE versionId = ? AND code = ?', versionId, code))
     code = `${prefix}${String(extra++).padStart(2, '0')}`;
   return code;
 }
@@ -94,15 +94,17 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-router.post('/questions/section/:section', (req, res) => {
+router.post('/questions/section/:section', async (req, res) => {
   const section = req.params.section;
-  if (!db.one('SELECT section FROM sectors WHERE section = ?', section)) throw notFound('sector not found');
+  if (!await db.one('SELECT section FROM sectors WHERE section = ?', section)) throw notFound('sector not found');
   const body = Array.isArray(req.body) ? req.body : [req.body];
   const versionId = (body[0] && body[0].versionId) || (req.query.versionId || '').trim() || null;
-  const version = assertEditableVersion(versionId);
+  const version = await assertEditableVersion(versionId);
   body.forEach(validateQuestion);
-  const created = db.transaction(() =>
-    body.map((q) => {
+  // Sequencial dentro da transação: a conexão é única e não aceita consultas em paralelo.
+  const created = await db.transaction(async () => {
+    const result = [];
+    for (const q of body) {
       const id = db.uuid();
       const levels = q.answers.map((a, index) => ({
         title: String(a.title).trim(),
@@ -114,15 +116,14 @@ router.post('/questions/section/:section', (req, res) => {
       const hasMandatory = levels.some((a) => a.mandatory) || !!q.hasMandatory;
       const maxPoints = levels.reduce((acc, a) => Math.max(acc, a.points), 0);
       const topic = q.topic || q.subcategory || null;
-      const position =
-        (db.one('SELECT max(position) AS p FROM questions WHERE versionId = ?', version.id).p || 0) + 1;
-      db.run(
+      const position = ((await db.one('SELECT max(position) AS p FROM questions WHERE versionId = ?', version.id)).p || 0) + 1;
+      await db.run(
         `INSERT INTO questions (id, versionId, code, codeOriginal, section, title, description, verification, category, subcategory, topic,
                                 ods, maxPoints, hasMandatory, position, origin, createdAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         version.id,
-        q.code ? String(q.code).trim() : nextCode(version.id, section, q.category),
+        q.code ? String(q.code).trim() : await nextCode(version.id, section, q.category),
         q.codeOriginal ? String(q.codeOriginal).trim() : null,
         section,
         q.title.trim(),
@@ -141,7 +142,7 @@ router.post('/questions/section/:section', (req, res) => {
       let mandatoryAnswerId = null;
       for (const a of levels) {
         const answerId = db.uuid();
-        db.run(
+        await db.run(
           'INSERT INTO answers (id, questionId, title, points, description, mandatory, position, slug, presentation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
           answerId,
           id,
@@ -155,106 +156,123 @@ router.post('/questions/section/:section', (req, res) => {
         );
         if (a.mandatory) mandatoryAnswerId = answerId;
       }
-      if (mandatoryAnswerId) db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, id);
-      const row = db.one('SELECT * FROM questions WHERE id = ?', id);
-      attachQuestionToReports(row);
-      authz.audit(req, 'catalog.question.create', { entity: 'questions', entityId: id, details: { versionId: version.id, code: row.code } });
-      return ser.question(row);
-    }),
-  );
+      if (mandatoryAnswerId) await db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, id);
+      const row = await db.one('SELECT * FROM questions WHERE id = ?', id);
+      await attachQuestionToReports(row);
+      await authz.audit(req, 'catalog.question.create', { entity: 'questions', entityId: id, details: { versionId: version.id, code: row.code } });
+      result.push(await ser.question(row));
+    }
+    return result;
+  });
   res.status(201).json(created);
 });
 
-router.patch('/questions/answer/:questionId/:answerId', (req, res) => {
-  const a = db.one('SELECT * FROM answers WHERE id = ? AND questionId = ?', req.params.answerId, req.params.questionId);
+router.patch('/questions/answer/:questionId/:answerId', async (req, res) => {
+  const a = await db.one('SELECT * FROM answers WHERE id = ? AND questionId = ?', req.params.answerId, req.params.questionId);
   if (!a) throw notFound('answer not found');
-  const owner = db.one('SELECT versionId FROM questions WHERE id = ?', a.questionId);
-  assertEditableVersion(owner ? owner.versionId : null);
+  const owner = await db.one('SELECT versionId FROM questions WHERE id = ?', a.questionId);
+  await assertEditableVersion(owner ? owner.versionId : null);
   const { points, description, mandatory } = req.body || {};
-  db.run(
+  await db.run(
     'UPDATE answers SET points = ?, description = ?, mandatory = ? WHERE id = ?',
     points !== undefined ? Number(points) : a.points,
     description !== undefined ? String(description) : a.description,
     mandatory !== undefined ? (mandatory ? 1 : 0) : a.mandatory,
     a.id,
   );
-  if (mandatory) db.run('UPDATE answers SET mandatory = 0 WHERE questionId = ? AND id <> ?', a.questionId, a.id);
-  const minimum = db.one('SELECT id FROM answers WHERE questionId = ? AND mandatory = 1', a.questionId);
-  const maxPoints = db.one('SELECT max(points) AS p FROM answers WHERE questionId = ?', a.questionId).p || 0;
-  db.run(
+  if (mandatory) await db.run('UPDATE answers SET mandatory = 0 WHERE questionId = ? AND id <> ?', a.questionId, a.id);
+  const minimum = await db.one('SELECT id FROM answers WHERE questionId = ? AND mandatory = 1', a.questionId);
+  const maxPoints = (await db.one('SELECT max(points) AS p FROM answers WHERE questionId = ?', a.questionId)).p || 0;
+  await db.run(
     'UPDATE questions SET hasMandatory = ?, mandatoryAnswerId = ?, maxPoints = ? WHERE id = ?',
     minimum ? 1 : 0,
     minimum ? minimum.id : null,
     maxPoints,
     a.questionId,
   );
-  authz.audit(req, 'catalog.answer.update', {
+  await authz.audit(req, 'catalog.answer.update', {
     entity: 'answers',
     entityId: a.id,
     details: { before: { points: a.points, mandatory: a.mandatory }, after: { points, mandatory } },
   });
-  res.json(ser.answer(db.one('SELECT * FROM answers WHERE id = ?', a.id)));
+  res.json(ser.answer(await db.one('SELECT * FROM answers WHERE id = ?', a.id)));
 });
 
-router.delete('/questions/answer/:answerId', (req, res) => {
-  const a = db.one('SELECT * FROM answers WHERE id = ?', req.params.answerId);
+router.delete('/questions/answer/:answerId', async (req, res) => {
+  const a = await db.one('SELECT * FROM answers WHERE id = ?', req.params.answerId);
   if (!a) throw notFound('answer not found');
-  const owner = db.one('SELECT versionId FROM questions WHERE id = ?', a.questionId);
-  assertEditableVersion(owner ? owner.versionId : null);
+  const owner = await db.one('SELECT versionId FROM questions WHERE id = ?', a.questionId);
+  await assertEditableVersion(owner ? owner.versionId : null);
   // Histórico de avaliação não é apagado por edição administrativa (verificado antes de tudo).
-  const inUse = db.one('SELECT count(*) AS n FROM question_reports WHERE selectedAnswerId = ?', a.id).n;
-  const inVersions = db.one('SELECT count(*) AS n FROM item_answer_versions WHERE selectedAnswerId = ?', a.id).n;
+  const inUse = (await db.one('SELECT count(*) AS n FROM question_reports WHERE selectedAnswerId = ?', a.id)).n;
+  const inVersions = (await db.one('SELECT count(*) AS n FROM item_answer_versions WHERE selectedAnswerId = ?', a.id)).n;
   if (inUse || inVersions)
     throw conflict('esta alternativa já foi escolhida em avaliações e não pode ser excluída; publique uma nova versão do catálogo');
-  if (db.one('SELECT count(*) AS n FROM answers WHERE questionId = ?', a.questionId).n <= 2) throw badRequest('o indicador deve manter ao menos 2 respostas');
-  db.run('DELETE FROM answers WHERE id = ?', a.id);
-  authz.audit(req, 'catalog.answer.delete', { entity: 'answers', entityId: a.id, details: { questionId: a.questionId } });
+  if ((await db.one('SELECT count(*) AS n FROM answers WHERE questionId = ?', a.questionId)).n <= 2) throw badRequest('o indicador deve manter ao menos 2 respostas');
+  await db.transaction(async () => {
+    // O indicador aponta para o nível mínimo obrigatório: solta a referência antes de excluir
+    // e recalcula mínimo e máximo com o que sobrou.
+    await db.run('UPDATE questions SET mandatoryAnswerId = NULL WHERE mandatoryAnswerId = ?', a.id);
+    await db.run('DELETE FROM answers WHERE id = ?', a.id);
+    const minimum = await db.one('SELECT id FROM answers WHERE questionId = ? AND mandatory = 1', a.questionId);
+    const maxPoints = (await db.one('SELECT max(points) AS p FROM answers WHERE questionId = ?', a.questionId)).p || 0;
+    await db.run(
+      'UPDATE questions SET hasMandatory = ?, mandatoryAnswerId = ?, maxPoints = ? WHERE id = ?',
+      minimum ? 1 : 0,
+      minimum ? minimum.id : null,
+      maxPoints,
+      a.questionId,
+    );
+  });
+  await authz.audit(req, 'catalog.answer.delete', { entity: 'answers', entityId: a.id, details: { questionId: a.questionId } });
   res.json({ id: a.id, deleted: true });
 });
 
 /** "Deletar caderno": remove o caderno setorial e seus indicadores. */
-router.delete('/questions/section/:section', (req, res) => {
+router.delete('/questions/section/:section', async (req, res) => {
   const section = req.params.section;
   if (section === 'All') throw badRequest('o Caderno Geral não pode ser removido');
-  if (!db.one('SELECT section FROM sectors WHERE section = ?', section)) throw notFound('sector not found');
-  if (db.one('SELECT count(*) AS n FROM companies WHERE section = ? AND deletedAt IS NULL', section).n > 0)
+  if (!await db.one('SELECT section FROM sectors WHERE section = ?', section)) throw notFound('sector not found');
+  if ((await db.one('SELECT count(*) AS n FROM companies WHERE section = ? AND deletedAt IS NULL', section)).n > 0)
     throw conflict('existem empresas vinculadas a esse caderno setorial');
-  const usedInCycles = db.one(
+  const usedInCycles = (await db.one(
     `SELECT count(*) AS n FROM question_reports qr JOIN questions q ON q.id = qr.questionId WHERE q.section = ?`,
     section,
-  ).n;
+  )).n;
   if (usedInCycles) throw conflict('este caderno já foi aplicado em avaliações e não pode ser excluído');
-  db.transaction(() => {
-    db.run('DELETE FROM answers WHERE questionId IN (SELECT id FROM questions WHERE section = ?)', section);
-    db.run('DELETE FROM questions WHERE section = ?', section);
-    db.run('DELETE FROM sectors WHERE section = ?', section);
+  await db.transaction(async () => {
+    await db.run('UPDATE questions SET mandatoryAnswerId = NULL, hasMandatory = 0 WHERE section = ?', section);
+    await db.run('DELETE FROM answers WHERE questionId IN (SELECT id FROM questions WHERE section = ?)', section);
+    await db.run('DELETE FROM questions WHERE section = ?', section);
+    await db.run('DELETE FROM sectors WHERE section = ?', section);
   });
-  authz.audit(req, 'catalog.section.delete', { entity: 'sectors', entityId: section });
+  await authz.audit(req, 'catalog.section.delete', { entity: 'sectors', entityId: section });
   res.json({ section, deleted: true });
 });
 
-router.patch('/questions/:id', (req, res) => {
-  const q = db.one('SELECT * FROM questions WHERE id = ?', req.params.id);
+router.patch('/questions/:id', async (req, res) => {
+  const q = await db.one('SELECT * FROM questions WHERE id = ?', req.params.id);
   if (!q) throw notFound('question not found');
-  assertEditableVersion(q.versionId);
+  await assertEditableVersion(q.versionId);
   const { title, description } = req.body || {};
-  db.run('UPDATE questions SET title = ?, description = ? WHERE id = ?', title ? String(title).trim() : q.title, description ? String(description).trim() : q.description, q.id);
-  res.json(ser.question(db.one('SELECT * FROM questions WHERE id = ?', q.id)));
+  await db.run('UPDATE questions SET title = ?, description = ? WHERE id = ?', title ? String(title).trim() : q.title, description ? String(description).trim() : q.description, q.id);
+  res.json(await ser.question(await db.one('SELECT * FROM questions WHERE id = ?', q.id)));
 });
 
-router.delete('/questions/:id', (req, res) => {
-  const q = db.one('SELECT * FROM questions WHERE id = ?', req.params.id);
+router.delete('/questions/:id', async (req, res) => {
+  const q = await db.one('SELECT * FROM questions WHERE id = ?', req.params.id);
   if (!q) throw notFound('question not found');
-  assertEditableVersion(q.versionId);
+  await assertEditableVersion(q.versionId);
   // Antes, a cascata apagava os itens de relatório junto com o indicador (diagnóstico A15).
-  const usedInCycles = db.one('SELECT count(*) AS n FROM question_reports WHERE questionId = ?', q.id).n;
+  const usedInCycles = (await db.one('SELECT count(*) AS n FROM question_reports WHERE questionId = ?', q.id)).n;
   if (usedInCycles)
     throw conflict('este indicador já integra avaliações e não pode ser excluído; publique uma nova versão do catálogo');
-  db.transaction(() => {
-    db.run('DELETE FROM answers WHERE questionId = ?', q.id);
-    db.run('DELETE FROM questions WHERE id = ?', q.id);
+  await db.transaction(async () => {
+    await db.run('UPDATE questions SET mandatoryAnswerId = NULL, hasMandatory = 0 WHERE id = ?', q.id);
+    await db.run('DELETE FROM answers WHERE questionId = ?', q.id);
+    await db.run('DELETE FROM questions WHERE id = ?', q.id);
   });
-  authz.audit(req, 'catalog.question.delete', { entity: 'questions', entityId: q.id });
+  await authz.audit(req, 'catalog.question.delete', { entity: 'questions', entityId: q.id });
   res.json({ id: q.id, deleted: true });
 });
 

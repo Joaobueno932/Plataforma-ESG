@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { startServer } = require('./helpers');
+const { startServer, shutdown } = require('./helpers');
 const { parseCatalog } = require('../src/catalog/parse');
 const { readWorkbook } = require('../src/catalog/xlsx');
 
@@ -124,6 +124,7 @@ test('importação: prévia, rascunho, publicação e proteção das versões', 
   if (!hasSource) return;
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const admin = await s.loginAdmin();
   const file = fs.readFileSync(SOURCE);
 
@@ -142,16 +143,16 @@ test('importação: prévia, rascunho, publicação e proteção das versões', 
   });
 
   await t.test('prévia valida e devolve relatório sem gravar catálogo', async () => {
-    const before = s.db.one('SELECT count(*) AS n FROM questions').n;
+    const before = (await s.db.one('SELECT count(*) AS n FROM questions')).n;
     const r = await s.api('POST', '/catalog/preview', { token: admin, form: form() });
     assert.equal(r.status, 201);
     assert.equal(r.body.report.summary.indicators, 139);
     assert.equal(r.body.report.summary.errors, 0);
     assert.equal(r.body.report.summary.publishable, true);
     assert.ok(r.body.report.divergences.length >= 4);
-    assert.equal(s.db.one('SELECT count(*) AS n FROM questions').n, before, 'a prévia não grava indicadores');
+    assert.equal((await s.db.one('SELECT count(*) AS n FROM questions')).n, before, 'a prévia não grava indicadores');
     // O resultado da leitura fica registrado (arquivo, origem e hash).
-    const run = s.db.one('SELECT * FROM catalog_imports WHERE id = ?', r.body.importId);
+    const run = await s.db.one('SELECT * FROM catalog_imports WHERE id = ?', r.body.importId);
     assert.equal(run.status, 'preview');
     assert.equal(run.sourceHash, r.body.source.hash);
     assert.match(run.sourceFile, /Indicadores Programa ESG FIEMS/);
@@ -183,7 +184,7 @@ test('importação: prévia, rascunho, publicação e proteção das versões', 
     assert.equal(again.status, 200);
     assert.equal(again.body.reused, true);
     assert.equal(again.body.version.id, versionId);
-    assert.equal(s.db.one('SELECT count(*) AS n FROM questions WHERE origin = ?', 'official').n, 139);
+    assert.equal((await s.db.one('SELECT count(*) AS n FROM questions WHERE origin = ?', 'official')).n, 139);
   });
 
   await t.test('publicar exige confirmação explícita quando há divergências', async () => {
@@ -293,7 +294,7 @@ test('importação: prévia, rascunho, publicação e proteção das versões', 
     broken.append('file', new Blob([Buffer.from('não é um xlsx')]), 'quebrado.xlsx');
     const r = await s.api('POST', '/catalog/imports', { token: admin, form: broken });
     assert.equal(r.status, 400);
-    const run = s.db.one("SELECT * FROM catalog_imports WHERE status = 'rejected' ORDER BY startedAt DESC LIMIT 1");
+    const run = await s.db.one("SELECT * FROM catalog_imports WHERE status = 'rejected' ORDER BY startedAt DESC LIMIT 1");
     assert.ok(run, 'a tentativa fica registrada');
     assert.ok(JSON.parse(run.report).errors.length > 0);
   });

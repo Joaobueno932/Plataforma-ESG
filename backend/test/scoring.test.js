@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { computeResult } = require('../src/scoring/engine');
 const { POLICIES, RULE_VERSION } = require('../src/scoring/policies');
-const { startServer } = require('./helpers');
+const { startServer, shutdown } = require('./helpers');
 
 /* ------------------------------------------------------------------ fixtures */
 
@@ -437,13 +437,14 @@ test('Geral e setorial somam no mesmo eixo', () => {
 test('resultado do ciclo pela API, persistência e histórico', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const scoring = require('../src/scoring');
   const admin = await s.loginAdmin();
   const gestor = await s.login('gestor@esgdemo.com.br');
   const consultor = await s.login('consultor@esgdemo.com.br');
   const auditor = await s.login('auditor@esgdemo.com.br');
   const supervisor = await s.login('supervisor@esgdemo.com.br');
-  const reportId = s.reportIdOf('demo-company-a');
+  const reportId = await s.reportIdOf('demo-company-a');
 
   await t.test('empresa acompanha o andamento, mas não o resultado auditado antes da aprovação', async () => {
     const self = await s.api('GET', `/reports/${reportId}/result?mode=self`, { token: gestor });
@@ -502,13 +503,13 @@ test('resultado do ciclo pela API, persistência e histórico', async (t) => {
     assert.equal(fim.body.result.eligible, false, 'obrigatório não atendido impede elegibilidade');
     assert.ok(fim.body.result.impediments.some((i) => i.kind === 'obrigatorio-nao-atendido'));
 
-    const stored = scoring.storedResult(reportId);
+    const stored = await scoring.storedResult(reportId);
     assert.ok(stored, 'resultado gravado');
     assert.equal(stored.ruleVersion, RULE_VERSION);
     assert.equal(stored.policyId, 'rn04-2026-10');
     assert.equal(stored.eligible, 0);
     assert.equal(stored.payload.axes.E.points, fim.body.result.axes.E.points);
-    const axes = s.db.all('SELECT axis, points, maxPoints, band FROM cycle_result_axes WHERE cycleResultId = ? ORDER BY axis', stored.id);
+    const axes = await s.db.all('SELECT axis, points, maxPoints, band FROM cycle_result_axes WHERE cycleResultId = ? ORDER BY axis', stored.id);
     assert.equal(axes.length, 3);
 
     // Agora a empresa vê o resultado auditado.
@@ -522,11 +523,11 @@ test('resultado do ciclo pela API, persistência e histórico', async (t) => {
   });
 
   await t.test('mudar a política não reescreve o resultado já gravado', async () => {
-    const stored = scoring.storedResult(reportId);
+    const stored = await scoring.storedResult(reportId);
     const recalculado = await s.api('GET', `/reports/${reportId}/result?policy=c-40-todos`, { token: admin });
     assert.equal(recalculado.status, 200);
     assert.equal(recalculado.body.policy.id, 'c-40-todos');
-    const depois = scoring.storedResult(reportId);
+    const depois = await scoring.storedResult(reportId);
     assert.equal(depois.id, stored.id, 'nenhum resultado novo foi gravado por consulta');
     assert.equal(depois.policyId, 'rn04-2026-10');
     assert.equal(depois.payload.computedAt, stored.payload.computedAt);

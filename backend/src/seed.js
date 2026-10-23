@@ -73,13 +73,23 @@ const DEMO_USERS = [
   ['Admin Consultora', 'admin.consultor@esgdemo.com.br', 'esgdemo123', ['ADMIN', 'CONSULTOR'], ['demo-company-b']],
 ];
 
-function seed() {
-  db.transaction(() => {
+async function seed() {
+  await db.transaction(async () => {
     for (const [section, description, avatar] of SECTORS)
-      db.run('INSERT OR IGNORE INTO sectors (section, description, avatar) VALUES (?, ?, ?)', section, description, avatar);
+      await db.run('INSERT IGNORE INTO sectors (section, description, avatar) VALUES (?, ?, ?)', section, description, avatar);
 
     // Catálogo de DEMONSTRAÇÃO: fica na versão 'legacy-demo', separada das versões oficiais
-    // importadas da planilha (ver src/catalog/).
+    // importadas da planilha (ver src/catalog/). A versão é criada aqui porque é dado de
+    // demonstração, não de migração.
+    await db.run(
+      `INSERT IGNORE INTO catalog_versions (id, label, origin, status, notes, counts, createdAt, publishedAt)
+       VALUES ('legacy-demo', 'legacy-demo', 'demo', 'published', ?, ?, ?, ?)`,
+      'Catálogo demonstrativo da reconstrução anterior (não oficial). Preservado para os ciclos de demonstração.',
+      JSON.stringify({ indicators: DEMO_QUESTIONS.length }),
+      db.now(),
+      db.now(),
+    );
+
     const counters = {};
     let position = 0;
     for (const [section, category, subcategory, title, description, mandatory] of DEMO_QUESTIONS) {
@@ -89,28 +99,29 @@ function seed() {
       position += 1;
       const code = `${section === 'All' ? 'CG' : section}-${category}${String(counters[key]).padStart(2, '0')}`;
       const maxPoints = LEVELS.reduce((acc, [, points]) => Math.max(acc, points), 0);
-      db.run(
+      await db.run(
         `INSERT INTO questions (id, versionId, code, codeOriginal, section, title, description, category, subcategory, topic,
                                 maxPoints, hasMandatory, position, origin, createdAt)
          VALUES (?, 'legacy-demo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'demo', ?)`,
         id, code, code, section, title, description, category, subcategory, subcategory, maxPoints, mandatory ? 1 : 0, position, db.now(),
       );
       let mandatoryAnswerId = null;
-      LEVELS.forEach(([level, points, text], index) => {
+      // Sequencial: dentro de uma transação a conexão é única e não aceita consultas em paralelo.
+      for (const [index, [level, points, text]] of LEVELS.entries()) {
         const answerId = db.uuid();
         const isMinimum = level === mandatory;
-        db.run(
+        await db.run(
           'INSERT INTO answers (id, questionId, title, points, description, mandatory, position, slug, presentation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
           answerId, id, level, points, text, isMinimum ? 1 : 0, index + 1, slug(level), slug(level),
         );
         if (isMinimum) mandatoryAnswerId = answerId;
-      });
-      if (mandatoryAnswerId) db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, id);
+      }
+      if (mandatoryAnswerId) await db.run('UPDATE questions SET mandatoryAnswerId = ? WHERE id = ?', mandatoryAnswerId, id);
     }
 
     const at = db.now();
     for (const c of DEMO_COMPANIES) {
-      db.run(
+      await db.run(
         `INSERT INTO companies (id, bussinessName, legalName, email, cnpj, accessDate, size, section, avatar, access, reportAccess, status, origin, needsReview, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, 0, 'ACTIVE', 'demo', 1, ?, ?)`,
         c.id, c.bussinessName, c.legalName, c.email, c.cnpj, '2024-07-01T00:00:00.000Z', c.size, c.section, at, at,
@@ -122,17 +133,17 @@ function seed() {
       const id = db.uuid();
       userIds[email] = id;
       const primary = roles.includes('ADMIN') ? 'ADMIN' : roles[0];
-      db.run(
+      await db.run(
         `INSERT INTO users (id, name, email, password, role, companyId, status, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
         id, name, email, bcrypt.hashSync(password, 10), primary,
         companies.length && ['MANAGER', 'EMPLOYEE'].includes(primary) ? companies[0] : null, at, at,
       );
       for (const role of roles)
-        db.run('INSERT INTO user_profiles (id, userId, role, grantedAt, origin) VALUES (?, ?, ?, ?, ?)', db.uuid(), id, role, at, 'seed');
+        await db.run('INSERT INTO user_profiles (id, userId, role, grantedAt, origin) VALUES (?, ?, ?, ?, ?)', db.uuid(), id, role, at, 'seed');
       for (const role of roles.filter((r) => r !== 'ADMIN'))
         for (const companyId of companies)
-          db.run(
+          await db.run(
             'INSERT INTO user_company_links (id, userId, companyId, role, grantedAt, origin, needsReview) VALUES (?, ?, ?, ?, ?, ?, 0)',
             db.uuid(), id, companyId, role, at, 'seed',
           );
@@ -140,15 +151,15 @@ function seed() {
 
     // Ciclo 1 de cada empresa, com o caderno e a versão de catálogo congelados.
     for (const c of DEMO_COMPANIES) {
-      const reportId = createCycleForCompany(db.one('SELECT * FROM companies WHERE id = ?', c.id), {
+      const reportId = await createCycleForCompany(await db.one('SELECT * FROM companies WHERE id = ?', c.id), {
         createdById: userIds['admin@esgdemo.com.br'],
         catalogVersionId: 'legacy-demo',
       });
-      db.run('INSERT OR IGNORE INTO cycle_rounds (id, reportId, round, openedAt, openedById, reason) VALUES (?, ?, 1, ?, ?, ?)', db.uuid(), reportId, at, userIds['admin@esgdemo.com.br'], 'seed');
+      await db.run('INSERT IGNORE INTO cycle_rounds (id, reportId, round, openedAt, openedById, reason) VALUES (?, ?, 1, ?, ?, ?)', db.uuid(), reportId, at, userIds['admin@esgdemo.com.br'], 'seed');
       if (c.id === 'demo-company-a') {
         // Designações do ciclo (auditor e supervisor são designados, não apenas vinculados).
         for (const [email, role] of [['auditor@esgdemo.com.br', 'AUDITOR'], ['supervisor@esgdemo.com.br', 'SUPERVISOR']])
-          db.run(
+          await db.run(
             'INSERT INTO cycle_professionals (id, reportId, userId, role, assignedAt, assignedById) VALUES (?, ?, ?, ?, ?, ?)',
             db.uuid(), reportId, userIds[email], role, at, userIds['admin@esgdemo.com.br'],
           );
@@ -157,16 +168,25 @@ function seed() {
   });
 }
 
-function seedIfEmpty() {
-  if (db.one('SELECT count(*) AS n FROM users').n === 0) {
-    seed();
+async function seedIfEmpty() {
+  const { n } = await db.one('SELECT count(*) AS n FROM users');
+  if (Number(n) === 0) {
+    await seed();
     console.log('Banco inicializado com dados de demonstração (admin@esgdemo.com.br / admin123).');
+    return true;
   }
+  return false;
 }
 
 module.exports = { seed, seedIfEmpty, DEMO_USERS, DEMO_COMPANIES };
 
 if (require.main === module) {
-  db.get();
-  seedIfEmpty();
+  db.init({ runMigrations: true })
+    .then(seedIfEmpty)
+    .then((seeded) => console.log(seeded ? 'seed aplicado' : 'banco já possui usuários: seed não aplicado'))
+    .catch((err) => {
+      console.error(`erro: ${err.message}`);
+      process.exitCode = 1;
+    })
+    .finally(() => db.close());
 }

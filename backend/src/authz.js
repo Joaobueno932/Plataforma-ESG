@@ -81,12 +81,12 @@ const ACTIONS = {
 
 /* ------------------------------------------------------------------ principal */
 
-function activeProfiles(userId) {
-  return db.all('SELECT role FROM user_profiles WHERE userId = ? AND revokedAt IS NULL', userId).map((r) => r.role);
+async function activeProfiles(userId) {
+  return (await db.all('SELECT role FROM user_profiles WHERE userId = ? AND revokedAt IS NULL', userId)).map((r) => r.role);
 }
 
-function activeLinks(userId) {
-  return db.all(
+async function activeLinks(userId) {
+  return await db.all(
     `SELECT l.id, l.companyId, l.role, l.needsReview, c.bussinessName, c.legalName, c.status
        FROM user_company_links l
        JOIN companies c ON c.id = l.companyId
@@ -97,12 +97,12 @@ function activeLinks(userId) {
 }
 
 /** Principal = identidade + perfis concedidos + vínculos vigentes. Nada vem do token. */
-function loadPrincipal(userId) {
-  const user = db.one('SELECT * FROM users WHERE id = ? AND deletedAt IS NULL', userId);
+async function loadPrincipal(userId) {
+  const user = await db.one('SELECT * FROM users WHERE id = ? AND deletedAt IS NULL', userId);
   if (!user || user.status !== 'ACTIVE') return null;
-  const roles = activeProfiles(user.id);
+  const roles = await activeProfiles(user.id);
   if (!roles.length) return null;
-  const links = activeLinks(user.id);
+  const links = await activeLinks(user.id);
   return {
     user,
     roles,
@@ -130,8 +130,7 @@ function resolveContextCompany(principal, session) {
 
 /* ------------------------------------------------------------------ decisão */
 
-const assignmentOf = (reportId, userId, role) =>
-  db.one(
+const assignmentOf = async (reportId, userId, role) => db.one(
     'SELECT id FROM cycle_professionals WHERE reportId = ? AND userId = ? AND role = ? AND revokedAt IS NULL',
     reportId,
     userId,
@@ -141,7 +140,7 @@ const assignmentOf = (reportId, userId, role) =>
 /**
  * @returns {{ok: true, role: string} | {ok: false, reason: string}}
  */
-function can(principal, action, ctx = {}) {
+async function can(principal, action, ctx = {}) {
   const spec = ACTIONS[action];
   if (!spec) throw new Error(`ação desconhecida na matriz de autorização: ${action}`);
   if (!principal) return { ok: false, reason: 'sessão inválida' };
@@ -164,7 +163,7 @@ function can(principal, action, ctx = {}) {
     if (!scoped) continue;
     if (spec.scope === 'cycle' && CYCLE_ASSIGNED_ROLES.includes(role)) {
       if (!ctx.reportId) return { ok: false, reason: 'ciclo não identificado' };
-      if (!assignmentOf(ctx.reportId, principal.user.id, role)) continue;
+      if (!(await assignmentOf(ctx.reportId, principal.user.id, role))) continue;
     }
     return { ok: true, role };
   }
@@ -172,17 +171,17 @@ function can(principal, action, ctx = {}) {
 }
 
 /** Lança 403 quando a ação não é permitida; devolve a função efetivamente exercida. */
-function assertCan(req, action, ctx = {}) {
-  const decision = can(req.principal, action, ctx);
+async function assertCan(req, action, ctx = {}) {
+  const decision = await can(req.principal, action, ctx);
   if (!decision.ok) throw forbidden(decision.reason);
   req.actorRole = decision.role;
   return decision.role;
 }
 
 /** Middleware para rotas cujo contexto não depende do corpo/parâmetros da requisição. */
-const authorize = (action, resolve) => (req, _res, next) => {
+const authorize = (action, resolve) => async (req, _res, next) => {
   try {
-    assertCan(req, action, resolve ? resolve(req) : {});
+    await assertCan(req, action, resolve ? resolve(req) : {});
     next();
   } catch (err) {
     next(err);
@@ -197,9 +196,9 @@ function visibleCompanyIds(principal) {
   return [...new Set(principal.links.map((l) => l.companyId))];
 }
 
-function assertCompanyScope(req, companyId, action = 'company.read') {
+async function assertCompanyScope(req, companyId, action = 'company.read') {
   if (!companyId) throw badRequest('empresa não identificada');
-  const company = db.one('SELECT id, deletedAt FROM companies WHERE id = ?', companyId);
+  const company = await db.one('SELECT id, deletedAt FROM companies WHERE id = ?', companyId);
   if (!company || company.deletedAt) throw notFound('company not found');
   return assertCan(req, action, { companyId });
 }
@@ -233,8 +232,8 @@ function assertAccumulation(roles) {
 }
 
 /** Não é permitido inativar/remover o último administrador ativo sem substituto. */
-function assertNotLastActiveAdmin(userId) {
-  const admins = db.all(
+async function assertNotLastActiveAdmin(userId) {
+  const admins = await db.all(
     `SELECT u.id FROM users u
        JOIN user_profiles p ON p.userId = u.id AND p.role = 'ADMIN' AND p.revokedAt IS NULL
       WHERE u.deletedAt IS NULL AND u.status = 'ACTIVE'`,
@@ -245,8 +244,8 @@ function assertNotLastActiveAdmin(userId) {
 
 /* ------------------------------------------------------------------ trilha */
 
-function audit(req, action, { entity = null, entityId = null, companyId = null, details = null } = {}) {
-  db.run(
+async function audit(req, action, { entity = null, entityId = null, companyId = null, details = null } = {}) {
+  await db.run(
     'INSERT INTO audit_events (id, at, actorId, actorRole, action, entity, entityId, companyId, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     db.uuid(),
     db.now(),

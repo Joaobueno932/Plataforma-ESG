@@ -1,10 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startServer, DEMO_PASSWORD } = require('./helpers');
+const { startServer, shutdown, DEMO_PASSWORD } = require('./helpers');
 
 test('módulo pessoas, perfis e vínculos', async (t) => {
   const s = await startServer();
   t.after(s.close);
+  t.after(shutdown);
   const admin = await s.loginAdmin();
 
   await t.test('listagem paginada sem hash de senha, com perfis e vínculos', async () => {
@@ -82,7 +83,7 @@ test('módulo pessoas, perfis e vínculos', async (t) => {
     assert.equal(permitido.body.role, 'ADMIN');
 
     // Também bloqueado ao alterar perfis depois, e inclusive entre empresas diferentes.
-    const auditorId = s.userId('auditor@esgdemo.com.br');
+    const auditorId = await s.userId('auditor@esgdemo.com.br');
     const tentativa = await s.api('PUT', `/users/${auditorId}/profiles`, { token: admin, body: { roles: ['AUDITOR', 'CONSULTOR'] } });
     assert.equal(tentativa.status, 409);
   });
@@ -110,14 +111,14 @@ test('módulo pessoas, perfis e vínculos', async (t) => {
   });
 
   await t.test('último administrador ativo é protegido', async () => {
-    const outro = s.userId('outro@x.com');
+    const outro = await s.userId('outro@x.com');
     assert.equal((await s.api('DELETE', `/users/${outro}`, { token: admin })).status, 200);
-    const acId = s.userId('ac@x.com');
+    const acId = await s.userId('ac@x.com');
     assert.equal((await s.api('PUT', `/users/${acId}/profiles`, { token: admin, body: { roles: ['CONSULTOR'] } })).status, 200);
-    const adminConsultor = s.userId('admin.consultor@esgdemo.com.br');
+    const adminConsultor = await s.userId('admin.consultor@esgdemo.com.br');
     assert.equal((await s.api('DELETE', `/users/${adminConsultor}`, { token: admin })).status, 200);
     // Agora resta apenas o administrador logado.
-    const self = s.userId('admin@esgdemo.com.br');
+    const self = await s.userId('admin@esgdemo.com.br');
     const tentativa = await s.api('PUT', `/users/${self}/profiles`, { token: admin, body: { roles: ['CONSULTOR'] } });
     assert.equal(tentativa.status, 409);
     assert.match(tentativa.body.message, /último administrador ativo/);
@@ -127,8 +128,8 @@ test('módulo pessoas, perfis e vínculos', async (t) => {
     const gestor = await s.login('gestor@esgdemo.com.br');
     assert.equal((await s.api('GET', '/users', { token: gestor })).status, 403);
     assert.equal((await s.api('POST', '/users', { token: gestor, body: {} })).status, 403);
-    assert.equal((await s.api('PUT', `/users/${s.userId('gestor@esgdemo.com.br')}/profiles`, { token: gestor, body: { roles: ['ADMIN'] } })).status, 403);
-    assert.equal((await s.api('POST', `/users/${s.userId('gestor@esgdemo.com.br')}/links`, { token: gestor, body: { companyId: 'demo-company-b', role: 'MANAGER' } })).status, 403);
+    assert.equal((await s.api('PUT', `/users/${await s.userId('gestor@esgdemo.com.br')}/profiles`, { token: gestor, body: { roles: ['ADMIN'] } })).status, 403);
+    assert.equal((await s.api('POST', `/users/${await s.userId('gestor@esgdemo.com.br')}/links`, { token: gestor, body: { companyId: 'demo-company-b', role: 'MANAGER' } })).status, 403);
 
     const own = await s.api('GET', '/users/getUsers/company', { token: gestor });
     assert.equal(own.status, 200);
@@ -141,7 +142,7 @@ test('módulo pessoas, perfis e vínculos', async (t) => {
     const tentativa = await s.api('PATCH', `/users/changeCompany/${r.user.id}`, { token: r.token, body: { companyId: 'demo-company-b' } });
     assert.equal(tentativa.status, 403);
     assert.match(tentativa.body.message, /não é autoatendimento/);
-    const outro = await s.api('PATCH', `/users/changeCompany/${s.userId('gestor@esgdemo.com.br')}`, { token: r.token, body: { companyId: 'demo-company-b' } });
+    const outro = await s.api('PATCH', `/users/changeCompany/${await s.userId('gestor@esgdemo.com.br')}`, { token: r.token, body: { companyId: 'demo-company-b' } });
     assert.equal(outro.status, 403);
   });
 });

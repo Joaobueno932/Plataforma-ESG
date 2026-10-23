@@ -1,76 +1,51 @@
 /**
- * Migrações versionadas e idempotentes.
+ * Migrações do MySQL — versionadas, idempotentes e registradas em `schema_migrations`.
  *
- * Cada migração roda uma única vez, dentro de uma transação, e é registrada em
- * `schema_migrations`. Migrações que reconstroem tabelas (SQLite não altera constraints com
- * ALTER TABLE) declaram `rebuildsTables: true`: a execução desliga `foreign_keys` durante a
- * reconstrução e roda `PRAGMA foreign_key_check` **antes** do COMMIT — se houver referência
- * órfã, a migração é desfeita por inteiro.
+ * O esquema nasce consolidado em `mysql/001_baseline.js` (estado equivalente às migrações
+ * 001–010 do histórico SQLite). O histórico SQLite continua em `sqlite/`, com executor próprio
+ * (`sqlite/index.js`), usado só para preparar a base herdada antes da transferência feita por
+ * `scripts/sqlite-to-mysql.js`. A API em execução nunca aplica aquelas migrações.
  */
-const MIGRATIONS = [
-  require('./001_baseline'),
-  require('./002_identity'),
-  require('./003_company_registration'),
-  require('./004_cycles'),
-  require('./005_history_integrity'),
-  require('./006_indexes'),
-  require('./007_rounds'),
-  require('./008_catalog_versions'),
-  require('./009_scoring'),
+const MIGRATIONS = [require('./mysql/001_baseline')];
+
+/** Migrações do histórico SQLite (não executadas; mantidas para leitura e auditoria). */
+const SQLITE_HISTORY = [
+  '001_baseline',
+  '002_identity',
+  '003_company_registration',
+  '004_cycles',
+  '005_history_integrity',
+  '006_indexes',
+  '007_rounds',
+  '008_catalog_versions',
+  '009_scoring',
 ];
 
-const hasTable = (db, name) =>
-  !!db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(name);
+const TABLE = `CREATE TABLE IF NOT EXISTS schema_migrations (
+  id VARCHAR(64) NOT NULL PRIMARY KEY,
+  appliedAt VARCHAR(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`;
 
-const columns = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
-
-const hasColumn = (db, table, column) => columns(db, table).includes(column);
-
-function addColumn(db, table, column, definition) {
-  if (!hasColumn(db, table, column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+async function appliedIds(db) {
+  await db.exec([TABLE]);
+  const rows = await db.all('SELECT id FROM schema_migrations');
+  return new Set(rows.map((row) => row.id));
 }
 
-/** Reconstrói uma tabela preservando dados, ids e relacionamentos (SQLite doc 2.1 "Making Other Kinds Of Table Schema Changes"). */
-function rebuild(db, table, createSql, { copy = null, indexes = [] } = {}) {
-  const tmp = `${table}__new`;
-  const cols = copy || columns(db, table).join(', ');
-  db.exec(createSql.replace(new RegExp(`CREATE TABLE ${table}\\b`), `CREATE TABLE ${tmp}`));
-  db.exec(`INSERT INTO ${tmp} (${cols}) SELECT ${cols} FROM ${table}`);
-  db.exec(`DROP TABLE ${table}`);
-  db.exec(`ALTER TABLE ${tmp} RENAME TO ${table}`);
-  for (const sql of indexes) db.exec(sql);
+async function pending(db) {
+  const applied = await appliedIds(db);
+  return MIGRATIONS.filter((migration) => !applied.has(migration.id));
 }
 
-function pending(db) {
-  db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, appliedAt TEXT NOT NULL)');
-  const applied = new Set(db.prepare('SELECT id FROM schema_migrations').all().map((r) => r.id));
-  return MIGRATIONS.filter((m) => !applied.has(m.id));
-}
-
-function migrate(db, { log = () => {} } = {}) {
+async function migrate(db, { log = () => {} } = {}) {
   const applied = [];
-  for (const migration of pending(db)) {
-    const rebuilds = migration.rebuildsTables === true;
-    if (rebuilds) db.exec('PRAGMA foreign_keys = OFF');
-    db.exec('BEGIN');
-    try {
-      migration.up(db, { hasTable, hasColumn, columns, addColumn, rebuild });
-      if (rebuilds) {
-        const orphans = db.prepare('PRAGMA foreign_key_check').all();
-        if (orphans.length) throw new Error(`referências órfãs após reconstrução: ${JSON.stringify(orphans.slice(0, 5))}`);
-      }
-      db.prepare('INSERT INTO schema_migrations (id, appliedAt) VALUES (?, ?)').run(migration.id, new Date().toISOString());
-      db.exec('COMMIT');
-      applied.push(migration.id);
-      log(`migração aplicada: ${migration.id}`);
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw new Error(`migração ${migration.id} falhou e foi desfeita: ${err.message}`);
-    } finally {
-      if (rebuilds) db.exec('PRAGMA foreign_keys = ON');
-    }
+  for (const migration of await pending(db)) {
+    await migration.up(db);
+    await db.run('INSERT INTO schema_migrations (id, appliedAt) VALUES (?, ?)', migration.id, new Date().toISOString());
+    applied.push(migration.id);
+    log(`migração aplicada: ${migration.id}`);
   }
   return applied;
 }
 
-module.exports = { migrate, pending, MIGRATIONS, helpers: { hasTable, hasColumn, columns, addColumn, rebuild } };
+module.exports = { migrate, pending, MIGRATIONS, SQLITE_HISTORY };

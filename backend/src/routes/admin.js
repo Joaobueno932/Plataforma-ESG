@@ -1,10 +1,12 @@
 const express = require('express');
+const { asyncRouter } = require('../http');
 const db = require('../db');
 const ser = require('../serializers');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
+const migrations = require('../migrations');
 
-const router = express.Router();
+const router = asyncRouter();
 router.use('/admin', authenticate);
 
 /**
@@ -13,21 +15,21 @@ router.use('/admin', authenticate);
  * usuário, empresas de demonstração e ciclos abertos com catálogo demonstrativo e sem
  * designação de auditoria aparecem aqui para conferência.
  */
-router.get('/admin/review', authz.authorize('review.read'), (_req, res) => {
-  const links = db.all(
+router.get('/admin/review', authz.authorize('review.read'), async (_req, res) => {
+  const links = await db.all(
     `SELECT l.id, l.userId, u.name AS userName, l.companyId, c.bussinessName, l.role, l.origin, l.grantedAt
        FROM user_company_links l JOIN users u ON u.id = l.userId JOIN companies c ON c.id = l.companyId
       WHERE l.needsReview = 1 AND l.revokedAt IS NULL ORDER BY u.name`,
   );
-  const companies = db.all(
+  const companies = await db.all(
     'SELECT id, bussinessName, cnpj, origin, status FROM companies WHERE needsReview = 1 AND deletedAt IS NULL ORDER BY bussinessName',
   );
-  const cycles = db.all(
+  const cycles = await db.all(
     `SELECT r.id, r.companyId, c.bussinessName, r.cycle, r.status, r.catalogVersion, r.origin
        FROM reports r JOIN companies c ON c.id = r.companyId
       WHERE r.needsReview = 1 ORDER BY c.bussinessName, r.cycle`,
   );
-  const cyclesWithoutProfessionals = db.all(
+  const cyclesWithoutProfessionals = await db.all(
     `SELECT r.id, r.companyId, r.cycle, r.status FROM reports r
       WHERE r.status IN ('Auditing')
         AND NOT EXISTS (SELECT 1 FROM cycle_professionals cp WHERE cp.reportId = r.id AND cp.revokedAt IS NULL)`,
@@ -37,7 +39,9 @@ router.get('/admin/review', authz.authorize('review.read'), (_req, res) => {
     companies,
     cycles,
     cyclesWithoutProfessionals,
-    migrations: db.all('SELECT id, appliedAt FROM schema_migrations ORDER BY id'),
+    migrations: await db.all('SELECT id, appliedAt FROM schema_migrations ORDER BY id'),
+    // Histórico da base anterior (SQLite), aplicado só na preparação da transferência.
+    legacySqliteHistory: migrations.SQLITE_HISTORY,
     counts: {
       links: links.length,
       companies: companies.length,
@@ -48,7 +52,7 @@ router.get('/admin/review', authz.authorize('review.read'), (_req, res) => {
 });
 
 /** Trilha de eventos (autoria das ações administrativas e de fluxo). */
-router.get('/admin/events', authz.authorize('review.read'), (req, res) => {
+router.get('/admin/events', authz.authorize('review.read'), async (req, res) => {
   const entity = String(req.query.entity || '').trim();
   const entityId = String(req.query.entityId || '').trim();
   const where = [];
@@ -61,7 +65,7 @@ router.get('/admin/events', authz.authorize('review.read'), (req, res) => {
     where.push('entityId = ?');
     params.push(entityId);
   }
-  const rows = db.all(
+  const rows = await db.all(
     `SELECT e.*, u.name AS actorName FROM audit_events e LEFT JOIN users u ON u.id = e.actorId
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY at DESC LIMIT 200`,
@@ -71,7 +75,7 @@ router.get('/admin/events', authz.authorize('review.read'), (req, res) => {
 });
 
 /** Matriz de permissões efetivamente implementada (fonte: src/authz.js). */
-router.get('/admin/permissions', authz.authorize('review.read'), (_req, res) => {
+router.get('/admin/permissions', authz.authorize('review.read'), async (_req, res) => {
   res.json({
     roles: authz.ROLES,
     allowedAccumulation: authz.ALLOWED_ACCUMULATION,
