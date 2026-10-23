@@ -8,6 +8,7 @@ const { badRequest, conflict, notFound, forbidden, asyncRouter } = require('../h
 const { authenticate } = require('../auth');
 const authz = require('../authz');
 const files = require('../files');
+const limiter = require('../ratelimit');
 
 const router = asyncRouter();
 
@@ -55,7 +56,15 @@ function parseValidity(body) {
  * Campos opcionais: `description`, `validUntil` (AAAA-MM-DD) ou `indefiniteValidity=true`,
  * `kind` (evidencia | cadastral) e `replacesFileId` (nova versão de um arquivo existente).
  */
-router.post('/uploads/companyFile', authenticate, memory(config.maxCompanyFileBytes), async (req, res) => {
+router.post('/uploads/companyFile', authenticate, (req, _res, next) => {
+  // Limite por pessoa, antes de receber o arquivo na memória.
+  try {
+    limiter.hit('upload', req, { extra: req.principal.user.id, max: config.rateLimit.uploadMax, windowMs: 60 * 1000 });
+    next();
+  } catch (err) {
+    next(err);
+  }
+}, memory(config.maxCompanyFileBytes), async (req, res) => {
   if (!req.file) throw badRequest('arquivo é obrigatório');
   const body = req.body || {};
   const informed = body.questionReportId || body.companyId;

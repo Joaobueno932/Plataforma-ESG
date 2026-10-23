@@ -1,1 +1,5 @@
-{"message":"a report with this id wasn't found!","error":"Not Found","statusCode":404}
+{
+  "message": "a report with this id wasn't found!",
+  "error": "Not Found",
+  "statusCode": 404
+}

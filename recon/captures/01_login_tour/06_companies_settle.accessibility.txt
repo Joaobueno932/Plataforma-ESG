@@ -31,7 +31,7 @@
       - img
       - text: Sair
     - text: AE
-    - heading "Adm ESG" [level=6]
+    - heading "Pessoa 1" [level=6]
     - text: adm.esg@sfiems.com.br
   - main:
     - heading "Empresas" [level=2]
@@ -93,9 +93,9 @@
             - button "RELATÓRIO AUDITORIA" [disabled]:
               - img
               - text: RELATÓRIO AUDITORIA
-        - row "Test2 69 Jul 22, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
-          - cell "Test2":
-            - button "Test2"
+        - row "Empresa Anonimizada 2 69 Jul 22, 2024 Em andamento VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "Empresa Anonimizada 2":
+            - button "Empresa Anonimizada 2"
           - cell "69"
           - cell "Jul 22, 2024"
           - cell "Em andamento"
@@ -112,9 +112,9 @@
             - button "RELATÓRIO AUDITORIA" [disabled]:
               - img
               - text: RELATÓRIO AUDITORIA
-        - row "Test 69 Jun 16, 2024 Auditoria finalizada VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
-          - cell "Test":
-            - button "Test"
+        - row "Empresa Anonimizada 1 69 Jun 16, 2024 Auditoria finalizada VISUALIZAR EXTRATO RELATÓRIO AUDITORIA":
+          - cell "Empresa Anonimizada 1":
+            - button "Empresa Anonimizada 1"
           - cell "69"
           - cell "Jun 16, 2024"
           - cell "Auditoria finalizada"

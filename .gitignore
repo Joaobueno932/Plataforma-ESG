@@ -23,3 +23,9 @@ AGENTS.md.local
 
 # Ativos de marca e fontes oficiais entregues para consulta (uso regido pelo Manual de Marca)
 Identidade Visual/
+
+# Capturas de tela da engenharia reversa mostram nomes reais: ficam só na máquina local
+recon/captures/**/*.png
+recon/captures/**/*.jpg
+recon/captures/**/*.jpeg
+recon/captures/**/*.webp

@@ -30,6 +30,20 @@ function reset(name, req, extra = '') {
   buckets.delete(keyOf(name, req, extra));
 }
 
+/**
+ * Limpeza periódica das janelas vencidas. Sem ela, tentativas vindas de muitos endereços ou
+ * e-mails diferentes fariam o mapa crescer sem limite (memória que nunca volta).
+ */
+function sweep(now = Date.now()) {
+  let removed = 0;
+  for (const [key, entry] of buckets) if (entry.resetAt <= now) {
+    buckets.delete(key);
+    removed += 1;
+  }
+  return removed;
+}
+setInterval(sweep, 60 * 1000).unref();
+
 const limit = (name, options) => (req, _res, next) => {
   try {
     hit(name, req, options);
@@ -39,4 +53,4 @@ const limit = (name, options) => (req, _res, next) => {
   }
 };
 
-module.exports = { hit, reset, limit, _buckets: buckets };
+module.exports = { hit, reset, limit, sweep, _buckets: buckets };

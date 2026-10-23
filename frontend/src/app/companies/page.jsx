@@ -498,9 +498,11 @@ export default function CompaniesPage() {
             </p>
           </div>
           {isAdmin && (
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <SearchInput placeholder="Procurar por empresa" handleChange={searchCompany} />
-              <Button onClick={() => setRegisterOpen(true)}>Cadastrar Nova Empresa</Button>
+              <Button className="h-auto whitespace-normal py-2 text-base sm:text-xl" onClick={() => setRegisterOpen(true)}>
+                Cadastrar Nova Empresa
+              </Button>
             </div>
           )}
         </section>

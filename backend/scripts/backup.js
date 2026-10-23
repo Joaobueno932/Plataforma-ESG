@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 /**
- * Backup, verificação, ensaio de migração e restauração — MySQL.
+ * Backup, verificação, ensaio de restauração e restauração — banco **e arquivos vinculados**.
  *
- *   npm run db:backup                     → dump em storage/backups/
- *   npm run db:verify -- <arquivo.sql>    → confere o dump e as contagens do banco atual
- *   npm run db:dry-run                    → restaura o dump em uma base de ensaio e migra lá
- *   npm run db:restore -- <arquivo.sql>   → restaura no banco de trabalho (exige --confirm)
+ *   npm run db:backup                          → storage/backups/esg-<data>/ (dump + arquivos + manifesto)
+ *   npm run db:verify   [-- <pasta>]           → confere hashes e se todo arquivo citado no banco está no backup
+ *   npm run db:dry-run  [-- <pasta>]           → restaura banco e arquivos em área de ensaio e compara
+ *   npm run db:restore  -- <pasta> --confirm   → restaura no banco e no armazenamento de trabalho
  *
- * O `mysqldump`/`mysql` é executado dentro do container quando ele existe (padrão no ambiente
- * local), ou no binário local quando `MYSQL_CLIENT=local`. Nenhuma senha aparece na linha de
- * comando: ela vai por variável de ambiente do processo filho (MYSQL_PWD).
+ * Arquivos incluídos: evidências e documentos da empresa (`uploads/`) e documentos publicados
+ * (`publications/`). O manifesto guarda tamanho e SHA-256 de cada arquivo e do dump.
+ *
+ * Cliente MySQL: no container `esg-mysql` quando o banco é o do compose (porta 3307) ou com
+ * `MYSQL_CLIENT=container`; caso contrário, o binário local (`MYSQL_BIN_DIR` ou PATH). A senha
+ * nunca vai na linha de comando: vai pela variável de ambiente MYSQL_PWD do processo filho.
  */
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const config = require('../src/config');
@@ -19,121 +24,176 @@ const db = require('../src/db');
 const { migrate } = require('../src/migrations');
 
 const CONTAINER = process.env.MYSQL_CONTAINER || 'esg-mysql';
-const useContainer = (process.env.MYSQL_CLIENT || 'container') === 'container';
+const useContainer = process.env.MYSQL_CLIENT ? process.env.MYSQL_CLIENT === 'container' : Number(config.db.port) === 3307;
+const binary = (tool) => (process.env.MYSQL_BIN_DIR ? path.join(process.env.MYSQL_BIN_DIR, tool) : tool);
 
-const TABLES = [
-  'companies', 'users', 'user_profiles', 'user_company_links', 'sectors', 'catalog_versions',
-  'catalog_imports', 'catalog_sections', 'questions', 'answers', 'reports', 'cycle_professionals',
-  'cycle_rounds', 'question_reports', 'item_answer_versions', 'item_reviews', 'item_comments',
-  'company_files', 'question_report_files', 'evidences', 'na_requests', 'na_request_files',
-  'cycle_results', 'cycle_result_axes', 'pendings', 'pending_events', 'publications', 'leads', 'sessions', 'audit_events',
-];
+/** Áreas de arquivo do backup: nome → pasta de trabalho. */
+const AREAS = { uploads: () => config.uploadsDir, publications: () => path.join(config.storageDir, 'publications') };
 
-/** Executa um cliente mysql (dump ou restore) sem expor a senha nos argumentos. */
+const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+
 function runClient(tool, args, { input = null, output = null } = {}) {
   const env = { ...process.env, MYSQL_PWD: config.db.password };
-  const base = useContainer
+  const [command, commandArgs] = useContainer
     ? ['docker', ['exec', '-i', '-e', `MYSQL_PWD=${config.db.password}`, CONTAINER, tool, '-h', '127.0.0.1', '-u', config.db.user, ...args]]
-    : [tool, ['-h', config.db.host, '-P', String(config.db.port), '-u', config.db.user, ...args]];
-  const [command, commandArgs] = base;
-  const result = spawnSync(command, commandArgs, {
-    env,
-    input: input ?? undefined,
-    maxBuffer: 512 * 1024 * 1024,
-    encoding: 'utf8',
-    shell: false,
-  });
-  if (result.error) throw new Error(`não foi possível executar ${command}: ${result.error.message}`);
+    : [binary(tool), ['-h', config.db.host, '-P', String(config.db.port), '-u', config.db.user, ...args]];
+  const result = spawnSync(command, commandArgs, { env, input: input ?? undefined, maxBuffer: 1024 * 1024 * 1024, encoding: 'utf8', shell: false });
+  if (result.error) throw new Error(`não foi possível executar ${command}: ${result.error.message} (defina MYSQL_BIN_DIR se o cliente não estiver no PATH)`);
   if (result.status !== 0) throw new Error(`${tool} falhou: ${(result.stderr || '').trim().slice(0, 500)}`);
   if (output) fs.writeFileSync(output, result.stdout);
   return result.stdout;
 }
 
 async function counts(database = config.db.name) {
-  const rows = await db.all(
-    `SELECT table_name AS name, table_rows AS approx FROM information_schema.tables WHERE table_schema = ?`,
-    database,
-  );
+  const rows = await db.all("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = ? AND table_type = 'BASE TABLE'", database);
   const out = {};
   for (const row of rows) {
     const { n } = await db.one(`SELECT count(*) AS n FROM \`${database}\`.\`${row.name}\``);
-    if (n > 0) out[row.name] = Number(n);
+    if (Number(n) > 0) out[row.name] = Number(n);
   }
   return out;
 }
 
+function walk(dir, base = dir, out = []) {
+  if (!fs.existsSync(dir)) return out;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, base, out);
+    else if (!entry.name.endsWith('.part')) out.push(path.relative(base, full));
+  }
+  return out;
+}
+
+/** Arquivos que o banco diz existir: uploads (company_files.url) e publicações (reportPath). */
+async function referencedFiles(database = config.db.name) {
+  const refs = [];
+  for (const row of await db.all(`SELECT url FROM \`${database}\`.company_files`)) refs.push({ area: 'uploads', path: row.url.replace(/^uploads\//, '') });
+  const hasPublications = await db.one("SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = ? AND table_name = 'publications'", database);
+  if (hasPublications)
+    for (const row of await db.all(`SELECT reportPath FROM \`${database}\`.publications WHERE reportPath IS NOT NULL`))
+      refs.push({ area: 'publications', path: row.reportPath.replace(/^publications[\\/]/, '') });
+  return refs.map((r) => ({ ...r, path: r.path.split(/[\\/]/).join(path.sep) }));
+}
+
 async function create() {
-  fs.mkdirSync(config.backupsDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const target = path.join(config.backupsDir, `esg-${stamp}.sql`);
-  runClient('mysqldump', ['--single-transaction', '--routines', '--events', '--add-drop-table', config.db.name], { output: target });
-  const size = fs.statSync(target).size;
-  console.log(`backup criado: ${target} (${(size / 1024).toFixed(1)} KiB)`);
-  console.log(`contagens: ${JSON.stringify(await counts())}`);
-  return target;
+  const dir = path.join(config.backupsDir, `esg-${stamp}`);
+  fs.mkdirSync(dir, { recursive: true });
+  const dump = path.join(dir, 'database.sql');
+  runClient('mysqldump', ['--single-transaction', '--routines', '--events', '--add-drop-table', '--hex-blob', config.db.name], { output: dump });
+
+  const files = [];
+  for (const [area, source] of Object.entries(AREAS)) {
+    for (const rel of walk(source())) {
+      const target = path.join(dir, 'files', area, rel);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(source(), rel), target);
+      files.push({ area, path: rel, bytes: fs.statSync(target).size, sha256: sha256(target) });
+    }
+  }
+  const manifest = {
+    format: 'esg-backup-v2',
+    createdAt: new Date().toISOString(),
+    database: { name: config.db.name, file: 'database.sql', bytes: fs.statSync(dump).size, sha256: sha256(dump), counts: await counts() },
+    files,
+  };
+  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  console.log(`backup criado: ${dir}`);
+  console.log(`banco: ${(manifest.database.bytes / 1024).toFixed(1)} KiB · arquivos: ${files.length}`);
+  console.log(`contagens: ${JSON.stringify(manifest.database.counts)}`);
+  return dir;
 }
 
-/** Dump mais recente em storage/backups (padrão de `verify` sem argumento). */
-function latestDump() {
+function latestBackup() {
   if (!fs.existsSync(config.backupsDir)) return null;
-  const files = fs.readdirSync(config.backupsDir).filter((f) => f.endsWith('.sql')).sort();
-  return files.length ? path.join(config.backupsDir, files[files.length - 1]) : null;
+  const dirs = fs
+    .readdirSync(config.backupsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && fs.existsSync(path.join(config.backupsDir, e.name, 'manifest.json')))
+    .map((e) => e.name)
+    .sort();
+  return dirs.length ? path.join(config.backupsDir, dirs[dirs.length - 1]) : null;
 }
 
-async function verify(file = latestDump()) {
-  if (!file || !fs.existsSync(file)) throw new Error(`informe um arquivo de dump existente (recebido: ${file || 'nada'})`);
-  const text = fs.readFileSync(file, 'utf8');
-  const tables = [...text.matchAll(/CREATE TABLE `([^`]+)`/g)].map((m) => m[1]);
-  const inserts = (text.match(/INSERT INTO/g) || []).length;
-  console.log(`arquivo: ${file}`);
-  console.log(`tabelas no dump: ${tables.length} (${tables.slice(0, 8).join(', ')}${tables.length > 8 ? '…' : ''})`);
-  console.log(`comandos INSERT: ${inserts}`);
-  const migrations = await db.all('SELECT id FROM schema_migrations ORDER BY id');
-  console.log(`migrações aplicadas no banco atual: ${migrations.map((m) => m.id).join(', ') || '(nenhuma)'}`);
-  console.log(`contagens do banco atual: ${JSON.stringify(await counts())}`);
-  const ok = tables.length > 0;
-  if (!ok) process.exitCode = 1;
-  return ok;
+function readManifest(dir) {
+  const file = path.join(dir || '', 'manifest.json');
+  if (!dir || !fs.existsSync(file)) throw new Error(`informe uma pasta de backup com manifest.json (recebido: ${dir || 'nada'})`);
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-/** Restaura o dump em uma base de ensaio e aplica as migrações lá, sem tocar no banco de trabalho. */
-async function dryRun(file) {
-  const dump = file && fs.existsSync(file) ? file : await create();
+/** Confere integridade do backup e se ele cobre todos os arquivos citados pelo banco atual. */
+async function verify(dir = latestBackup(), { database = config.db.name, log = console.log } = {}) {
+  const manifest = readManifest(dir);
+  const problems = [];
+  const dump = path.join(dir, manifest.database.file);
+  if (!fs.existsSync(dump) || sha256(dump) !== manifest.database.sha256) problems.push('dump ausente ou alterado');
+  for (const f of manifest.files) {
+    const file = path.join(dir, 'files', f.area, f.path);
+    if (!fs.existsSync(file)) problems.push(`arquivo ausente no backup: ${f.area}/${f.path}`);
+    else if (sha256(file) !== f.sha256) problems.push(`arquivo alterado no backup: ${f.area}/${f.path}`);
+  }
+  const listed = new Set(manifest.files.map((f) => `${f.area}|${f.path}`));
+  const refs = await referencedFiles(database);
+  const missing = refs.filter((r) => !listed.has(`${r.area}|${r.path}`));
+  for (const m of missing) problems.push(`citado no banco e fora do backup: ${m.area}/${m.path}`);
+  log(`backup: ${dir}`);
+  log(`dump: ${(manifest.database.bytes / 1024).toFixed(1)} KiB · arquivos: ${manifest.files.length} · referências no banco: ${refs.length}`);
+  log(problems.length ? `PROBLEMAS (${problems.length}):\n  ${problems.slice(0, 20).join('\n  ')}` : 'RESULTADO: backup íntegro e completo');
+  if (problems.length) process.exitCode = 1;
+  return { ok: !problems.length, problems, manifest };
+}
+
+/** Restaura banco e arquivos em área de ensaio (base `<nome>_dryrun` e pasta temporária). */
+async function dryRun(dirArg) {
+  const dir = dirArg && fs.existsSync(dirArg) ? dirArg : await create();
+  const manifest = readManifest(dir);
   const scratch = `${config.db.name}_dryrun`;
-  const before = await counts();
-
   runClient('mysql', ['-e', `DROP DATABASE IF EXISTS \`${scratch}\`; CREATE DATABASE \`${scratch}\` CHARACTER SET utf8mb4;`]);
-  runClient('mysql', [scratch], { input: fs.readFileSync(dump, 'utf8') });
+  runClient('mysql', [scratch], { input: fs.readFileSync(path.join(dir, manifest.database.file), 'utf8') });
 
-  // Migra a cópia com um pool próprio apontado para a base de ensaio.
+  // Arquivos restaurados em pasta temporária e conferidos por hash.
+  const fileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'esg-restore-'));
+  let fileErrors = 0;
+  for (const f of manifest.files) {
+    const target = path.join(fileRoot, f.area, f.path);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(dir, 'files', f.area, f.path), target);
+    if (sha256(target) !== f.sha256) fileErrors += 1;
+  }
+
   db.configure({ database: scratch });
   const applied = await migrate(db, { log: (line) => console.log(`  ${line}`) });
   const after = await counts(scratch);
-  const orphans = await db.all(
-    `SELECT table_name AS t, constraint_name AS c FROM information_schema.referential_constraints WHERE constraint_schema = ?`,
-    scratch,
-  );
+  const refs = await referencedFiles(scratch);
+  const unresolved = refs.filter((r) => !fs.existsSync(path.join(fileRoot, r.area, r.path)));
+  const fks = await db.all('SELECT constraint_name FROM information_schema.referential_constraints WHERE constraint_schema = ?', scratch);
   db.configure();
 
+  const before = manifest.database.counts;
   const preserved = Object.entries(before).every(([table, n]) => (after[table] || 0) >= n);
-  console.log(`base de ensaio: ${scratch}`);
-  console.log(`dump usado: ${dump}`);
-  console.log(`migrações aplicadas na cópia: ${applied.join(', ') || '(nenhuma pendente)'}`);
-  console.log(`chaves estrangeiras na cópia: ${orphans.length}`);
+  const ok = preserved && !fileErrors && !unresolved.length;
+  console.log(`base de ensaio: ${scratch} · arquivos restaurados em ${fileRoot}`);
+  console.log(`migrações aplicadas na cópia: ${applied.join(', ') || '(nenhuma pendente)'} · chaves estrangeiras: ${fks.length}`);
   console.log(`antes:  ${JSON.stringify(before)}`);
   console.log(`depois: ${JSON.stringify(after)}`);
-  console.log(preserved ? 'RESULTADO: dados preservados' : 'RESULTADO: VERIFICAR — houve perda');
-  if (!preserved) process.exitCode = 1;
-  return preserved;
+  console.log(`arquivos: ${manifest.files.length} restaurados · ${fileErrors} com hash divergente · ${unresolved.length} referência(s) sem arquivo`);
+  console.log(ok ? 'RESULTADO: banco, arquivos e vínculos preservados' : 'RESULTADO: VERIFICAR — houve perda');
+  if (!ok) process.exitCode = 1;
+  fs.rmSync(fileRoot, { recursive: true, force: true });
+  return ok;
 }
 
-async function restore(file) {
-  if (!process.argv.includes('--confirm'))
-    throw new Error('restauração sobrescreve o banco de trabalho; repita o comando com --confirm');
-  if (!file || !fs.existsSync(file)) throw new Error('informe o arquivo de dump');
-  await verify(file);
-  runClient('mysql', [config.db.name], { input: fs.readFileSync(file, 'utf8') });
-  console.log(`banco restaurado a partir de ${file}`);
+async function restore(dir) {
+  if (!process.argv.includes('--confirm')) throw new Error('restauração sobrescreve banco e arquivos de trabalho; repita o comando com --confirm');
+  const manifest = readManifest(dir);
+  const check = await verify(dir, { log: () => {} });
+  if (check.problems.some((p) => !p.startsWith('citado no banco'))) throw new Error(`backup inconsistente: ${check.problems[0]}`);
+  runClient('mysql', [config.db.name], { input: fs.readFileSync(path.join(dir, manifest.database.file), 'utf8') });
+  for (const f of manifest.files) {
+    const target = path.join(AREAS[f.area](), f.path);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(dir, 'files', f.area, f.path), target);
+  }
+  console.log(`restaurado a partir de ${dir}: banco + ${manifest.files.length} arquivo(s)`);
   console.log(`contagens: ${JSON.stringify(await counts())}`);
 }
 
@@ -141,18 +201,21 @@ async function main() {
   const [command, arg] = process.argv.slice(2).filter((value) => !value.startsWith('--'));
   await db.init({ runMigrations: false });
   if (command === 'create') await create();
-  else if (command === 'verify') await verify(arg);
+  else if (command === 'verify') await verify(arg || latestBackup());
   else if (command === 'dry-run') await dryRun(arg);
   else if (command === 'restore') await restore(arg);
   else {
-    console.log('uso: create | verify <arquivo.sql> | dry-run [arquivo.sql] | restore <arquivo.sql> --confirm');
+    console.log('uso: create | verify [pasta] | dry-run [pasta] | restore <pasta> --confirm');
     process.exitCode = 2;
   }
 }
 
-main()
-  .catch((err) => {
-    console.error(`erro: ${err.message}`);
-    process.exitCode = 1;
-  })
-  .finally(() => db.close());
+if (require.main === module)
+  main()
+    .catch((err) => {
+      console.error(`erro: ${err.message}`);
+      process.exitCode = 1;
+    })
+    .finally(() => db.close());
+
+module.exports = { create, verify, dryRun, restore, referencedFiles };

@@ -7,7 +7,7 @@ const publication = require('../publication');
 const { badRequest, forbidden, notFound, conflict, asyncRouter } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
-const { loadQuestionReport, currentCycle } = require('../services');
+const { loadQuestionReport, currentCycle, createCycleForCompany } = require('../services');
 const scoring = require('../scoring');
 const workflow = require('../workflow');
 
@@ -282,6 +282,21 @@ router.get('/reports/:reportId/workflow', async (req, res) => {
     releaseBlockers,
     auditBlockers: showAuditFor(role, report) && report.status === workflow.CYCLE.AUDITING ? await workflow.auditBlockers(report) : [],
   });
+});
+
+/**
+ * Recertificação: abre o próximo ciclo, ligado ao anterior, com o caderno atual da empresa e a
+ * versão do catálogo em vigor. O ciclo anterior (resultado, documentos, histórico) não muda.
+ */
+router.post('/reports/company/:companyId/cycles', authz.authorize('companies.manage'), async (req, res) => {
+  const company = await db.one('SELECT * FROM companies WHERE id = ? AND deletedAt IS NULL', req.params.companyId);
+  if (!company) throw notFound('company not found');
+  const last = await db.one('SELECT id, status, cycle FROM reports WHERE companyId = ? ORDER BY cycle DESC LIMIT 1', company.id);
+  if (last && last.status !== workflow.CYCLE.AUDITED)
+    throw conflict('a empresa já possui um ciclo em andamento; conclua-o antes de abrir outro');
+  const id = await createCycleForCompany(company, { createdById: req.principal.user.id, previousReportId: last ? last.id : null });
+  await authz.audit(req, 'cycle.open', { entity: 'reports', entityId: id, companyId: company.id, details: { previous: last ? last.id : null } });
+  res.status(201).json(ser.report(await reportById(id)));
 });
 
 /** Ciclos da empresa (histórico e relação entre eles). */

@@ -31,6 +31,11 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 function errorHandler(err, req, res, _next) {
   if (err && err.code === 'LIMIT_FILE_SIZE') err = new HttpError(413, 'arquivo excede o tamanho máximo permitido');
   if (err instanceof SyntaxError && 'body' in err) err = badRequest('JSON inválido');
+  // Erros de cliente do body-parser/multer (corpo grande demais, formato inválido) não são 500.
+  if (err && err.type === 'entity.too.large') err = new HttpError(413, 'conteúdo excede o tamanho máximo permitido');
+  else if (err && !(err instanceof HttpError) && Number.isInteger(err.status) && err.status >= 400 && err.status < 500)
+    err = new HttpError(err.status, err.expose && err.message ? err.message : 'requisição inválida');
+  else if (err && err.name === 'MulterError') err = badRequest(`envio de arquivo inválido: ${err.code}`);
   if (!(err instanceof HttpError)) {
     console.error(err);
     return res.status(500).json({ statusCode: 500, message: 'Internal server error' });

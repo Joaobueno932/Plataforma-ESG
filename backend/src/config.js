@@ -74,10 +74,17 @@ const config = {
       return this.transport !== 'outbox-file';
     },
   },
+  /**
+   * Proxies confiáveis à frente da API (número de saltos, ex.: TRUST_PROXY=1 atrás de um nginx).
+   * Padrão: nenhum — `X-Forwarded-For` enviado pelo cliente é ignorado.
+   */
+  trustProxy: /^\d+$/.test(process.env.TRUST_PROXY || '') ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY || false,
   /** Tentativas por janela (login, recuperação de senha e leads). */
   rateLimit: {
     windowMs: number(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
     maxAttempts: number(process.env.RATE_LIMIT_MAX, 10),
+    /** Envios de arquivo por pessoa por minuto. */
+    uploadMax: number(process.env.UPLOAD_RATE_MAX, 60),
   },
 };
 

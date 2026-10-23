@@ -1,1 +1,18 @@
-{"access_token":"<redacted>","sanitizedUser":{"id":"a1e38db3-ee97-459d-b991-51e6e9d58283","avatar":null,"name":"Adm ESG","email":"adm.esg@sfiems.com.br","cpf":null,"createdAt":"2024-07-16T18:09:56.626Z","updatedAt":"2026-10-16T12:34:22.464Z","deletedAt":null,"role":"ADMIN","jobTitle":null,"companyId":null,"company":null},"refresh_token":"<redacted>"}
+{
+  "access_token": "<redacted>",
+  "sanitizedUser": {
+    "id": "a1e38db3-ee97-459d-b991-51e6e9d58283",
+    "avatar": null,
+    "name": "Pessoa 1",
+    "email": "pessoa1@exemplo.invalid",
+    "cpf": null,
+    "createdAt": "2024-07-16T18:09:56.626Z",
+    "updatedAt": "2026-10-16T12:34:22.464Z",
+    "deletedAt": null,
+    "role": "ADMIN",
+    "jobTitle": null,
+    "companyId": null,
+    "company": null
+  },
+  "refresh_token": "<redacted>"
+}

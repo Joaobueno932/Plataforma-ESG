@@ -450,11 +450,11 @@ export default function UsersPage() {
       )}
       <section className="px-2">
         <Card.Root>
-          <div className="flex justify-between items-center h-16">
+          <div className="flex min-h-16 flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
             <h6 className="px-4 title-s">{isAdmin ? 'Todos os usuários' : 'Seus dados'}</h6>
             {isAdmin && (
-              <div className="flex items-center h-full mr-2">
-                <Button className="border-none text-white" onClick={() => setRegisterOpen(true)}>
+              <div className="flex items-center px-4 sm:mr-2 sm:px-0">
+                <Button className="h-auto whitespace-normal border-none py-2 text-base text-white sm:text-xl" onClick={() => setRegisterOpen(true)}>
                   Cadastrar Novo Usuário
                 </Button>
               </div>

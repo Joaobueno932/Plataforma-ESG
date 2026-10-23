@@ -71,12 +71,16 @@ Resultado da importação atual e pendências: `docs/esg/importacao-catalogo.md`
 
 ```bash
 cd backend
-npm run db:backup     # dump consistente em storage/backups/ (mysqldump --single-transaction)
-npm run db:verify     # confere o dump e compara as contagens com o banco
-npm run db:dry-run    # restaura o dump em base temporária e compara as contagens
+npm run db:backup     # storage/backups/esg-<data>/: dump + arquivos (uploads e publicações) + manifesto SHA-256
+npm run db:verify     # integridade do backup e cobertura de todo arquivo citado no banco
+npm run db:dry-run    # restaura banco e arquivos em área de ensaio e compara contagens e hashes
 npm run migrate       # aplica as migrações pendentes
-npm run db:restore -- storage/backups/<arquivo>.sql --confirm
+npm run db:restore -- storage/backups/esg-<data> --confirm
 ```
+
+O cliente MySQL roda no container quando o banco é o do compose (porta 3307); com MySQL nativo,
+o binário local é usado (`MYSQL_BIN_DIR` se não estiver no PATH). Guia de homologação, roteiro
+de aceite por perfil e tabela de critérios: `docs/esg/homologacao.md`.
 
 As migrações ficam em `backend/src/migrations/mysql/` e são aplicadas também na subida do
 servidor, registradas em `schema_migrations`. O esquema nasce consolidado em
@@ -125,10 +129,11 @@ suba de novo. **Dados reais devem ser migrados, não recriados**: use `npm run d
 
 ```bash
 docker compose up -d mysql      # os testes exigem o banco no ar
-cd backend && npm test          # 123 testes na base plataforma_esg_test: auth e sessões,
+cd backend && npm test          # 173 testes na base plataforma_esg_test: auth e sessões,
                                 # autorização e negações, empresas, pessoas/perfis/vínculos,
-                                # catálogo e importação, fluxo do ciclo, pontuação por eixo,
-                                # histórico SQLite congelado e transferência para o MySQL
+                                # catálogo, importação e editor, fluxo do ciclo, pendências,
+                                # pontuação por eixo, publicação, percurso de homologação,
+                                # segurança, backup com arquivos e migração/transferência
 ```
 
 A base de testes é limpa a cada arquivo de teste (`schema_migrations` é preservada) e

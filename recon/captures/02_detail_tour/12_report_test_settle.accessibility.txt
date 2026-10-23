@@ -31,7 +31,7 @@
       - img
       - text: Sair
     - text: AE
-    - heading "Adm ESG" [level=6]
+    - heading "Pessoa 1" [level=6]
     - text: adm.esg@sfiems.com.br
   - main:
     - heading "Empresas" [level=2]

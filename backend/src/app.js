@@ -22,7 +22,19 @@ function corsOptions() {
 function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', true);
+  // Só confia em X-Forwarded-For vindo dos proxies configurados; com `true`, qualquer cliente
+  // escolheria o próprio IP e escaparia do limite de tentativas.
+  app.set('trust proxy', config.trustProxy);
+  // Cabeçalhos de segurança: a API só devolve JSON e arquivos para download.
+  app.use((_req, res, next) => {
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('X-Frame-Options', 'DENY');
+    res.set('Referrer-Policy', 'no-referrer');
+    res.set('Cross-Origin-Resource-Policy', 'same-site');
+    res.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    if (config.env === 'production') res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
   app.use(cors(corsOptions()));
   app.use(express.json({ limit: '2mb' }));
 
