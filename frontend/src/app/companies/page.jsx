@@ -487,7 +487,7 @@ export default function CompaniesPage() {
           </Modal.Content>
         </Modal.Root>
       )}
-      <div className="px-6 pb-5 h-full flex flex-col gap-2 ml-56">
+      <div className="px-6 pb-5 h-full flex flex-col gap-2 lg:ml-56">
         <section className="px-2 flex flex-col gap-2">
           <div>
             <h3 className="title-l">{isAdmin ? 'Lista de Empresas' : 'Empresa'}</h3>

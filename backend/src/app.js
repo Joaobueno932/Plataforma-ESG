@@ -40,6 +40,7 @@ function createApp() {
   app.use(require('./routes/companies'));
   app.use(require('./routes/questions'));
   app.use(require('./routes/catalog'));
+  app.use(require('./routes/catalog-editor'));
   app.use(require('./routes/reports'));
   app.use(require('./routes/uploads'));
   app.use(require('./routes/leads'));

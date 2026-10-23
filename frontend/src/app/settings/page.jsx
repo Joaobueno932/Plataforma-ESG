@@ -43,7 +43,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="px-6 pb-10 ml-56 h-fit flex flex-col gap-2">
+    <div className="px-6 pb-10 lg:ml-56 h-fit flex flex-col gap-2">
       <section className="flex flex-col gap-4">
         <h3 className="font-semibold text-neutral-03 text-xl">Meu perfil</h3>
         <dl className="grid grid-cols-[auto,1fr] gap-x-6 gap-y-2 text-base">

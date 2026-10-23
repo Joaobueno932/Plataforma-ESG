@@ -21,10 +21,13 @@ const nowIso = () => db.now();
 
 const versionById = async (id) => db.one('SELECT * FROM catalog_versions WHERE id = ?', id);
 
-/** Versão oficial em uso: a última publicada. Sem nenhuma, cai no catálogo demonstrativo. */
+/**
+ * Versão em uso: a última publicada entre as oficiais (planilha) e as edições administrativas
+ * (`edited`, criadas no editor do catálogo). Sem nenhuma, cai no catálogo demonstrativo.
+ */
 async function activeVersion() {
   const official = await db.one(
-    "SELECT * FROM catalog_versions WHERE status = 'published' AND origin = 'official' ORDER BY publishedAt DESC, createdAt DESC LIMIT 1",
+    "SELECT * FROM catalog_versions WHERE status = 'published' AND origin IN ('official', 'edited') ORDER BY publishedAt DESC, createdAt DESC LIMIT 1",
   );
   return official || await versionById(LEGACY_VERSION_ID) || null;
 }
@@ -225,7 +228,7 @@ async function publish(versionId, { actorId = null, acknowledge = false } = {}) 
 
   await db.transaction(async () => {
     await db.run(
-      "UPDATE catalog_versions SET status = 'archived', archivedAt = ? WHERE status = 'published' AND origin = 'official' AND id <> ?",
+      "UPDATE catalog_versions SET status = 'archived', archivedAt = ? WHERE status = 'published' AND origin IN ('official', 'edited') AND id <> ?",
       nowIso(),
       versionId,
     );
@@ -248,6 +251,8 @@ async function discardDraft(versionId) {
   const used = (await db.one('SELECT count(*) AS n FROM reports WHERE catalogVersionId = ?', versionId)).n;
   if (used) throw conflict('a versão já está em uso por avaliações e não pode ser descartada');
   await db.transaction(async () => {
+    // O indicador aponta para o nível mínimo: solta a referência antes de apagar as alternativas.
+    await db.run('UPDATE questions SET mandatoryAnswerId = NULL WHERE versionId = ?', versionId);
     await db.run('DELETE FROM answers WHERE questionId IN (SELECT id FROM questions WHERE versionId = ?)', versionId);
     await db.run('DELETE FROM questions WHERE versionId = ?', versionId);
     await db.run('DELETE FROM catalog_sections WHERE versionId = ?', versionId);

@@ -18,7 +18,7 @@ const CATEGORIES = ['E', 'S', 'G'];
 async function assertEditableVersion(versionId) {
   const version = versionId ? await catalog.versionById(versionId) : await catalog.activeVersion();
   if (!version) throw badRequest('nenhuma versão de catálogo disponível');
-  if (version.origin === 'official' && version.status !== 'draft')
+  if (['official', 'edited'].includes(version.origin) && version.status !== 'draft')
     throw conflict(
       `a versão "${version.label}" está ${version.status} e não pode ser editada; importe uma nova versão da planilha para alterar o catálogo`,
     );

@@ -1,4 +1,5 @@
 const db = require('./db');
+const presentation = require('./catalog/presentation');
 
 const bool = (v) => v === 1 || v === true;
 
@@ -134,7 +135,10 @@ const userWithCompany = (u) => userWithProfiles(u);
 /** Alternativa do indicador: ordem, nome, descrição, pontos e apresentação vindos da fonte. */
 function answer(a) {
   if (!a) return null;
+  const { color, source } = presentation.colorOf(a);
   return {
+    color,
+    colorSource: source,
     id: a.id,
     questionId: a.questionId,
     position: a.position ?? null,
@@ -260,7 +264,9 @@ async function questionReport(qr, bundle = null, { showAudit = true } = {}) {
     id: qr.id,
     reportId: qr.reportId,
     questionId: qr.questionId,
-    status: qr.status,
+    // Antes da aprovação, a empresa não vê o andamento das decisões do auditor (só o pedido de
+    // complemento, que é dirigido a ela).
+    status: !showAudit && ['Approved', 'Rejected'].includes(qr.status) ? 'Auditing' : qr.status,
     nonApplicable: bool(qr.nonApplicable),
     nonCompliant: bool(qr.nonCompliant),
     answerText: qr.answerText ?? null,
