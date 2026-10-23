@@ -5,6 +5,7 @@ const { badRequest, forbidden, notFound, conflict } = require('../http');
 const { authenticate } = require('../auth');
 const authz = require('../authz');
 const { loadQuestionReport, currentCycle } = require('../services');
+const scoring = require('../scoring');
 
 const router = express.Router();
 router.use(['/reports', '/auditory'], authenticate);
@@ -201,6 +202,34 @@ router.get('/reports/:reportId', (req, res) => {
 router.get('/reports/company/:companyId/cycles', (req, res) => {
   authz.assertCompanyScope(req, req.params.companyId, 'company.read');
   res.json(db.all('SELECT * FROM reports WHERE companyId = ? ORDER BY cycle', req.params.companyId).map(ser.report));
+});
+
+/**
+ * Resultado do ciclo calculado pelo **motor único** do backend (src/scoring).
+ *
+ * `mode=audited` é a conclusão da auditoria; `mode=self` é o autodiagnóstico da empresa, sempre
+ * preliminar. Antes da aprovação, a empresa acompanha o andamento (`self`) — o resultado
+ * auditado fica restrito a quem conduz o processo, conforme a decisão de só apresentar
+ * resultado à empresa depois da aprovação.
+ */
+router.get('/reports/:reportId/result', (req, res) => {
+  const report = reportById(req.params.reportId);
+  const role = assertCycleRead(req, report);
+  const mode = (req.query.mode || 'audited') === 'self' ? 'self' : 'audited';
+  const companyRole = ['MANAGER', 'EMPLOYEE'].includes(role);
+  if (mode === 'audited' && companyRole && report.status !== 'Audited')
+    throw forbidden(
+      'o resultado auditado fica disponível para a empresa após a aprovação do supervisor; use mode=self para acompanhar o andamento',
+    );
+  const result = scoring.resultOfCycle(report.id, { mode, policyId: (req.query.policy || '').trim() || null });
+  res.json(result);
+});
+
+/** Resultados gravados (histórico; mudança de regra não reescreve o que já foi concluído). */
+router.get('/reports/:reportId/result/history', (req, res) => {
+  const report = reportById(req.params.reportId);
+  assertCycleRead(req, report);
+  res.json(scoring.storedHistory(report.id));
 });
 
 /** Versões preservadas de um indicador (o que foi submetido em cada rodada). */
@@ -603,9 +632,13 @@ router.post(['/auditory/submitToSupervisor', '/auditory/submitToSupervisor/:comp
 
 /**
  * Supervisor consulta e aprova o trabalho concluído pelo auditor.
- * A pontuação continua sendo a média herdada — o cálculo oficial por eixo, com máximo
- * aplicável, obrigatórios e rating, é a etapa E5 (docs/esg/progresso.md). A publicação
- * automática e o certificado são E6.
+ *
+ * A média herdada saiu: o resultado vem do motor único (`src/scoring`), que verifica primeiro
+ * os obrigatórios aplicáveis, calcula pontos e máximo aplicável por eixo, define a faixa com
+ * precisão inteira e mantém separados rating matemático, elegibilidade e impedimentos. O
+ * resultado é gravado com a versão da regra e a política de faixa usadas.
+ *
+ * A publicação automática do resultado, do relatório e do certificado é a etapa E6.
  */
 router.post('/auditory/finishAuditory/:companyId', (req, res) => {
   const report = currentCycle(req.params.companyId);
@@ -613,21 +646,32 @@ router.post('/auditory/finishAuditory/:companyId', (req, res) => {
   const items = db.all('SELECT * FROM question_reports WHERE reportId = ?', report.id);
   if (report.status !== 'Auditing' || !items.every((i) => AUDIT_FINAL.includes(i.status)))
     throw forbidden('todos os indicadores precisam estar aprovados ou rejeitados');
-  const selectedIds = items.filter((i) => !i.nonApplicable && i.selectedAnswerId).map((i) => i.selectedAnswerId);
-  const points = selectedIds.length
-    ? db.all(`SELECT points FROM answers WHERE id IN (${selectedIds.map(() => '?').join(', ')})`, ...selectedIds).map((a) => a.points)
-    : [];
-  const avg = points.length ? points.reduce((a, b) => a + b, 0) / points.length : 0;
-  const evaluation = ['Nao_conforme', 'Iniciante', 'Sensibilizada', 'Consciente', 'Engajado', 'Conforme'][Math.min(5, Math.round(avg / 2))];
-  db.run(
-    "UPDATE reports SET status = 'Audited', evaluation = ?, auditoryEnd = coalesce(auditoryEnd, ?), updatedAt = ? WHERE id = ?",
-    evaluation,
-    db.now(),
-    db.now(),
-    report.id,
-  );
-  authz.audit(req, 'supervision.approved', { entity: 'reports', entityId: report.id, companyId: report.companyId });
-  res.status(201).json(ser.reportDetail(reportById(report.id)));
+  let stored;
+  db.transaction(() => {
+    db.run(
+      "UPDATE reports SET status = 'Audited', auditoryEnd = coalesce(auditoryEnd, ?), updatedAt = ? WHERE id = ?",
+      db.now(),
+      db.now(),
+      report.id,
+    );
+    stored = scoring.persistResult(report.id, { mode: 'audited', computedById: req.principal.user.id });
+    // `evaluation` era o rótulo da média antiga; passa a guardar o rating matemático (ou nada,
+    // quando não há classificação válida), sem substituir o resultado estruturado.
+    db.run('UPDATE reports SET evaluation = ? WHERE id = ?', stored.result.rating, report.id);
+    authz.audit(req, 'supervision.approved', {
+      entity: 'reports',
+      entityId: report.id,
+      companyId: report.companyId,
+      details: {
+        ruleVersion: stored.result.ruleVersion,
+        policy: stored.result.policy.id,
+        rating: stored.result.rating,
+        eligible: stored.result.eligible,
+        impediments: stored.result.impediments.map((impediment) => impediment.kind),
+      },
+    });
+  });
+  res.status(201).json({ ...ser.reportDetail(reportById(report.id)), result: stored.result });
 });
 
 /**

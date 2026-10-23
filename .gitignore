@@ -12,3 +12,13 @@ recon/evidence/
 backend/storage/
 *.pdf
 Cadernos indicadores/
+
+# Ferramentas e configuração locais (contêm chaves de API; repositório é público)
+.mcp.json
+.claude/
+skills-lock.json
+.windsurf/
+AGENTS.md.local
+
+# Ativos de marca e fontes oficiais entregues para consulta (uso regido pelo Manual de Marca)
+Identidade Visual/

@@ -100,6 +100,7 @@ test('migração sobre banco representativo preserva dados e aplica as constrain
       '006_indexes',
       '007_rounds',
       '008_catalog_versions',
+      '009_scoring',
     ]);
     assert.equal(Object.values(db.prepare('PRAGMA integrity_check').get())[0], 'ok');
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
@@ -192,7 +193,7 @@ test('migração sobre banco representativo preserva dados e aplica as constrain
 
   await t.test('a trilha registra o que a migração fez', () => {
     const events = db.prepare("SELECT action, entity, details FROM audit_events WHERE action = 'migration.backfill'").all().map((r) => ({ ...r }));
-    assert.equal(events.length, 4);
+    assert.equal(events.length, 5);
     const links = JSON.parse(events.find((e) => e.entity === 'user_company_links').details);
     assert.equal(links.linksNeedingReview, 2);
   });

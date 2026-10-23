@@ -10,6 +10,7 @@ e pendências `X*` em `regras.md`.
 |---|---|---|---|
 | 22/10/2026 | **E0 — Diagnóstico** | Inspeção de `42ba516`; leitura da planilha oficial; mapeamento de frontend, API, autenticação, dados, uploads, catálogo, respostas, auditoria, testes e relatórios; 21 achados confirmados e 5 hipóteses descartadas; regras com origem e critério de aceite; matriz de permissões; tabela de transições; plano de migrações. Nenhuma alteração na aplicação. | `backend npm test` 32/32 · `frontend npm run build` 17 rotas, sem erro · `frontend npm run lint` **inexistente** (sem ESLint) · leitura do banco local somente leitura |
 | 22/10/2026 | **Reconciliação com a especificação** | `Plataforma esg fiems.docx` v1.0 recebida e confrontada com `regras.md`: resolvidas F10 (gestor solicita × Administração libera), F13 (parte), P3/P9/P10 (faixas, precisão, sem base para classificação) e as pendências de permissão; acrescentado § 4.1 com 13 regras de cadastro, vínculo e ciclo; propostas e pendências do documento mantidas como tais. | revisão documental |
+| 22/10/2026 | **E5 — Cálculo por eixo e elegibilidade** | Motor único em `src/scoring` (políticas de faixa versionadas, engine puro, carga em lote e persistência), migração `009`, rotas `GET /reports/:id/result` e `/result/history`, aprovação do supervisor gravando o resultado com a versão da regra. A média herdada foi removida. | `backend npm test` **118/118**, incluindo 29,99/30/39,99/40/59,99/60/79,95/79,99/80%, denominador zero, NA aceita/recusada/pendente, obrigatório não atendido com rating AAA, valor inválido, porte ausente e o exemplo BBB do documento · `db:dry-run`/`db:verify` com dados preservados · exemplo de resposta em `docs/esg/exemplo-resultado-api.json` |
 | 22/10/2026 | **E3 — Catálogo oficial versionado** | Leitor de XLSX próprio (validado contra openpyxl), validação com relatório de erros/divergências/conferências, importação em versões (prévia → rascunho → publicação com confirmação), códigos e alternativas oficiais por indicador, proteção das versões publicadas e conferência contra os cadernos em PDF. Versão oficial importada como **rascunho**. | `backend npm test` **95/95** · `npm run db:dry-run` e `db:verify` com dados preservados · importação real da planilha no banco de trabalho (139 indicadores em rascunho, ciclos demonstrativos intactos) · `tools/catalog_crosscheck.py` contra os 9 cadernos |
 | 22/10/2026 | **E1+E2 — Cadastros, vínculos, autorização e ciclos** | Identidade separada de perfil, vínculo e designação; autorização central aplicada a rotas, downloads, exportações e uploads; delegação com prazo; restrição do colaborador no servidor; acúmulo só ADMIN + CONSULTOR; múltiplos ciclos com versão e caderno congelados; sessões revogáveis; recuperação de uso único; configuração de produção separada; 7 migrações versionadas validadas em cópia. | `backend npm test` **72/72** · `frontend npm run build` 17 rotas, sem erro · `npm run db:dry-run` em cópia: dados preservados, `integrity_check ok`, `foreign_key_check ok` · `npm run migrate` + `db:verify` no banco de trabalho · smoke test da API contra o banco migrado |
 
@@ -173,9 +174,17 @@ autorização (hoje ADMIN), para trocar sem refatorar o fluxo. **F11/X6** — ne
 para o supervisor; se ele não aprovar, o ciclo permanece em "aguardando supervisão" até decisão.
 **F13/X7** — prazo gravado na atribuição, sem efeito automático até a regra existir.
 
-## E5 · Cálculo, elegibilidade e rating
+## E5 · Cálculo, elegibilidade e rating — **concluída em 22/10/2026**
 
 **Objetivo**: substituir a média de níveis pelo cálculo oficial (A3, P1–P5).
+
+**Entregue**: `src/scoring/policies.js` (duas políticas de faixa versionadas, com status),
+`src/scoring/engine.js` (funções puras: obrigatórios por ordem de nível, pontos e máximo por
+eixo, faixa em aritmética inteira, NA aceito/recusado/pendente, impedimentos e elegibilidade
+separados), `src/scoring/index.js` (carga em lote do ciclo e gravação em `cycle_results` com
+`ruleVersion`), migração `009_scoring` (enquadramento auditado, `na_requests`, resultado do
+ciclo), rotas de resultado e histórico, e a aprovação do supervisor usando o motor.
+O frontend não tem fórmula própria: consome `GET /reports/:reportId/result`.
 
 - Migração **M5** (parte do resultado): `cycle_results` por eixo (pontos, máximo aplicável,
   percentual, rating), elegibilidade e lista de obrigatórios não atendidos.
@@ -189,10 +198,13 @@ para o supervisor; se ele não aprovar, o ciclo permanece em "aguardando supervi
 136/102/51 e 68); obrigatório não atendido com pontuação máxima → inelegível; NA aceito reduz o
 denominador; recusado não reduz; porte muda apenas o limiar de C.
 **Executável**: o campo `evaluation` antigo permanece para leitura do histórico.
-**Pendências**: **D2/X4** — o limiar de rating **C social para micro e pequena** não é escolhido: a
-tabela é carregada como configuração e a célula divergente fica explicitamente marcada como
-pendente; o cálculo das demais dimensões segue. **P6** (faixa abaixo de C) e **P7/X8** (rating
-preliminar com NA pendente): sem decisão, nenhum rating preliminar é exibido.
+**Pendências**: **P11/X4** — o limite de C para micro e pequena (30%) continua **condicionado**
+no documento: as duas políticas estão modeladas e, na janela em que divergem (30%–39,99%), o
+eixo é marcado como dependente de ratificação e a faixa não é publicada. **P7/X8** — enquanto a
+política de simulação com NA pendente não for aprovada, o eixo com pedido sem decisão fica sem
+classificação válida, com o motivo informado. **D7** (pontuações de AE03 e GE06 divergentes
+entre planilha e cadernos) afeta os números desses dois indicadores quando o catálogo oficial
+for publicado.
 
 ## E6 · Publicação automática, relatórios finais e certificado
 

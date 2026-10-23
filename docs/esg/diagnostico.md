@@ -133,7 +133,11 @@ conteúdo listadas em [`importacao-catalogo.md`](importacao-catalogo.md) § 6.
 
 ### A3 · Avaliação final calculada por média de níveis
 
-**Situação (etapa 2):** aberto (cálculo é E5). A autorização foi corrigida: só o supervisor designado aprova o resultado.
+**Situação (etapa 4): resolvido.** A média saiu. O resultado vem de `src/scoring` (motor único):
+obrigatórios aplicáveis primeiro (por ordem de nível), pontos e máximo aplicável por eixo,
+faixa comparada em aritmética inteira, NA aceito fora do numerador e do denominador, e rating
+matemático separado de elegibilidade e impedimentos. Gravado em `cycle_results` com a versão da
+regra e a política de faixa. Exemplo de resposta: [`exemplo-resultado-api.json`](exemplo-resultado-api.json).
 `backend/src/routes/reports.js:229-240` (`POST /auditory/finishAuditory/:companyId`).
 
 - **Impacto**: `avg = média dos pontos das respostas aplicáveis` e

@@ -16,6 +16,7 @@ const MIGRATIONS = [
   require('./006_indexes'),
   require('./007_rounds'),
   require('./008_catalog_versions'),
+  require('./009_scoring'),
 ];
 
 const hasTable = (db, name) =>
