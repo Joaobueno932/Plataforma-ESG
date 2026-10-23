@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
-const bcrypt = require('bcryptjs');
+const passwords = require('../password');
 const config = require('../config');
 const db = require('../db');
 const ser = require('../serializers');
@@ -38,7 +38,7 @@ router.post(
     limiter.hit('login', req, { extra: email });
 
     const user = await db.one('SELECT * FROM users WHERE lower(email) = ? AND deletedAt IS NULL', email);
-    const passwordOk = user && (await bcrypt.compare(String(password), user.password));
+    const passwordOk = user && (await passwords.compare(password, user.password));
     if (!passwordOk) throw unauthorized(INVALID_CREDENTIALS);
     if (user.status !== 'ACTIVE') throw unauthorized(INVALID_CREDENTIALS);
 
@@ -157,7 +157,7 @@ router.post(
     if (!user) throw unauthorized('link de redefinição inválido, expirado ou já utilizado');
     const { newPassword } = req.body || {};
     if (!newPassword || String(newPassword).length < 8) throw badRequest('a senha deve ter no mínimo 8 caracteres');
-    await db.run('UPDATE users SET password = ?, updatedAt = ? WHERE id = ?', await bcrypt.hash(String(newPassword), 10), db.now(), user.id);
+    await db.run('UPDATE users SET password = ?, updatedAt = ? WHERE id = ?', await passwords.hash(newPassword), db.now(), user.id);
     await revokeUserSessions(user.id, 'password-reset');
     await db.run(
       'INSERT INTO audit_events (id, at, actorId, action, entity, entityId) VALUES (?, ?, ?, ?, ?, ?)',

@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
+const passwords = require('../password');
 const db = require('../db');
 const ser = require('../serializers');
 const { paginate } = require('../pagination');
@@ -103,8 +103,11 @@ router.get('/users', authz.authorize('users.read'), async (req, res) => {
     ...(name ? [`%${name.toLowerCase()}%`, `%${name.toLowerCase()}%`] : []),
     ...(status ? [status] : []),
   );
-  const rows = await Promise.all(found.map((u) => ser.userWithProfiles(u)));
-  res.json(paginate(req, rows, { defaultPerPage: 5, basePath: '/users' }));
+  // Pagina antes de serializar: cada pessoa custa algumas consultas (perfis, vínculos, empresa),
+  // e serializar a base inteira para devolver 5 linhas esgotava o pool de conexões (503 sob carga).
+  const result = paginate(req, found, { defaultPerPage: 5, basePath: '/users' });
+  result.data = await Promise.all(result.data.map((u) => ser.userWithProfiles(u)));
+  res.json(result);
 });
 
 /**
@@ -168,7 +171,7 @@ router.post(
         id,
         name,
         email,
-        bcrypt.hashSync(password, 10),
+        await passwords.hash(password), // nativo e assíncrono: não trava o event loop
         digits(body.cpf) || null,
         trim(body.jobTitle) || null,
         ser.primaryRole(unique),
@@ -295,9 +298,9 @@ router.patch(
       if (String(body.password).length < 8) throw badRequest('a senha deve ter no mínimo 8 caracteres');
       if (isSelf) {
         const current = String(body.currentPassword || '');
-        if (!current || !(await bcrypt.compare(current, target.password))) throw badRequest('informe a senha atual para trocar a senha');
+        if (!current || !(await passwords.compare(current, target.password))) throw badRequest('informe a senha atual para trocar a senha');
       }
-      patch.password = await bcrypt.hash(String(body.password), 10);
+      patch.password = await passwords.hash(body.password);
     }
 
     // Perfil e vínculo não se alteram por aqui (nem por autodeclaração).

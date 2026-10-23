@@ -32,7 +32,7 @@ export function useCycle(companyId, user) {
       }
       const [r, list, wf, pend] = await Promise.all([
         getReport(reportId),
-        getQuestionReports(reportId),
+        getQuestionReports(reportId, 'resumo'),
         getWorkflow(reportId),
         getPendings(reportId).catch(() => ({ data: [] })),
       ]);
@@ -71,5 +71,8 @@ export function useCycle(companyId, user) {
   const role = useMemo(() => roleIn(user, companyId, report), [user, companyId, report]);
   const can = useMemo(() => capabilities(role, workflow?.status || report?.status, user), [role, workflow, report, user]);
 
-  return { company, report, items, workflow, pendings, status, error, role, can, load, refreshItem, refreshPendings, setItems };
+  /** Item completo (com os cartões), carregado ao abrir o indicador. */
+  const loadItem = useCallback(async (id) => (await getQuestionReport(id)).data, []);
+
+  return { company, report, items, workflow, pendings, status, error, role, can, load, refreshItem, refreshPendings, setItems, loadItem };
 }

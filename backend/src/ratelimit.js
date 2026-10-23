@@ -10,7 +10,10 @@ const buckets = new Map();
 
 const keyOf = (name, req, extra) => `${name}|${req.ip || 'unknown'}|${extra || ''}`;
 
-function hit(name, req, { extra = '', max = config.rateLimit.maxAttempts, windowMs = config.rateLimit.windowMs } = {}) {
+function hit(name, req, { extra = '', max: configured = config.rateLimit.maxAttempts, windowMs = config.rateLimit.windowMs } = {}) {
+  // Com vários processos (cluster), cada um guarda seu contador: o limite é dividido entre eles
+  // para o total não ficar mais permissivo do que o configurado.
+  const max = Math.max(1, Math.ceil(configured / config.workers));
   const key = keyOf(name, req, extra);
   const now = Date.now();
   const entry = buckets.get(key);

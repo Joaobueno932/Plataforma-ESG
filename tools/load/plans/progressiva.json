@@ -1,0 +1,13 @@
+{
+  "base": "http://localhost:3340",
+  "thinkMs": [1000, 3000],
+  "timeoutMs": 15000,
+  "stages": [
+    { "name": "p010", "vus": 10, "rampSec": 10, "durationSec": 120 },
+    { "name": "p025", "vus": 25, "rampSec": 20, "durationSec": 120 },
+    { "name": "p050", "vus": 50, "rampSec": 20, "durationSec": 120 },
+    { "name": "p100", "vus": 100, "rampSec": 30, "durationSec": 120 },
+    { "name": "p250", "vus": 250, "rampSec": 40, "durationSec": 120 },
+    { "name": "p500", "vus": 500, "rampSec": 60, "durationSec": 120 }
+  ]
+}

@@ -34,6 +34,10 @@ const database = {
   user: process.env.DB_USER || 'esg',
   password: process.env.DB_PASSWORD || '',
   poolSize: number(process.env.DB_POOL_SIZE, isTest ? 5 : 10),
+    /** Tempo máximo de cada consulta. */
+    queryTimeoutMs: number(process.env.DB_QUERY_TIMEOUT_MS, 15000),
+    /** Requisições aguardando conexão livre, por processo; acima disso responde 503 na hora. */
+    queueLimit: number(process.env.DB_QUEUE_LIMIT, 200),
 };
 
 const config = {
@@ -78,6 +82,8 @@ const config = {
    * Proxies confiáveis à frente da API (número de saltos, ex.: TRUST_PROXY=1 atrás de um nginx).
    * Padrão: nenhum — `X-Forwarded-For` enviado pelo cliente é ignorado.
    */
+  /** Processos da API (cluster). Cada processo tem o próprio pool de conexões. */
+  workers: Math.max(1, number(process.env.WEB_CONCURRENCY, 1)),
   trustProxy: /^\d+$/.test(process.env.TRUST_PROXY || '') ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY || false,
   /** Tentativas por janela (login, recuperação de senha e leads). */
   rateLimit: {

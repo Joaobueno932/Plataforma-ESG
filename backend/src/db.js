@@ -26,7 +26,10 @@ const poolOptions = (overrides = {}) => ({
   database: config.db.name,
   connectionLimit: config.db.poolSize,
   waitForConnections: true,
-  queueLimit: 0,
+  // Fila de espera por conexão limitada: com o banco lento ou fora, as requisições excedentes
+  // falham rápido (503) em vez de se acumularem sem limite na memória.
+  queueLimit: config.db.queueLimit,
+  connectTimeout: 10000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   charset: 'utf8mb4_0900_ai_ci',
@@ -56,15 +59,60 @@ const connection = () => {
   return (store && store.conn) || get();
 };
 
-async function execute(sql, params) {
-  const conn = connection();
-  if (params && params.length) {
-    const [rows] = await conn.execute(sql, params);
-    return rows;
-  }
-  const [rows] = await conn.query(sql);
-  return rows;
+/** Erro de banco indisponível/lento, tratado pela API como 503. */
+function dbTimeout(what) {
+  const err = new Error(`banco não respondeu em ${config.db.queryTimeoutMs} ms (${what})`);
+  err.code = 'PROTOCOL_SEQUENCE_TIMEOUT';
+  return err;
 }
+
+/** Resolve a promessa ou rejeita após o limite, chamando `onLate` com o valor que chegar tarde. */
+function withTimeout(promise, what, onTimeout = () => {}, onLate = () => {}) {
+  let timedOut = false;
+  let timer;
+  return Promise.race([
+    promise.then((value) => {
+      if (timedOut) onLate(value);
+      return value;
+    }),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        onTimeout();
+        reject(dbTimeout(what));
+      }, config.db.queryTimeoutMs);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Toda consulta tem tempo máximo (`DB_QUERY_TIMEOUT_MS`), aplicado aqui e não no driver: com o
+ * banco congelado, o timeout do mysql2 não dispara (medido) e as requisições ficavam esperando
+ * indefinidamente. O limite vale para obter a conexão e para executar; a conexão que estourou o
+ * tempo é destruída (nunca volta ao pool em estado incerto).
+ */
+async function execute(sql, params) {
+  const store = storage.getStore();
+  const inTransaction = !!(store && store.conn);
+  const conn = inTransaction
+    ? store.conn
+    : await withTimeout(get().getConnection(), 'obter conexão', () => {}, (late) => late.release());
+  const run = params && params.length ? conn.execute(sql, params) : conn.query(sql);
+  try {
+    const [rows] = await withTimeout(run, 'consulta', () => {
+      destroyed.add(conn);
+      conn.destroy();
+    });
+    if (!inTransaction) conn.release();
+    return rows;
+  } catch (err) {
+    if (!inTransaction && !destroyed.has(conn)) conn.release();
+    throw err;
+  }
+}
+
+/** Conexões destruídas por estourar o tempo: não podem voltar ao pool. */
+const destroyed = new WeakSet();
 
 /** Linhas da consulta. */
 const all = async (sql, ...params) => {
@@ -103,21 +151,26 @@ async function exec(sqlOrList) {
 async function transaction(fn) {
   const store = storage.getStore();
   if (store && store.conn) return fn(store.conn); // transação já aberta: participa dela
-  const conn = await get().getConnection();
+  const conn = await withTimeout(get().getConnection(), 'obter conexão', () => {}, (late) => late.release());
+  const kill = () => {
+    destroyed.add(conn);
+    conn.destroy();
+  };
   try {
-    await conn.beginTransaction();
+    await withTimeout(conn.beginTransaction(), 'iniciar transação', kill);
     const result = await storage.run({ conn }, () => fn(conn));
-    await conn.commit();
+    await withTimeout(conn.commit(), 'confirmar transação', kill);
     return result;
   } catch (err) {
-    try {
-      await conn.rollback();
-    } catch {
-      /* conexão possivelmente perdida: o rollback implícito do servidor resolve */
-    }
+    if (!destroyed.has(conn))
+      try {
+        await withTimeout(conn.rollback(), 'desfazer transação', kill);
+      } catch {
+        /* conexão perdida: o servidor desfaz a transação aberta ao fechar a conexão */
+      }
     throw err;
   } finally {
-    conn.release();
+    if (!destroyed.has(conn)) conn.release();
   }
 }
 
@@ -125,7 +178,11 @@ async function transaction(fn) {
 async function forUpdate(table, id) {
   const store = storage.getStore();
   if (!store || !store.conn) throw new Error('forUpdate exige uma transação aberta');
-  const [rows] = await store.conn.execute(`SELECT * FROM ${table} WHERE id = ? FOR UPDATE`, [id]);
+  const conn = store.conn;
+  const [rows] = await withTimeout(conn.execute(`SELECT * FROM ${table} WHERE id = ? FOR UPDATE`, [id]), 'bloqueio de linha', () => {
+    destroyed.add(conn);
+    conn.destroy();
+  });
   return rows[0];
 }
 

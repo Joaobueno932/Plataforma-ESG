@@ -26,12 +26,14 @@ const showAuditFor = (role, report) => !COMPANY_SIDE.includes(role) || report.st
  * Carrega os itens de um ciclo com as coleções em lote (uma consulta por coleção), em vez de
  * uma consulta por item como antes (diagnóstico A16).
  */
-async function loadItems(report, { onlyAnswererId = null } = {}) {
+async function loadItems(report, { onlyAnswererId = null, onlyId = null } = {}) {
   const items = await db.all(
     `SELECT qr.* FROM question_reports qr JOIN questions q ON q.id = qr.questionId
-      WHERE qr.reportId = ? ${onlyAnswererId ? 'AND qr.answererId = ?' : ''}
+      WHERE qr.reportId = ? ${onlyAnswererId ? 'AND qr.answererId = ?' : ''} ${onlyId ? 'AND qr.id = ?' : ''}
       ORDER BY q.section = 'All' DESC, q.position, q.code`,
-    ...(onlyAnswererId ? [report.id, onlyAnswererId] : [report.id]),
+    report.id,
+    ...(onlyAnswererId ? [onlyAnswererId] : []),
+    ...(onlyId ? [onlyId] : []),
   );
   if (!items.length) return { items: [], bundle: null };
 
@@ -88,6 +90,51 @@ async function loadItems(report, { onlyAnswererId = null } = {}) {
   };
 }
 
+/**
+ * Listagem resumida do ciclo (`?view=resumo`): só o que a lista exibe e filtra. Medido na
+ * carga: a lista completa de um caderno de 69 indicadores tinha ~250 KB (todas as alternativas
+ * com descrição em cada item) e a serialização saturava o processo. O item completo, com os
+ * cartões, é carregado ao abrir o indicador.
+ */
+async function summaryList(report, { onlyAnswererId = null, showAudit = true } = {}) {
+  const rows = await db.all(
+    `SELECT qr.id, qr.reportId, qr.status, qr.answerState, qr.answerVersion, qr.reviewedAnswerVersion, qr.lockVersion, qr.dueDate,
+            qr.answererId, qr.nonApplicable, u.name AS answererName, u.email AS answererEmail,
+            q.id AS qid, q.code, q.codeOriginal, q.title, q.section, q.category, q.topic, q.subcategory, q.hasMandatory, q.position,
+            (SELECT count(*) FROM na_requests n WHERE n.questionReportId = qr.id AND n.withdrawnAt IS NULL) AS naCount
+       FROM question_reports qr JOIN questions q ON q.id = qr.questionId LEFT JOIN users u ON u.id = qr.answererId
+      WHERE qr.reportId = ? ${onlyAnswererId ? 'AND qr.answererId = ?' : ''}
+      ORDER BY q.section = 'All' DESC, q.position, q.code`,
+    ...(onlyAnswererId ? [report.id, onlyAnswererId] : [report.id]),
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    reportId: r.reportId,
+    status: !showAudit && ['Approved', 'Rejected'].includes(r.status) ? 'Auditing' : r.status,
+    answerState: r.answerState,
+    answerVersion: r.answerVersion,
+    reviewedAnswerVersion: r.reviewedAnswerVersion,
+    lockVersion: r.lockVersion,
+    dueDate: r.dueDate,
+    nonApplicable: ser.bool(r.nonApplicable),
+    answerer: r.answererId ? { id: r.answererId, name: r.answererName, email: r.answererEmail } : null,
+    naRequest: Number(r.naCount) > 0 ? { requested: true } : null,
+    question: {
+      id: r.qid,
+      code: r.code,
+      codeOriginal: r.codeOriginal ?? r.code,
+      title: r.title,
+      section: r.section,
+      category: r.category,
+      topic: r.topic ?? r.subcategory ?? null,
+      subcategory: r.subcategory,
+      hasMandatory: ser.bool(r.hasMandatory),
+      position: r.position,
+    },
+    summary: true,
+  }));
+}
+
 async function reportById(id) {
   const report = await db.one('SELECT * FROM reports WHERE id = ?', id);
   if (!report) throw notFound("a report with this id wasn't found!");
@@ -110,11 +157,16 @@ async function assertCycleRead(req, report) {
   return professional.role;
 }
 
-/** Item serializado conforme quem está lendo. */
+/**
+ * Item serializado conforme quem está lendo. Usa o carregamento em lote da listagem (uma
+ * consulta por coleção) em vez de ~12 consultas em sequência: medido na carga, abrir o
+ * indicador era a operação mais lenta depois que a lista passou a vir resumida.
+ */
 async function itemView(req, id) {
-  const qr = await db.one('SELECT * FROM question_reports WHERE id = ?', id);
+  const qr = await db.one('SELECT reportId FROM question_reports WHERE id = ?', id);
   const report = await reportById(qr.reportId);
-  return ser.questionReport(qr, null, { showAudit: showAuditFor(req.actorRole, report) });
+  const { items, bundle } = await loadItems(report, { onlyId: id });
+  return ser.questionReport(items[0], bundle, { showAudit: showAuditFor(req.actorRole, report) });
 }
 
 /** Autorização das ações da empresa sobre um indicador (resposta, rascunho e anexos). */
@@ -134,9 +186,11 @@ router.get(['/reports/company/questions', '/reports/company/questions/:reportId'
   if (!req.params.reportId && !req.context.companyId) throw badRequest('usuário sem empresa em contexto');
   const report = req.params.reportId ? await reportById(req.params.reportId) : await currentCycle(req.context.companyId);
   const role = await assertCycleRead(req, report);
-  // Colaborador: somente os indicadores atribuídos a ele (filtro no servidor, não na tela).
-  const { items, bundle } = await loadItems(report, { onlyAnswererId: role === 'EMPLOYEE' ? req.principal.user.id : null });
   const showAudit = showAuditFor(role, report);
+  const onlyAnswererId = role === 'EMPLOYEE' ? req.principal.user.id : null;
+  if (req.query.view === 'resumo') return res.json(await summaryList(report, { onlyAnswererId, showAudit }));
+  // Colaborador: somente os indicadores atribuídos a ele (filtro no servidor, não na tela).
+  const { items, bundle } = await loadItems(report, { onlyAnswererId });
   res.json(await Promise.all(items.map((item) => ser.questionReport(item, bundle, { showAudit }))));
 });
 
@@ -144,7 +198,8 @@ router.get('/reports/questionReports/:id', async (req, res) => {
   const { qr, report } = await loadQuestionReport(req.params.id);
   const role = await assertCycleRead(req, report);
   authz.assertItemScope(req, qr);
-  res.json(await ser.questionReport(qr, null, { showAudit: showAuditFor(role, report) }));
+  const { items, bundle } = await loadItems(report, { onlyId: qr.id });
+  res.json(await ser.questionReport(items[0], bundle, { showAudit: showAuditFor(role, report) }));
 });
 
 /**

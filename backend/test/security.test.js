@@ -38,6 +38,25 @@ test('segurança: cabeçalhos, limite de tentativas e entradas', async (t) => {
     assert.equal(limiter._buckets.size, 0);
   });
 
+  await t.test('envio simultâneo do mesmo nome: um vence, os outros recebem 409, o arquivo fica íntegro', async () => {
+    const gestor = await s.login('gestor@esgdemo.com.br');
+    const content = Buffer.from('%PDF-1.4\n% corrida de envio\n%%EOF\n');
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => {
+        const form = new FormData();
+        form.append('companyId', 'demo-company-a');
+        form.append('file', new Blob([content]), 'corrida.pdf');
+        return s.api('POST', '/uploads/companyFile', { token: gestor, form });
+      }),
+    );
+    const statuses = results.map((r) => r.status).sort();
+    assert.equal(statuses.filter((x) => x === 201).length, 1, JSON.stringify(statuses));
+    assert.ok(statuses.every((x) => [201, 409].includes(x)), `sem 500: ${JSON.stringify(statuses)}`);
+    const res = await fetch(`${s.base}/uploads/companyFiles/demo-company-a/corrida.pdf`, { headers: { Authorization: `Bearer ${gestor}` } });
+    assert.equal(res.status, 200);
+    assert.ok(Buffer.from(await res.arrayBuffer()).equals(content), 'o arquivo de quem venceu não foi apagado');
+  });
+
   await t.test('entradas maliciosas são tratadas como dado', async () => {
     const admin = await s.loginAdmin();
     const injection = await s.api('GET', `/companies?bussinessName=${encodeURIComponent("' OR 'x'='x")}`, { token: admin });

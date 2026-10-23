@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
@@ -124,12 +125,15 @@ router.post('/uploads/companyFile', authenticate, (req, _res, next) => {
   const dir = path.join(config.uploadsDir, 'companyFiles', companyId);
   fs.mkdirSync(dir, { recursive: true });
   const diskPath = path.join(dir, name);
-  // Grava em arquivo temporário e renomeia: um envio interrompido não deixa arquivo pela metade.
-  const temp = `${diskPath}.${process.pid}.${Date.now()}.part`;
+  // Grava em arquivo temporário (nome único por requisição): um envio interrompido não deixa
+  // arquivo pela metade e dois envios simultâneos nunca escrevem no mesmo lugar.
+  const temp = `${diskPath}.${process.pid}.${crypto.randomUUID()}.part`;
   fs.writeFileSync(temp, req.file.buffer);
   const id = db.uuid();
+  // Primeiro o banco reserva o nome (restrição única empresa+nome decide quem venceu); só
+  // depois o arquivo vai para o lugar definitivo. Quem perde a corrida apaga só o próprio
+  // temporário — nunca o arquivo de quem venceu.
   try {
-    fs.renameSync(temp, diskPath);
     await db.run(
       `INSERT INTO company_files (id, companyId, name, url, fileType, sizeBytes, sha256, description, validUntil, indefiniteValidity,
                                   uploadedById, uploadedByRole, version, replacesFileId, kind, visibility, inGed, createdAt)
@@ -153,8 +157,16 @@ router.post('/uploads/companyFile', authenticate, (req, _res, next) => {
       db.now(),
     );
   } catch (err) {
+    fs.rmSync(temp, { force: true }); // só o temporário desta requisição
+    if (err && err.code === 'ER_DUP_ENTRY') throw conflict('já existe um arquivo com esse nome');
+    throw err;
+  }
+  try {
+    fs.renameSync(temp, diskPath);
+  } catch (err) {
+    // Sem arquivo no lugar, o registro não pode ficar: desfaz a reserva do nome.
     fs.rmSync(temp, { force: true });
-    fs.rmSync(diskPath, { force: true });
+    await db.run('DELETE FROM company_files WHERE id = ?', id);
     throw err;
   }
   await authz.audit(req, 'file.upload', { entity: 'company_files', entityId: id, companyId, details: { name, kind, version, sizeBytes: req.file.size } });

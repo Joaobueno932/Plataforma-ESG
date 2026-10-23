@@ -8,7 +8,7 @@
  * - Pessoas e empresas: fictícias, uma por perfil, para exercitar os fluxos. As empresas são
  *   marcadas com `origin = 'demo'` e aparecem em GET /admin/review.
  */
-const bcrypt = require('bcryptjs');
+const passwords = require('./password');
 const db = require('./db');
 const { createCycleForCompany } = require('./services');
 
@@ -136,7 +136,7 @@ async function seed() {
       await db.run(
         `INSERT INTO users (id, name, email, password, role, companyId, status, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
-        id, name, email, bcrypt.hashSync(password, 10), primary,
+        id, name, email, passwords.hashSync(password), primary,
         companies.length && ['MANAGER', 'EMPLOYEE'].includes(primary) ? companies[0] : null, at, at,
       );
       for (const role of roles)

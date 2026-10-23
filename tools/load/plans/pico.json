@@ -1,0 +1,10 @@
+{
+  "base": "http://localhost:3340",
+  "thinkMs": [1000, 3000],
+  "timeoutMs": 15000,
+  "stages": [
+    { "name": "base-50", "vus": 50, "rampSec": 10, "durationSec": 60 },
+    { "name": "pico-250", "vus": 250, "rampSec": 4, "durationSec": 60 },
+    { "name": "recuperacao-50", "vus": 50, "rampSec": 4, "durationSec": 90 }
+  ]
+}

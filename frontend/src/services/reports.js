@@ -1,6 +1,7 @@
 import { api } from './api';
 
-export const getQuestionReports = (reportId) => api.get(`/reports/company/questions/${reportId || ''}`);
+/** `view: 'resumo'` traz só o que a lista exibe (o item completo vem de getQuestionReport). */
+export const getQuestionReports = (reportId, view) => api.get(`/reports/company/questions/${reportId || ''}${view ? `?view=${view}` : ''}`);
 export const getReport = (reportId) => api.get(`/reports/${reportId}`);
 export const getQuestionReport = (id) => api.get(`/reports/questionReports/${id}`);
 export const answerQuestion = (body, id) => api.patch(`/reports/answerQuestion/${id}`, body);

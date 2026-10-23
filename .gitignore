@@ -29,3 +29,6 @@ recon/captures/**/*.png
 recon/captures/**/*.jpg
 recon/captures/**/*.jpeg
 recon/captures/**/*.webp
+
+# Saída dos testes de carga (métricas brutas e massa gerada)
+tools/load/out/

@@ -1,0 +1,13 @@
+{
+  "base": "http://localhost:3340",
+  "thinkMs": [1000, 3000],
+  "timeoutMs": 15000,
+  "stages": [
+    { "name": "e-rampa", "vus": 150, "rampSec": 60, "durationSec": 60 },
+    { "name": "e-00-15min", "vus": 150, "rampSec": 0, "durationSec": 900 },
+    { "name": "e-15-30min", "vus": 150, "rampSec": 0, "durationSec": 900 },
+    { "name": "e-30-45min", "vus": 150, "rampSec": 0, "durationSec": 900 },
+    { "name": "e-45-60min", "vus": 150, "rampSec": 0, "durationSec": 900 },
+    { "name": "e-recuperacao", "vus": 10, "rampSec": 10, "durationSec": 90 }
+  ]
+}

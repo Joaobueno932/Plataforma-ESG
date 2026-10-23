@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { IoArrowBack } from 'react-icons/io5';
 import { useAuth } from '@/contexts/auth';
+import { notify } from '@/lib/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/esg/ui';
 import { useCycle } from '@/components/cycle/use-cycle';
@@ -25,12 +26,21 @@ function CycleWorkspace() {
   const { company, report, items, workflow, pendings, status, error, role, can } = cycle;
   const [openId, setOpenId] = useState(null);
   const triggerRef = useRef(null);
-  const open = (item) => {
+  // A lista vem resumida; ao abrir, o item completo (com os cartões) substitui o resumo.
+  const open = async (item) => {
     triggerRef.current = typeof document !== 'undefined' ? document.activeElement : null;
+    if (item.summary) {
+      try {
+        const full = await cycle.loadItem(item.id);
+        cycle.setItems((list) => list.map((i) => (i.id === full.id ? full : i)));
+      } catch {
+        return notify('Não foi possível abrir o indicador; tente novamente.', 'error');
+      }
+    }
     setOpenId(item.id);
   };
   const [tab, setTab] = useState('indicadores');
-  const openItem = items.find((i) => i.id === openId) || null;
+  const openItem = items.find((i) => i.id === openId && !i.summary) || null;
 
   const onSaved = useCallback(async (itemId) => cycle.refreshItem(itemId), [cycle]);
 
