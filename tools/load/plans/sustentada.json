@@ -1,0 +1,12 @@
+{
+  "base": "http://localhost:3340",
+  "thinkMs": [1000, 3000],
+  "timeoutMs": 15000,
+  "stages": [
+    { "name": "s-rampa", "vus": 250, "rampSec": 60, "durationSec": 60 },
+    { "name": "s-00-10min", "vus": 250, "rampSec": 0, "durationSec": 600 },
+    { "name": "s-10-20min", "vus": 250, "rampSec": 0, "durationSec": 600 },
+    { "name": "s-20-30min", "vus": 250, "rampSec": 0, "durationSec": 600 },
+    { "name": "s-recuperacao", "vus": 10, "rampSec": 10, "durationSec": 90 }
+  ]
+}

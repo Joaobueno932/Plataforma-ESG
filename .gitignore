@@ -3,5 +3,32 @@ node_modules/
 backend/storage/
 frontend/.env.local
 env.local
+backend/.env
 recon/evidence/
 *.log
+
+# Fontes oficiais entregues para consulta (repositorio publico: nao versionar)
+*.docx
+*.xlsx
+backend/storage/
+*.pdf
+Cadernos indicadores/
+
+# Ferramentas e configuração locais (contêm chaves de API; repositório é público)
+.mcp.json
+.claude/
+skills-lock.json
+.windsurf/
+AGENTS.md.local
+
+# Ativos de marca e fontes oficiais entregues para consulta (uso regido pelo Manual de Marca)
+Identidade Visual/
+
+# Capturas de tela da engenharia reversa mostram nomes reais: ficam só na máquina local
+recon/captures/**/*.png
+recon/captures/**/*.jpg
+recon/captures/**/*.jpeg
+recon/captures/**/*.webp
+
+# Saída dos testes de carga (métricas brutas e massa gerada)
+tools/load/out/

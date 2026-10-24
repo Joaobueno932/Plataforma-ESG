@@ -1,1 +1,5 @@
-{"message":"essa ação é apenas para usuários não admin!","error":"Unauthorized","statusCode":401}
+{
+  "message": "essa ação é apenas para usuários não admin!",
+  "error": "Unauthorized",
+  "statusCode": 401
+}

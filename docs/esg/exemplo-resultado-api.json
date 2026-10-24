@@ -1,0 +1,255 @@
+{
+  "_nota": "Exemplo gerado por scripts/result-example.js em banco em memória com o seed de DEMONSTRAÇÃO. Não contém dados reais.",
+  "ruleVersion": "calculo-2026-10-1",
+  "mode": "audited",
+  "policy": {
+    "id": "rn04-2026-10",
+    "label": "RN04 — tabela da especificação v1.0 (19/10/2026)",
+    "status": "pending-ratification",
+    "statusDetail": "A tabela está no documento, mas o aceite do limite de 30% para micro e pequenas aparece condicionado; a FIEMS precisa ratificar.",
+    "source": "Plataforma esg fiems.docx § 13 RN04; planilha oficial, aba \"Pontuações\""
+  },
+  "size": "MEDIA",
+  "bracket": "MEDIA_GRANDE",
+  "thresholds": [
+    {
+      "band": "A",
+      "min": 80
+    },
+    {
+      "band": "B",
+      "min": 60
+    },
+    {
+      "band": "C",
+      "min": 40
+    }
+  ],
+  "axes": {
+    "E": {
+      "axis": "E",
+      "points": 10,
+      "max": 20,
+      "percentage": 50,
+      "percentageDisplay": 50,
+      "exact": {
+        "points": 10,
+        "max": 20
+      },
+      "band": "C",
+      "bandIfValid": "C",
+      "valid": true,
+      "reasons": [],
+      "pendingRatification": null,
+      "base": {
+        "applicable": 2,
+        "excludedByNa": 1,
+        "zeroMaxIndicators": 0,
+        "hasBase": true
+      }
+    },
+    "S": {
+      "axis": "S",
+      "points": 30,
+      "max": 30,
+      "percentage": 100,
+      "percentageDisplay": 100,
+      "exact": {
+        "points": 30,
+        "max": 30
+      },
+      "band": "A",
+      "bandIfValid": "A",
+      "valid": true,
+      "reasons": [],
+      "pendingRatification": null,
+      "base": {
+        "applicable": 3,
+        "excludedByNa": 0,
+        "zeroMaxIndicators": 0,
+        "hasBase": true
+      }
+    },
+    "G": {
+      "axis": "G",
+      "points": 20,
+      "max": 20,
+      "percentage": 100,
+      "percentageDisplay": 100,
+      "exact": {
+        "points": 20,
+        "max": 20
+      },
+      "band": "A",
+      "bandIfValid": "A",
+      "valid": true,
+      "reasons": [],
+      "pendingRatification": null,
+      "base": {
+        "applicable": 2,
+        "excludedByNa": 0,
+        "zeroMaxIndicators": 0,
+        "hasBase": true
+      }
+    }
+  },
+  "rating": "CAA",
+  "ratingValid": true,
+  "ratingKind": "matematico",
+  "mandatory": {
+    "applicable": 2,
+    "met": 1,
+    "unmet": [
+      {
+        "code": "CG-E01",
+        "title": "Licenciamento ambiental",
+        "axis": "E",
+        "section": "All",
+        "requiredLevel": "Conforme",
+        "requiredPosition": 6,
+        "actualLevel": "Nao_conforme",
+        "actualPosition": 1,
+        "reason": "nível abaixo do mínimo exigido"
+      }
+    ],
+    "excludedByNa": 0
+  },
+  "nonApplicable": {
+    "requested": 2,
+    "accepted": 1,
+    "refused": 1,
+    "pending": []
+  },
+  "completeness": {
+    "total": 8,
+    "answered": 8,
+    "unanswered": 0,
+    "pendingAuditDecisions": 0,
+    "pendingNa": 0
+  },
+  "impediments": [
+    {
+      "kind": "obrigatorio-nao-atendido",
+      "code": "CG-E01",
+      "axis": "E",
+      "detail": "requisito obrigatório não atendido: CG-E01 — Licenciamento ambiental (exigido \"Conforme\", registrado \"Nao_conforme\")"
+    }
+  ],
+  "invalid": [],
+  "eligible": false,
+  "computedAt": "2026-10-23T03:17:20.548Z",
+  "ratingByAxis": {
+    "E": "C",
+    "S": "A",
+    "G": "A"
+  },
+  "eligibility": {
+    "value": false,
+    "label": "inelegível",
+    "blockedBy": [
+      "requisito obrigatório não atendido: CG-E01 — Licenciamento ambiental (exigido \"Conforme\", registrado \"Nao_conforme\")"
+    ],
+    "undeterminedBy": []
+  },
+  "certificationAllowed": false,
+  "cycle": {
+    "reportId": "488ceae0-05e2-4d2c-afad-6df5adc941c4",
+    "companyId": "demo-company-a",
+    "company": {
+      "id": "demo-company-a",
+      "bussinessName": "Empresa Demonstração",
+      "size": "MEDIA",
+      "section": "A"
+    },
+    "cycle": 1,
+    "round": 1,
+    "status": "Audited",
+    "section": "A",
+    "catalogVersion": "legacy-demo",
+    "catalogVersionId": "legacy-demo"
+  },
+  "items": [
+    {
+      "code": "CG-E01",
+      "title": "Licenciamento ambiental",
+      "axis": "E",
+      "section": "All",
+      "maxPoints": 10,
+      "status": "Approved",
+      "mandatory": true,
+      "minimumLevel": "Conforme",
+      "declaredLevel": "Nao_conforme",
+      "declaredPoints": 0,
+      "auditedLevel": "Nao_conforme",
+      "auditedPoints": 0,
+      "auditConclusion": "met",
+      "na": {
+        "requested": false,
+        "decision": null
+      }
+    },
+    {
+      "code": "CG-E02",
+      "title": "Gestão de resíduos sólidos",
+      "axis": "E",
+      "section": "All",
+      "maxPoints": 10,
+      "status": "Approved",
+      "mandatory": false,
+      "minimumLevel": null,
+      "declaredLevel": "Conforme",
+      "declaredPoints": 10,
+      "auditedLevel": "Conforme",
+      "auditedPoints": 10,
+      "auditConclusion": "met",
+      "na": {
+        "requested": true,
+        "decision": "accepted",
+        "requestedAt": "2026-10-23T03:17:20.538Z",
+        "decidedAt": "2026-10-23T03:17:20.538Z",
+        "origin": "exemplo"
+      }
+    },
+    {
+      "code": "CG-S01",
+      "title": "Saúde e segurança do trabalho",
+      "axis": "S",
+      "section": "All",
+      "maxPoints": 10,
+      "status": "Approved",
+      "mandatory": true,
+      "minimumLevel": "Conforme",
+      "declaredLevel": "Conforme",
+      "declaredPoints": 10,
+      "auditedLevel": "Conforme",
+      "auditedPoints": 10,
+      "auditConclusion": "met",
+      "na": {
+        "requested": true,
+        "decision": "refused",
+        "requestedAt": "2026-10-23T03:17:20.538Z",
+        "decidedAt": "2026-10-23T03:17:20.538Z",
+        "origin": "exemplo"
+      }
+    },
+    {
+      "code": "CG-S02",
+      "title": "Diversidade e inclusão",
+      "axis": "S",
+      "section": "All",
+      "maxPoints": 10,
+      "status": "Approved",
+      "mandatory": false,
+      "minimumLevel": null,
+      "declaredLevel": "Conforme",
+      "declaredPoints": 10,
+      "auditedLevel": "Conforme",
+      "auditedPoints": 10,
+      "auditConclusion": "met",
+      "na": {
+        "requested": false,
+        "decision": null
+      }
+    }
+  ]
+}

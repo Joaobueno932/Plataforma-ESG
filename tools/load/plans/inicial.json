@@ -1,0 +1,6 @@
+{
+  "base": "http://localhost:3340",
+  "thinkMs": [1000, 3000],
+  "timeoutMs": 15000,
+  "stages": [{ "name": "inicial-5", "vus": 5, "rampSec": 4, "durationSec": 45 }]
+}

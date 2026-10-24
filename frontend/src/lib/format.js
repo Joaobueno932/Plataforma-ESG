@@ -17,8 +17,42 @@ export const formatDate = (value) => {
 
 export const firstName = (list) => (list && list.length > 0 ? list[0].name : 'ainda não registrado');
 
-export const LEVEL_ORDER = ['Nao_conforme', 'Iniciante', 'Sensibilizada', 'Consciente', 'Engajado', 'Conforme'];
-export const levelIndex = (level) => LEVEL_ORDER.indexOf(level);
+/** Ordem herdada, usada só como desempate para dados do catálogo demonstrativo. */
+export const LEVEL_ORDER = ['Nao_conforme', 'Não conforme', 'Iniciante', 'Sensibilizada', 'Consciente', 'Engajado', 'Engajada', 'Conforme'];
+export const levelIndex = (level) => {
+  const index = LEVEL_ORDER.indexOf(level);
+  return index < 0 ? LEVEL_ORDER.length : index;
+};
+
+/** A ordem das alternativas é a da fonte (`position`); o resto é desempate. */
+export const sortAnswers = (answers = []) =>
+  [...answers].sort((a, b) => {
+    if (a.position != null && b.position != null) return a.position - b.position;
+    return levelIndex(a.title) - levelIndex(b.title);
+  });
+
+/** Rótulo do nível: o nome que veio da fonte; o mapa antigo cobre os dados legados. */
+export const levelLabel = (answer, legacyMap = {}) => {
+  if (!answer) return '';
+  return legacyMap[answer.title] || String(answer.title || '').toUpperCase();
+};
+
+/**
+ * Chave de apresentação do cartão: vem do dado (`presentation`/`slug`). O CSS recuperado do
+ * sistema antigo tem cinco cores de cartão e **não** tem cor para "Engajada" — a paleta
+ * definitiva depende da referência visual aprovada (pendência X2 de docs/esg/regras.md).
+ */
+export const levelPresentation = (answer) => {
+  if (!answer) return 'default';
+  if (answer.presentation) return answer.presentation;
+  if (answer.slug) return answer.slug;
+  return String(answer.title || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+};
 
 export const CONTACT_PHONE = '6733899080';
 export const CONTACT_EMAIL = 'contato.esg@sfiems.com.br';

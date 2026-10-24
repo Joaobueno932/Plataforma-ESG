@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import * as companiesApi from '@/services/companies';
+import * as reportsApi from '@/services/reports';
 import { getSectors } from '@/services/questions';
 import { notify, updateToast, apiErrorMessage } from '@/lib/toast';
 import { useAuth } from './auth';
@@ -82,11 +83,25 @@ export function CompaniesProvider({ children }) {
     }
   };
 
-  const submitToAuditor = async (companyId) => {
-    const id = notify('Submetendo...', 'loading');
+  /** Solicitação da empresa (gestor): registra a intenção, sem liberar o processo. */
+  const requestAuditory = async (companyId) => {
+    const id = notify('Solicitando auditoria...', 'loading');
     try {
-      await companiesApi.submitToAuditor(companyId);
-      updateToast(id, 'Caderno Setorial submetido com sucesso!', 'success');
+      await reportsApi.requestAudit(companyId);
+      updateToast(id, 'Auditoria solicitada. A Administração FIEMS fará a liberação do processo.', 'success');
+      reload();
+    } catch (err) {
+      console.error('Erro ao solicitar auditoria:', err);
+      updateToast(id, apiErrorMessage(err), 'error');
+    }
+  };
+
+  /** Liberação operacional do processo (Administração FIEMS). Não é aprovação técnica. */
+  const submitToAuditor = async (companyId) => {
+    const id = notify('Liberando para auditoria...', 'loading');
+    try {
+      await companiesApi.releaseAudit(companyId);
+      updateToast(id, 'Processo liberado para auditoria.', 'success');
       reload();
     } catch (err) {
       console.error('Erro ao tentar submeter o caderno setorial da Empresa:', err);
@@ -127,6 +142,7 @@ export function CompaniesProvider({ children }) {
         registerCompany,
         handleNextPageCompanies: goToPage(currentPage + 1, 'próxima página'),
         handlePreviousPageCompanies: goToPage(currentPage - 1, 'página anterior'),
+        requestAuditory,
         submitToAuditor,
         updateCompany,
         removeCompany,

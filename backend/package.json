@@ -2,23 +2,34 @@
   "name": "esg-fiems-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend reconstruído da Plataforma ESG-FIEMS (Express + SQLite)",
+  "description": "Backend da Plataforma ESG-FIEMS (Express + MySQL)",
   "type": "commonjs",
   "main": "src/server.js",
   "scripts": {
-    "start": "node --no-warnings src/server.js",
-    "dev": "node --no-warnings --watch src/server.js",
-    "seed": "node --no-warnings src/seed.js",
-    "test": "node --no-warnings --test --test-concurrency=1 \"test/**/*.test.js\""
+    "start": "node --no-warnings --env-file-if-exists=.env src/server.js",
+    "dev": "node --no-warnings --watch --env-file-if-exists=.env src/server.js",
+    "seed": "node --no-warnings --env-file-if-exists=.env src/seed.js",
+    "test": "node --no-warnings --env-file-if-exists=.env --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "migrate": "node --no-warnings --env-file-if-exists=.env scripts/migrate.js",
+    "catalog": "node --no-warnings --env-file-if-exists=.env scripts/catalog.js",
+    "result:example": "node --no-warnings --env-file-if-exists=.env scripts/result-example.js",
+    "db:backup": "node --no-warnings --env-file-if-exists=.env scripts/backup.js create",
+    "db:verify": "node --no-warnings --env-file-if-exists=.env scripts/backup.js verify",
+    "db:dry-run": "node --no-warnings --env-file-if-exists=.env scripts/backup.js dry-run",
+    "db:restore": "node --no-warnings --env-file-if-exists=.env scripts/backup.js restore",
+    "db:transfer": "node --no-warnings --env-file-if-exists=.env scripts/sqlite-to-mysql.js"
   },
   "engines": {
     "node": ">=22.13"
   },
   "dependencies": {
+    "@node-rs/bcrypt": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.15.3",
+    "pdfkit": "^0.20.2"
   }
 }

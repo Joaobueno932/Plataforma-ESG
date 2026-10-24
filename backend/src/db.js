@@ -1,190 +1,241 @@
-const fs = require('node:fs');
-const path = require('node:path');
+/**
+ * Acesso ao banco — MySQL (mysql2), com pool de conexões.
+ *
+ * A API mantém os mesmos nomes de antes (`one`, `all`, `run`, `transaction`), agora
+ * assíncronos. Transações usam `AsyncLocalStorage`: dentro de `db.transaction(...)`, qualquer
+ * `db.one/all/run` executado na mesma cadeia de await usa **a conexão da transação**, sem
+ * precisar passá-la de mão em mão.
+ *
+ * Valores sempre vão como parâmetros (`?`) — nenhuma interpolação de entrada em SQL.
+ */
 const crypto = require('node:crypto');
-const { DatabaseSync } = require('node:sqlite');
+const { AsyncLocalStorage } = require('node:async_hooks');
+const mysql = require('mysql2/promise');
 const config = require('./config');
+const { migrate, pending } = require('./migrations');
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS companies (
-  id TEXT PRIMARY KEY,
-  bussinessName TEXT NOT NULL,
-  legalName TEXT NOT NULL,
-  email TEXT NOT NULL,
-  cnpj TEXT NOT NULL UNIQUE,
-  accessDate TEXT NOT NULL,
-  size TEXT NOT NULL,
-  section TEXT NOT NULL,
-  avatar TEXT,
-  access INTEGER NOT NULL DEFAULT 1,
-  reportAccess INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL,
-  updatedAt TEXT NOT NULL,
-  deletedAt TEXT
-);
+const storage = new AsyncLocalStorage();
+let pool = null;
+let currentOptions = null;
 
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,
-  cpf TEXT,
-  avatar TEXT,
-  role TEXT NOT NULL,
-  jobTitle TEXT,
-  companyId TEXT REFERENCES companies(id) ON DELETE SET NULL,
-  createdAt TEXT NOT NULL,
-  updatedAt TEXT NOT NULL,
-  deletedAt TEXT
-);
+const poolOptions = (overrides = {}) => ({
+  host: config.db.host,
+  port: config.db.port,
+  user: config.db.user,
+  password: config.db.password,
+  database: config.db.name,
+  connectionLimit: config.db.poolSize,
+  waitForConnections: true,
+  // Fila de espera por conexão limitada: com o banco lento ou fora, as requisições excedentes
+  // falham rápido (503) em vez de se acumularem sem limite na memória.
+  queueLimit: config.db.queueLimit,
+  connectTimeout: 10000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
+  charset: 'utf8mb4_0900_ai_ci',
+  dateStrings: true,
+  // DECIMAL (e portanto SUM/AVG) chega como número, não como texto: a API devolve
+  // `answeredQuestions: 0`, não `"0"`, e o cálculo de pontuação recebe número.
+  decimalNumbers: true,
+  multipleStatements: false,
+  timezone: 'Z',
+  ...overrides,
+});
 
-CREATE TABLE IF NOT EXISTS sectors (
-  section TEXT PRIMARY KEY,
-  description TEXT NOT NULL,
-  avatar TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS questions (
-  id TEXT PRIMARY KEY,
-  code TEXT NOT NULL,
-  section TEXT NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  category TEXT NOT NULL,
-  subcategory TEXT,
-  hasMandatory INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS answers (
-  id TEXT PRIMARY KEY,
-  questionId TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  points INTEGER NOT NULL,
-  description TEXT NOT NULL,
-  mandatory INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS reports (
-  id TEXT PRIMARY KEY,
-  companyId TEXT NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,
-  initialYear TEXT NOT NULL,
-  finalYear TEXT NOT NULL,
-  evaluation TEXT,
-  structure TEXT NOT NULL,
-  description TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'Pending',
-  auditoryStart TEXT,
-  auditoryEnd TEXT,
-  createdAt TEXT NOT NULL,
-  updatedAt TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS question_reports (
-  id TEXT PRIMARY KEY,
-  reportId TEXT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
-  questionId TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'Pending',
-  selectedAnswerId TEXT REFERENCES answers(id) ON DELETE SET NULL,
-  answererId TEXT REFERENCES users(id) ON DELETE SET NULL,
-  answerText TEXT,
-  nonApplicable INTEGER NOT NULL DEFAULT 0,
-  nonCompliant INTEGER NOT NULL DEFAULT 0,
-  redflag TEXT,
-  redflag_date TEXT,
-  redflagIssuerId TEXT REFERENCES users(id) ON DELETE SET NULL,
-  createdAt TEXT NOT NULL,
-  updatedAt TEXT NOT NULL,
-  UNIQUE (reportId, questionId)
-);
-
-CREATE TABLE IF NOT EXISTS company_files (
-  id TEXT PRIMARY KEY,
-  companyId TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  url TEXT NOT NULL,
-  fileType TEXT,
-  inGed INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS question_report_files (
-  id TEXT PRIMARY KEY,
-  questionReportId TEXT NOT NULL REFERENCES question_reports(id) ON DELETE CASCADE,
-  fileId TEXT NOT NULL REFERENCES company_files(id) ON DELETE CASCADE,
-  createdAt TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS evidences (
-  id TEXT PRIMARY KEY,
-  questionReportId TEXT NOT NULL REFERENCES question_reports(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  url TEXT NOT NULL,
-  fileType TEXT,
-  createdAt TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS leads (
-  id TEXT PRIMARY KEY,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT,
-  mobile TEXT,
-  role TEXT,
-  department TEXT,
-  knowledgeMethod TEXT,
-  answers TEXT NOT NULL,
-  companyData TEXT NOT NULL,
-  address TEXT NOT NULL,
-  createdAt TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_users_company ON users(companyId);
-CREATE INDEX IF NOT EXISTS idx_qr_report ON question_reports(reportId);
-CREATE INDEX IF NOT EXISTS idx_questions_section ON questions(section);
-`;
-
-let instance = null;
-
-function open(file = config.dbFile) {
-  if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
-  const db = new DatabaseSync(file);
-  db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
-  db.exec(SCHEMA);
-  return db;
+/** Cria (ou recria) o pool. Chamado na subida da API e nos testes. */
+function configure(overrides = {}) {
+  // O pool anterior é encerrado: conexões abertas (keep-alive) impediriam o processo de sair.
+  if (pool) pool.end().catch(() => {});
+  currentOptions = poolOptions(overrides);
+  pool = mysql.createPool(currentOptions);
+  return pool;
 }
 
-function get() {
-  if (!instance) instance = open();
-  return instance;
+const get = () => pool || configure();
+
+/** Conexão em uso: a da transação corrente, se houver; senão o pool. */
+const connection = () => {
+  const store = storage.getStore();
+  return (store && store.conn) || get();
+};
+
+/** Erro de banco indisponível/lento, tratado pela API como 503. */
+function dbTimeout(what) {
+  const err = new Error(`banco não respondeu em ${config.db.queryTimeoutMs} ms (${what})`);
+  err.code = 'PROTOCOL_SEQUENCE_TIMEOUT';
+  return err;
 }
 
-/** Replace the shared connection (used by tests with an in-memory database). */
-function use(db) {
-  instance = db;
-  return db;
+/** Resolve a promessa ou rejeita após o limite, chamando `onLate` com o valor que chegar tarde. */
+function withTimeout(promise, what, onTimeout = () => {}, onLate = () => {}) {
+  let timedOut = false;
+  let timer;
+  return Promise.race([
+    promise.then((value) => {
+      if (timedOut) onLate(value);
+      return value;
+    }),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        onTimeout();
+        reject(dbTimeout(what));
+      }, config.db.queryTimeoutMs);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
-function transaction(fn) {
-  const db = get();
-  db.exec('BEGIN');
+/**
+ * Toda consulta tem tempo máximo (`DB_QUERY_TIMEOUT_MS`), aplicado aqui e não no driver: com o
+ * banco congelado, o timeout do mysql2 não dispara (medido) e as requisições ficavam esperando
+ * indefinidamente. O limite vale para obter a conexão e para executar; a conexão que estourou o
+ * tempo é destruída (nunca volta ao pool em estado incerto).
+ */
+async function execute(sql, params) {
+  const store = storage.getStore();
+  const inTransaction = !!(store && store.conn);
+  const conn = inTransaction
+    ? store.conn
+    : await withTimeout(get().getConnection(), 'obter conexão', () => {}, (late) => late.release());
+  const run = params && params.length ? conn.execute(sql, params) : conn.query(sql);
   try {
-    const result = fn(db);
-    db.exec('COMMIT');
-    return result;
+    const [rows] = await withTimeout(run, 'consulta', () => {
+      destroyed.add(conn);
+      conn.destroy();
+    });
+    if (!inTransaction) conn.release();
+    return rows;
   } catch (err) {
-    db.exec('ROLLBACK');
+    if (!inTransaction && !destroyed.has(conn)) conn.release();
     throw err;
   }
+}
+
+/** Conexões destruídas por estourar o tempo: não podem voltar ao pool. */
+const destroyed = new WeakSet();
+
+/** Linhas da consulta. */
+const all = async (sql, ...params) => {
+  const rows = await execute(sql, params);
+  return Array.isArray(rows) ? rows : [];
+};
+
+/** Primeira linha (ou `undefined`). */
+const one = async (sql, ...params) => {
+  const rows = await all(sql, ...params);
+  return rows[0];
+};
+
+/** INSERT/UPDATE/DELETE. Devolve `{changes, insertId}`. */
+const run = async (sql, ...params) => {
+  const result = await execute(sql, params);
+  return { changes: result.affectedRows ?? 0, insertId: result.insertId ?? null, info: result.info };
+};
+
+/** Executa DDL ou múltiplos comandos separados (um por vez, sem multipleStatements). */
+async function exec(sqlOrList) {
+  const statements = Array.isArray(sqlOrList)
+    ? sqlOrList
+    : String(sqlOrList)
+        .split(/;\s*(?:\r?\n|$)/)
+        .map((statement) => statement.trim())
+        .filter(Boolean);
+  const conn = connection();
+  for (const statement of statements) await conn.query(statement);
+}
+
+/**
+ * Transação. O callback recebe a conexão (útil para `FOR UPDATE`), mas o código interno pode
+ * continuar usando `db.one/all/run` normalmente.
+ */
+async function transaction(fn) {
+  const store = storage.getStore();
+  if (store && store.conn) return fn(store.conn); // transação já aberta: participa dela
+  const conn = await withTimeout(get().getConnection(), 'obter conexão', () => {}, (late) => late.release());
+  const kill = () => {
+    destroyed.add(conn);
+    conn.destroy();
+  };
+  try {
+    await withTimeout(conn.beginTransaction(), 'iniciar transação', kill);
+    const result = await storage.run({ conn }, () => fn(conn));
+    await withTimeout(conn.commit(), 'confirmar transação', kill);
+    return result;
+  } catch (err) {
+    if (!destroyed.has(conn))
+      try {
+        await withTimeout(conn.rollback(), 'desfazer transação', kill);
+      } catch {
+        /* conexão perdida: o servidor desfaz a transação aberta ao fechar a conexão */
+      }
+    throw err;
+  } finally {
+    if (!destroyed.has(conn)) conn.release();
+  }
+}
+
+/** Bloqueia uma linha para leitura-e-escrita dentro de uma transação (controle de concorrência). */
+async function forUpdate(table, id) {
+  const store = storage.getStore();
+  if (!store || !store.conn) throw new Error('forUpdate exige uma transação aberta');
+  const conn = store.conn;
+  const [rows] = await withTimeout(conn.execute(`SELECT * FROM ${table} WHERE id = ? FOR UPDATE`, [id]), 'bloqueio de linha', () => {
+    destroyed.add(conn);
+    conn.destroy();
+  });
+  return rows[0];
+}
+
+/** Sobe o banco: cria o pool e aplica as migrações pendentes. */
+async function init({ runMigrations = true, log = () => {}, overrides = {} } = {}) {
+  configure(overrides);
+  await one('SELECT 1 AS ok');
+  if (runMigrations) return migrate({ all, one, run, exec, transaction }, { log });
+  return [];
+}
+
+async function close() {
+  if (pool) await pool.end();
+  pool = null;
 }
 
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
-/** Convert node:sqlite null-prototype rows into plain objects. */
-const plain = (row) => (row ? { ...row } : row);
-const all = (sql, ...params) => get().prepare(sql).all(...params).map(plain);
-const one = (sql, ...params) => plain(get().prepare(sql).get(...params));
-const run = (sql, ...params) => get().prepare(sql).run(...params);
+/**
+ * Apaga o conteúdo das tabelas preservando o esquema (usado pelos testes e pela transferência).
+ * `schema_migrations` fica de fora: o registro do que já foi aplicado é parte do esquema, não
+ * dado de trabalho — limpá-lo faria o banco parecer não migrado.
+ */
+const PRESERVED_TABLES = new Set(['schema_migrations']);
 
-module.exports = { open, get, use, transaction, uuid, now, all, one, run };
+async function truncateAll() {
+  const rows = (
+    await all("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'")
+  ).filter((row) => !PRESERVED_TABLES.has(row.name));
+  if (!rows.length) return 0;
+  await exec('SET FOREIGN_KEY_CHECKS = 0');
+  for (const row of rows) await exec(`TRUNCATE TABLE \`${row.name}\``);
+  await exec('SET FOREIGN_KEY_CHECKS = 1');
+  return rows.length;
+}
+
+module.exports = {
+  configure,
+  init,
+  close,
+  get,
+  connection,
+  all,
+  one,
+  run,
+  exec,
+  transaction,
+  forUpdate,
+  truncateAll,
+  uuid,
+  now,
+  pendingMigrations: () => pending({ all, one, run, exec }),
+  /** Somente para diagnóstico: driver em uso. */
+  driver: 'mysql',
+};

@@ -487,7 +487,7 @@ export default function CompaniesPage() {
           </Modal.Content>
         </Modal.Root>
       )}
-      <div className="px-6 pb-5 h-full flex flex-col gap-2 ml-56">
+      <div className="px-6 pb-5 h-full flex flex-col gap-2 lg:ml-56">
         <section className="px-2 flex flex-col gap-2">
           <div>
             <h3 className="title-l">{isAdmin ? 'Lista de Empresas' : 'Empresa'}</h3>
@@ -498,9 +498,11 @@ export default function CompaniesPage() {
             </p>
           </div>
           {isAdmin && (
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <SearchInput placeholder="Procurar por empresa" handleChange={searchCompany} />
-              <Button onClick={() => setRegisterOpen(true)}>Cadastrar Nova Empresa</Button>
+              <Button className="h-auto whitespace-normal py-2 text-base sm:text-xl" onClick={() => setRegisterOpen(true)}>
+                Cadastrar Nova Empresa
+              </Button>
             </div>
           )}
         </section>

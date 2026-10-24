@@ -1,3 +1,28 @@
 /* O CSS original (Tailwind 3.3.3 compilado) vem primeiro; utilitários novos são gerados abaixo. */
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Movimento: curto, com saída suave, só transform/opacity (não faz o layout recalcular).
+ * Quem prefere menos movimento não recebe animação nenhuma.
+ */
+@keyframes esg-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes esg-fade-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes esg-pop-in { from { opacity: 0; transform: translate(-50%, -48%) scale(0.97) } to { opacity: 1; transform: translate(-50%, -50%) scale(1) } }
+@keyframes esg-pop-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1) } to { opacity: 0; transform: translate(-50%, -49%) scale(0.98) } }
+@keyframes esg-rise { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+
+.esg-dialog-overlay[data-state='open'] { animation: esg-fade-in 160ms cubic-bezier(0.22, 1, 0.36, 1) }
+.esg-dialog-overlay[data-state='closed'] { animation: esg-fade-out 120ms ease-in }
+.esg-dialog-content[data-state='open'] { animation: esg-pop-in 200ms cubic-bezier(0.22, 1, 0.36, 1) }
+.esg-dialog-content[data-state='closed'] { animation: esg-pop-out 130ms ease-in }
+.esg-rise { animation: esg-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both }
+
+@media (prefers-reduced-motion: reduce) {
+  .esg-dialog-overlay, .esg-dialog-content, .esg-rise { animation: none !important }
+  * { transition-duration: 0.01ms !important }
+}
+
+/* Escala tipográfica das telas novas: legível, sem herdar os tamanhos grandes do CSS antigo. */
+.esg-surface { font-size: 0.9375rem; line-height: 1.5; color: rgb(30 41 59) }
+.esg-surface :focus-visible { outline: 2px solid rgb(13 93 168); outline-offset: 2px }

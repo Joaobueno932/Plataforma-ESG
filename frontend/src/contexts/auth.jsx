@@ -45,8 +45,12 @@ export function AuthProvider({ children }) {
     try {
       const res = await auth.login(credentials, keepLogged);
       updateToast(id, 'Logado com sucesso!', 'success');
-      setUserLogged((await auth.getMe()).data ?? res.data.sanitizedUser);
-      router.push('/companies');
+      const me = (await auth.getMe()).data ?? res.data.sanitizedUser;
+      setUserLogged(me);
+      // Usuário da empresa vai direto ao ciclo; profissionais e Administração, à lista de empresas.
+      const roles = me.roles || [me.role];
+      const companyUser = roles.every((r) => ['MANAGER', 'EMPLOYEE'].includes(r));
+      router.push(companyUser && me.companyId ? `/companies/${me.companyId}` : '/companies');
     } catch (err) {
       if (axios.isAxiosError(err)) {
         updateToast(id, `${err.response?.data?.error}: ${err.response?.data?.message}`, 'error');
@@ -58,8 +62,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    auth.logout();
+  const logout = async () => {
+    await auth.logout();
     setUserLogged(null);
   };
 

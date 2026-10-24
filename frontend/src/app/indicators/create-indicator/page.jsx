@@ -38,7 +38,7 @@ export default function CreateIndicatorPage() {
   };
 
   return (
-    <section className="container ml-56 bg-gray-50 h-full flex flex-col gap-5">
+    <section className="container lg:ml-56 bg-gray-50 h-full flex flex-col gap-5">
       <Breadcrumb.Root>
         <Breadcrumb.OldPath href="/indicators">Indicadores</Breadcrumb.OldPath>
         <Breadcrumb.ArrowIcon />

@@ -1,0 +1,43 @@
+# Ambiente ISOLADO de carga: a mesma imagem da API, em modo produção, contra a base
+# `plataforma_esg_load` no MySQL do compose. Não toca o banco de trabalho nem o de testes.
+#
+#   docker compose -f docker-compose.yml -f tools/load/docker-compose.load.yml up -d --build mysql api-load
+#
+# Segredos abaixo são gerados só para a carga (não são os de produção).
+services:
+  api-load:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: esg-api-load
+    init: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: plataforma_esg_load
+      DB_USER: ${MYSQL_USER:-esg}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-esg-local-dev}
+      DB_POOL_SIZE: ${LOAD_DB_POOL_SIZE:-10}
+      WEB_CONCURRENCY: ${LOAD_WEB_CONCURRENCY:-4}
+      JWT_SECRET: ${LOAD_JWT_SECRET:-carga-segredo-de-acesso-somente-para-ensaio-0123456789}
+      JWT_REFRESH_SECRET: ${LOAD_JWT_REFRESH_SECRET:-carga-segredo-de-renovacao-somente-para-ensaio-9876543210}
+      CORS_ORIGINS: http://localhost:3001
+      FRONTEND_URL: http://localhost:3001
+      RUN_MIGRATIONS: 'true'
+      SEED_ON_EMPTY: 'false'
+      NODE_OPTIONS: --require /probe/probe.js
+      PROBE_OUT: /probe/out/metrics.jsonl
+    ports:
+      - '${LOAD_API_PORT:-3340}:3333'
+    volumes:
+      - load-storage:/app/storage
+      - ./tools/load/probe.js:/probe/probe.js:ro
+      - ./tools/load/out:/probe/out
+
+volumes:
+  load-storage:

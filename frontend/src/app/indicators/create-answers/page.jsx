@@ -13,8 +13,26 @@ import { Modal } from '@/components/ui/modal';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useIndicators } from '@/contexts/indicators';
-import { MATURITY_LEVELS, POINTS } from '@/lib/constants';
+import { FALLBACK_LEVELS } from '@/lib/constants';
+import { getCatalogLevels } from '@/services/catalog';
 import { answersSchema, PROGRESS, PROGRESS_DATA } from '@/lib/indicator-schemas';
+
+/**
+ * Níveis disponíveis vêm da versão de catálogo em vigor (`GET /catalog/levels`), não de uma
+ * lista fixa: cada indicador tem suas alternativas e sua pontuação.
+ */
+function useLevelOptions() {
+  const [options, setOptions] = useState(FALLBACK_LEVELS);
+  useEffect(() => {
+    getCatalogLevels()
+      .then(({ data }) => {
+        const names = [...new Set((data.levels || []).map((l) => l.name))];
+        if (names.length) setOptions(names.map((name) => ({ text: name, value: name })));
+      })
+      .catch((err) => console.error('Erro ao obter os níveis do catálogo:', err));
+  }, []);
+  return options;
+}
 
 function SelectField({ form, name, placeholder, label, options }) {
   return (
@@ -52,6 +70,7 @@ function AnswersForm({ setOpenModal, setRequestIndicatorData }) {
   const [rows, setRows] = useState([1]);
   const [mandatoryIndex, setMandatoryIndex] = useState(null);
   const form = useForm({ resolver: zodResolver(answersSchema) });
+  const levelOptions = useLevelOptions();
 
   const submit = (values) => {
     const answers = values.answers.map((a, i) => ({ ...a, mandatory: i === mandatoryIndex }));
@@ -82,8 +101,30 @@ function AnswersForm({ setOpenModal, setRequestIndicatorData }) {
               )}
             />
             <div className="flex space-x-6 items-center">
-              <SelectField form={form} name={`answers.${i}.title`} placeholder="Nível de Maturidade" label="Selecione um Nível de Maturidade" options={MATURITY_LEVELS} />
-              <SelectField form={form} name={`answers.${i}.points`} placeholder="Pontuação" label="Selecione uma Pontuação" options={POINTS} />
+              <SelectField form={form} name={`answers.${i}.title`} placeholder="Nível de Maturidade" label="Selecione um Nível de Maturidade" options={levelOptions} />
+              <FormField
+                name={`answers.${i}.points`}
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="w-[160px] relative">
+                    <FormControl>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="Pontuação"
+                        aria-label="Pontuação do nível"
+                        className="input-base h-12 w-full rounded-md border border-gray-200 px-4 text-primary"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button
                 type="button"
                 variant="ghost"
@@ -166,7 +207,7 @@ export default function CreateAnswersPage() {
           </Modal.Content>
         </Modal.Root>
       )}
-      <section className="container ml-56 bg-gray-50 h-full flex flex-col gap-5 pb-10">
+      <section className="container lg:ml-56 bg-gray-50 h-full flex flex-col gap-5 pb-10">
         <Breadcrumb.Root>
           <Breadcrumb.OldPath href="/indicators">Indicadores</Breadcrumb.OldPath>
           <Breadcrumb.ArrowIcon />
