@@ -40,8 +40,15 @@ module.exports = {
       keyframes: {
         'accordion-down': { from: { height: 0 }, to: { height: 'var(--radix-accordion-content-height)' } },
         'accordion-up': { from: { height: 'var(--radix-accordion-content-height)' }, to: { height: 0 } },
+        // Entrada do painel de login (components/layout/login-aside.jsx).
+        'login-panel-in': { from: { transform: 'translateX(-100%)' }, to: { transform: 'translateX(0)' } },
       },
-      animation: { 'accordion-down': 'accordion-down 0.2s ease-out', 'accordion-up': 'accordion-up 0.2s ease-out' },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        // `both`: o painel já nasce fora da tela, sem aparecer na posição final antes de deslizar.
+        'login-panel-in': 'login-panel-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both',
+      },
     },
   },
   plugins: [require('tailwindcss-animate')],
