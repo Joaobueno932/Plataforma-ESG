@@ -1,6 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { IoAlertCircleOutline, IoCheckmarkDoneOutline, IoDocumentTextOutline, IoFlagOutline, IoTimeOutline } from 'react-icons/io5';
+import {
+  IoAlertCircleOutline,
+  IoCheckmarkCircleOutline,
+  IoDocumentTextOutline,
+  IoFlagOutline,
+  IoInformationCircleOutline,
+  IoPaperPlaneOutline,
+  IoTimeOutline,
+} from 'react-icons/io5';
+import { LuBarChart3, LuFileText, LuLandmark, LuLeaf, LuUsers } from 'react-icons/lu';
 import { Card, CardHeader, Notice, Progress, Stat } from '@/components/esg/ui';
 import { AXES } from '@/lib/levels';
 import { getResult } from '@/services/reports';
@@ -8,8 +17,11 @@ import { getResult } from '@/services/reports';
 /**
  * Visão geral da preparação. **Andamento** (quanto já foi respondido) é diferente de
  * **maturidade** (a pontuação ESG): a tela mostra os dois separados e explica a diferença.
- * Números vêm da API — nada é estimado aqui.
+ * Números vêm da API — nada é estimado aqui. A mesma apresentação para todos os perfis.
  */
+const AXIS_ICONS = { E: LuLeaf, S: LuUsers, G: LuLandmark };
+const CARD = 'shadow-[0_2px_8px_rgba(15,23,42,0.05)]';
+
 export function Overview({ report, items, workflow, pendings, role }) {
   const [self, setSelf] = useState(null);
   useEffect(() => {
@@ -36,40 +48,73 @@ export function Overview({ report, items, workflow, pendings, role }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="Enviados" value={`${submitted}/${total}`} hint={`${pct}% do caderno`} icon={<IoCheckmarkDoneOutline aria-hidden />} tone="info" />
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+        <Stat
+          label="Enviados"
+          value={`${submitted}/${total}`}
+          hint={`${pct}% do caderno`}
+          icon={<IoPaperPlaneOutline aria-hidden />}
+          tone="info"
+        />
         <Stat label="Faltam" value={missing} hint={drafts ? `${drafts} em rascunho` : 'sem rascunhos'} icon={<IoTimeOutline aria-hidden />} />
-        <Stat label="Pendências" value={openPendings.length} hint={overdue ? `${overdue} com prazo vencido` : 'nenhuma vencida'} tone={overdue ? 'warning' : 'neutral'} icon={<IoFlagOutline aria-hidden />} />
-        <Stat label="Obrigatórios sem envio" value={mandatoryOpen} hint="indicadores com nível mínimo" tone={mandatoryOpen ? 'warning' : 'success'} icon={<IoAlertCircleOutline aria-hidden />} />
+        <Stat
+          label="Pendências"
+          value={openPendings.length}
+          hint={overdue ? `${overdue} com prazo vencido` : 'nenhuma vencida'}
+          tone={overdue ? 'warning' : 'violet'}
+          icon={<IoFlagOutline aria-hidden />}
+        />
+        <Stat
+          label="Maturidade mínima sem envio"
+          value={mandatoryOpen}
+          hint="indicadores com nível mínimo exigido"
+          tone={mandatoryOpen ? 'warning' : 'success'}
+          icon={<IoAlertCircleOutline aria-hidden />}
+        />
         <Stat
           label="Abaixo do mínimo"
           value={mandatoryBelow ?? '—'}
           hint="na declaração enviada"
           tone={mandatoryBelow ? 'danger' : 'success'}
-          icon={<IoAlertCircleOutline aria-hidden />}
+          icon={mandatoryBelow ? <IoAlertCircleOutline aria-hidden /> : <IoCheckmarkCircleOutline aria-hidden />}
         />
-        <Stat label="Liberação" value={workflow?.releaseBlockers?.length ? `${workflow.releaseBlockers.length} pendente(s)` : 'pronta'} hint="pré-requisitos" tone={workflow?.releaseBlockers?.length ? 'warning' : 'success'} icon={<IoDocumentTextOutline aria-hidden />} />
+        <Stat
+          label="Liberação"
+          value={workflow?.releaseBlockers?.length ? `${workflow.releaseBlockers.length} pendente(s)` : 'pronta'}
+          hint="pré-requisitos"
+          tone={workflow?.releaseBlockers?.length ? 'warning' : 'success'}
+          icon={<IoDocumentTextOutline aria-hidden />}
+        />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader title="Andamento por eixo" description="Indicadores enviados para revisão em cada eixo. Rascunho não conta." />
-          <div className="flex flex-col gap-4 p-5">
-            {byAxis.map(({ axis, total: t, submitted: s }) => (
-              <div key={axis} className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-800">{AXES[axis].label}</span>
-                  <span className="tabular-nums text-slate-600">
-                    {s} de {t}
+        <Card className={`lg:col-span-3 ${CARD}`}>
+          <CardHeader title="Andamento por eixo" description="Indicadores enviados para revisão em cada eixo. Rascunho não conta." icon={<LuBarChart3 aria-hidden />} />
+          <div className="flex flex-col gap-5 p-5">
+            {byAxis.map(({ axis, total: t, submitted: s }) => {
+              const AxisIcon = AXIS_ICONS[axis];
+              const { color } = AXES[axis];
+              return (
+                <div key={axis} className="flex items-center gap-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ color, background: `${color}14` }}>
+                    <AxisIcon size="1.35rem" aria-hidden />
                   </span>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-slate-900">{AXES[axis].label}</span>
+                      <span className="tabular-nums text-slate-600">
+                        {s} de {t}
+                      </span>
+                    </div>
+                    <Progress value={s} max={t} color={color} label={`Andamento ${AXES[axis].label}`} />
+                  </div>
                 </div>
-                <Progress value={s} max={t} color={AXES[axis].color} label={`Andamento ${AXES[axis].label}`} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
-        <Card className="lg:col-span-2">
-          <CardHeader title="Andamento não é maturidade" />
+        <Card className={`lg:col-span-2 ${CARD}`}>
+          <CardHeader title="Andamento não é maturidade" icon={<LuFileText aria-hidden />} />
           <div className="flex flex-col gap-3 p-5 text-sm text-slate-700">
             <p>
               <strong>Andamento</strong> mostra quanto do caderno já foi respondido e enviado. Ele não diz se a empresa vai bem ou mal.
@@ -79,7 +124,7 @@ export function Overview({ report, items, workflow, pendings, role }) {
               auditoria e da aprovação do supervisor.
             </p>
             {self && (
-              <Notice tone="info" title="Autodiagnóstico preliminar">
+              <Notice tone="info" title="Autodiagnóstico preliminar" icon={<IoInformationCircleOutline aria-hidden />}>
                 {self.ratingValid
                   ? `Rating preliminar ${self.rating}, calculado só com as respostas enviadas.`
                   : 'Ainda sem rating preliminar: faltam respostas enviadas ou há pedidos de "não se aplica" aguardando a auditoria.'}

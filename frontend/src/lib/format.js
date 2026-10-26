@@ -68,3 +68,39 @@ export const formatPhone = (value) => {
 
 export const apiAsset = (path) =>
   !path ? '' : path.startsWith('http') ? path : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'}/${path}`;
+
+/** Iniciais do avatar: "Maria Souza" → "MS"; nome único usa a penúltima letra (como o original). */
+export const initials = (name = '') => {
+  const parts = name.split(' ');
+  return `${name[0] ?? ''}${parts[1] ? parts[1][0] : name[name.length - 2] ?? ''}`.toUpperCase();
+};
+
+const DATE_BR = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Campo_Grande' });
+
+/**
+ * Data de cadastro em português: "24 de out. de 2026". Valor ausente ou inválido vira
+ * "Não informado" — nunca "undefined NaN, NaN". Fuso de Mato Grosso do Sul (FIEMS).
+ */
+export const formatDateBR = (value) => {
+  if (value === null || value === undefined || value === '') return 'Não informado';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Não informado' : DATE_BR.format(date);
+};
+
+const DAY_BR = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+/**
+ * Datas sem hora (ex.: liberação do acesso), gravadas como meia-noite UTC do dia escolhido:
+ * exibidas em UTC para não "voltar um dia" no fuso de MS. Ausente/inválida → "Não informado".
+ */
+export const formatDayBR = (value) => {
+  if (!value) return 'Não informado';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Não informado' : DAY_BR.format(date);
+};
+
+/** Valor para <input type="date"> a partir da data gravada (mesmo dia, em UTC). */
+export const toDateInput = (value) => {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
+};

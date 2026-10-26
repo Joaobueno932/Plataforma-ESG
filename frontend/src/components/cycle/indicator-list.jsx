@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { IoSearch, IoStar, IoStarOutline, IoShieldCheckmarkOutline, IoChevronForward, IoFlagOutline } from 'react-icons/io5';
+import { IoAlertCircleOutline, IoSearch, IoStar, IoStarOutline, IoChevronForward, IoFlagOutline } from 'react-icons/io5';
 import { Badge, Btn, EmptyState, SelectInput, TextInput } from '@/components/esg/ui';
-import { AXES } from '@/lib/levels';
+import { LuPencil } from 'react-icons/lu';
+import { AXES, AXIS_THEME, MINIMUM_LABEL } from '@/lib/levels';
 import { itemState } from '@/lib/workflow';
 import { cn } from '@/lib/utils';
 
@@ -45,7 +46,12 @@ function situation(item) {
   return 'outro';
 }
 
-export function IndicatorList({ items, pendings, report, user, actionLabel, onOpen }) {
+/**
+ * Indicadores do ciclo, agrupados por eixo e tópico: corpo na cor suave do eixo e badges de
+ * maturidade mínima exigida/Setorial — a mesma apresentação para todos os perfis; só as ações
+ * mudam (`actionLabel`, e o lápis de maturidades quando `onEditMaturities` é informado).
+ */
+export function IndicatorList({ items, pendings, report, user, actionLabel, onOpen, onEditMaturities = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -153,10 +159,11 @@ export function IndicatorList({ items, pendings, report, user, actionLabel, onOp
               </option>
             ))}
           </SelectInput>
-          <SelectInput aria-label="Obrigatório" value={filters.obrigatorio} onChange={(e) => setFilter('obrigatorio', e.target.value)}>
-            <option value="">Com e sem obrigatório</option>
-            <option value="sim">Com nível obrigatório</option>
-            <option value="nao">Sem nível obrigatório</option>
+          {/* Parâmetro `obrigatorio` mantido na URL (links salvos continuam valendo). */}
+          <SelectInput aria-label="Maturidade mínima" value={filters.obrigatorio} onChange={(e) => setFilter('obrigatorio', e.target.value)}>
+            <option value="">Todos os níveis mínimos</option>
+            <option value="sim">Com maturidade mínima exigida</option>
+            <option value="nao">Sem maturidade mínima exigida</option>
           </SelectInput>
           <SelectInput aria-label="Aplicabilidade" value={filters.aplicabilidade} onChange={(e) => setFilter('aplicabilidade', e.target.value)}>
             <option value="">Qualquer aplicabilidade</option>
@@ -191,79 +198,114 @@ export function IndicatorList({ items, pendings, report, user, actionLabel, onOp
           action={active && <Btn variant="secondary" size="sm" onClick={clear}>Limpar filtros</Btn>}
         />
       ) : (
-        groups.map((group) => (
-          <section key={group.axis} aria-labelledby={`eixo-${group.axis}`} className="flex flex-col gap-2">
-            <h2 id={`eixo-${group.axis}`} className="flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: AXES[group.axis].color }} aria-hidden />
-              {AXES[group.axis].label}
-              <span className="font-normal normal-case text-slate-400">· {group.count}</span>
-            </h2>
-            {group.topics.map(([topic, list]) => (
-              <div key={topic} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-2 text-xs font-semibold text-slate-600">{topic}</div>
-                <ul className="divide-y divide-slate-100">
-                  {list.map((item) => (
-                    <IndicatorRow
-                      key={item.id}
-                      item={item}
-                      favorite={favorites.includes(item.id)}
-                      onFavorite={() => toggle(item.id)}
-                      pendingCount={pendingByItem.get(item.id) || 0}
-                      sector={report?.section}
-                      actionLabel={actionLabel(item)}
-                      onOpen={() => onOpen(item)}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
-        ))
+        groups.map((group) => {
+          const rowProps = (item) => ({
+            item,
+            favorite: favorites.includes(item.id),
+            onFavorite: () => toggle(item.id),
+            pendingCount: pendingByItem.get(item.id) || 0,
+            sector: report?.section,
+            actionLabel: actionLabel(item),
+            onOpen: () => onOpen(item),
+            onEditMaturities: onEditMaturities ? () => onEditMaturities(item) : null,
+          });
+          return (
+            <section key={group.axis} aria-labelledby={`eixo-${group.axis}`} className="flex flex-col gap-2.5">
+              <h2 id={`eixo-${group.axis}`} className="flex items-center gap-2.5 px-1 pt-1 text-base font-bold uppercase tracking-wide text-[#0D3969]">
+                <span className={cn('h-2.5 w-2.5 rounded-full', AXIS_THEME[group.axis].dot)} aria-hidden />
+                {AXES[group.axis].label}
+                <span className="font-normal text-slate-400">- {group.count}</span>
+              </h2>
+              {group.topics.map(([topic, list]) => (
+                <div key={topic} className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                  <div className="px-4 pb-1.5 pt-2.5 text-[13px] font-semibold text-slate-800">{topic}</div>
+                  <ul className="flex flex-col gap-2 px-2 pb-2">
+                    {list.map((item) => (
+                      <IndicatorCard key={item.id} axis={group.axis} {...rowProps(item)} />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          );
+        })
       )}
     </div>
   );
 }
 
-function IndicatorRow({ item, favorite, onFavorite, pendingCount, sector, actionLabel, onOpen }) {
+function FavoriteButton({ code, favorite, onFavorite, className }) {
+  return (
+    <button
+      type="button"
+      onClick={onFavorite}
+      aria-pressed={favorite}
+      aria-label={favorite ? `Desmarcar ${code}` : `Marcar ${code}`}
+      className={cn('hidden shrink-0 rounded p-1 text-slate-400 hover:text-amber-500 sm:block', className)}
+    >
+      {favorite ? <IoStar className="text-amber-500" aria-hidden /> : <IoStarOutline aria-hidden />}
+    </button>
+  );
+}
+
+/** Responsável, prazo e pendências abertas do indicador. */
+function ItemMeta({ item, pendingCount, className }) {
+  return (
+    <div className={cn('mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500', className)}>
+      <span>{item.answerer ? `Responsável: ${item.answerer.name}` : 'Sem responsável'}</span>
+      {item.dueDate && <span>Prazo {new Date(item.dueDate).toLocaleDateString('pt-BR')}</span>}
+      {pendingCount > 0 && (
+        <span className="inline-flex items-center gap-1 text-amber-700">
+          <IoFlagOutline aria-hidden /> {pendingCount} pendência(s)
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Lápis "Editar maturidades" (somente Administração; ausente para os demais perfis). */
+function EditMaturitiesButton({ code, onClick }) {
+  if (!onClick) return null;
+  return (
+    <Btn variant="ghost" size="icon" onClick={onClick} aria-label={`Editar maturidades de ${code}`} title="Editar maturidades (Administração)" className="h-9 w-9 shrink-0 text-slate-500 hover:text-[#0D3969]">
+      <LuPencil aria-hidden />
+    </Btn>
+  );
+}
+
+/** Indicador: corpo na cor suave do eixo, badges de classificação, situação e ações. */
+function IndicatorCard({ axis, item, favorite, onFavorite, pendingCount, sector, actionLabel, onOpen, onEditMaturities }) {
   const q = item.question || {};
   const state = itemState(item);
   const setorial = q.section && q.section !== 'All';
   return (
-    <li className={cn('group flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-slate-50/80 sm:flex-row sm:items-center', setorial && 'border-l-4 border-l-[#0D5DA8]')}>
-      <button
-        type="button"
-        onClick={onFavorite}
-        aria-pressed={favorite}
-        aria-label={favorite ? `Desmarcar ${q.code}` : `Marcar ${q.code}`}
-        className="hidden shrink-0 rounded p-1 text-slate-400 hover:text-amber-500 sm:block"
-      >
-        {favorite ? <IoStar className="text-amber-500" aria-hidden /> : <IoStarOutline aria-hidden />}
-      </button>
+    <li
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border border-l-4 px-4 py-3.5 transition-shadow hover:shadow-[0_2px_8px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:gap-4',
+        AXIS_THEME[axis].card,
+      )}
+    >
+      <FavoriteButton code={q.code} favorite={favorite} onFavorite={onFavorite} className="self-center p-1.5 text-[1.1rem] text-slate-400" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-xs font-semibold text-slate-500">{q.codeOriginal || q.code}</span>
-          {setorial && <Badge tone="brand">Setorial {sector}</Badge>}
+          <span className="text-xs font-medium text-slate-500">{q.codeOriginal || q.code}</span>
           {q.hasMandatory && (
-            <Badge tone="warning">
-              <IoShieldCheckmarkOutline aria-hidden /> Obrigatório
+            <Badge tone="mandatory">
+              <IoAlertCircleOutline aria-hidden /> {MINIMUM_LABEL}
             </Badge>
           )}
+          {setorial && <Badge tone="sector">Setorial {q.section || sector}</Badge>}
           {item.naRequest && <Badge tone="neutral">Pedido de NA</Badge>}
         </div>
-        <p className="mt-1 font-medium text-slate-900">{q.title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-          <span>{item.answerer ? `Responsável: ${item.answerer.name}` : 'Sem responsável'}</span>
-          {item.dueDate && <span>Prazo {new Date(item.dueDate).toLocaleDateString('pt-BR')}</span>}
-          {pendingCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-amber-700">
-              <IoFlagOutline aria-hidden /> {pendingCount} pendência(s)
-            </span>
-          )}
-        </div>
+        <p className="mt-1 break-words text-[15px] font-semibold leading-snug text-[#0D3969]">{q.title}</p>
+        <ItemMeta item={item} pendingCount={pendingCount} className="text-[13px] text-slate-600" />
       </div>
-      <div className="flex items-center gap-2 sm:justify-end">
-        <Badge tone={state.tone}>{state.label}</Badge>
-        <Btn size="sm" variant={actionLabel === 'Responder' ? 'primary' : 'secondary'} onClick={onOpen} aria-label={`${actionLabel}: ${q.code} ${q.title}`}>
+      <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+        <Badge tone={state.tone} className={state.tone === 'neutral' ? 'bg-white' : undefined}>
+          {state.label}
+        </Badge>
+        <EditMaturitiesButton code={q.code} onClick={onEditMaturities} />
+        <Btn size="sm" variant={actionLabel === 'Responder' ? 'primary' : 'secondary'} onClick={onOpen} aria-label={`${actionLabel}: ${q.code} ${q.title}`} className="h-10 px-4 sm:h-9">
           {actionLabel}
           <IoChevronForward aria-hidden />
         </Btn>

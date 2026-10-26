@@ -39,7 +39,7 @@ function Counts({ counts }) {
           </span>
         )}
       </dd>
-      <dt className="text-neutral">Com mínimo obrigatório</dt>
+      <dt className="text-neutral">Com maturidade mínima exigida</dt>
       <dd className="font-semibold">{counts.mandatory}</dd>
       <dt className="text-neutral">Soma dos máximos</dt>
       <dd className="font-semibold">{counts.maxPointsTotal}</dd>

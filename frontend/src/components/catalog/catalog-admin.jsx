@@ -1,10 +1,10 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { IoAdd, IoArrowDown, IoArrowUp, IoBookOutline, IoCreateOutline, IoImageOutline, IoRocketOutline, IoTrashOutline, IoSearch } from 'react-icons/io5';
+import { IoAdd, IoAlertCircleOutline, IoArrowDown, IoArrowUp, IoBookOutline, IoCreateOutline, IoImageOutline, IoRocketOutline, IoTrashOutline, IoSearch } from 'react-icons/io5';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge, Btn, Card, CardHeader, EmptyState, ErrorState, Field, Notice, SelectInput, SkeletonRows, TextInput, formatDateTime } from '@/components/esg/ui';
-import { AXES, levelColor, levelName, sortByPosition } from '@/lib/levels';
+import { AXES, AXIS_THEME, MINIMUM_LABEL, levelColor, levelName, sortByPosition } from '@/lib/levels';
 import { CatalogImport } from '@/components/indicators/catalog-import';
 import { IndicatorEditor } from './indicator-editor';
 import {
@@ -364,18 +364,23 @@ function EditionEditor({ versionId, onChanged }) {
             <ul className="grid gap-3 xl:grid-cols-2">
               {indicators.map((ind, index) => (
                 <li key={ind.id} className="esg-rise">
-                  <Card className="flex h-full flex-col gap-3 p-4">
+                  {/* Mesma superfície por eixo dos indicadores do ciclo. */}
+                  <Card className={cn('flex h-full flex-col gap-3 border-l-4 p-4', AXIS_THEME[ind.category]?.card)}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-xs font-semibold text-slate-500">{ind.code}</span>
-                          <Badge tone="neutral">
+                          <span className="text-xs font-medium text-slate-500">{ind.code}</span>
+                          <Badge tone="neutral" className="bg-white">
                             <span className="h-2 w-2 rounded-full" style={{ background: AXES[ind.category]?.color }} aria-hidden />
                             {AXES[ind.category]?.label}
                           </Badge>
-                          {ind.hasMandatory && <Badge tone="warning">Obrigatório</Badge>}
+                          {ind.hasMandatory && (
+                            <Badge tone="mandatory">
+                              <IoAlertCircleOutline aria-hidden /> {MINIMUM_LABEL}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="mt-1 font-medium text-slate-900">{ind.title}</p>
+                        <p className="mt-1 text-[15px] font-semibold leading-snug text-[#0D3969]">{ind.title}</p>
                         {ind.topic && <p className="text-xs text-slate-500">Tópico: {ind.topic}</p>}
                       </div>
                       {editable && (

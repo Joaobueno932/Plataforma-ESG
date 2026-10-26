@@ -154,8 +154,8 @@ function computeResult({ items = [], size = null, mode = 'audited', policyId = n
       result.mandatory.applicable += 1;
       const minimumPosition = item.mandatory.minimumPosition;
       if (!isInteger(minimumPosition) || minimumPosition < 1) {
-        result.invalid.push({ code: item.code, detail: 'nível mínimo obrigatório inválido' });
-        result.impediments.push({ kind: IMPEDIMENTS.INVALID_VALUE, code: item.code, detail: 'nível mínimo obrigatório inválido' });
+        result.invalid.push({ code: item.code, detail: 'nível de maturidade mínima exigida inválido' });
+        result.impediments.push({ kind: IMPEDIMENTS.INVALID_VALUE, code: item.code, detail: 'nível de maturidade mínima exigida inválido' });
       } else if (framing.kind === 'missing') {
         // Sem decisão não se afirma atendimento nem descumprimento.
         bucket.reasons.add(framing.reason);
@@ -265,7 +265,7 @@ function computeResult({ items = [], size = null, mode = 'audited', policyId = n
       kind: IMPEDIMENTS.MANDATORY_UNMET,
       code: unmet.code,
       axis: unmet.axis,
-      detail: `requisito obrigatório não atendido: ${unmet.code} — ${unmet.title} (exigido "${unmet.requiredLevel}", registrado "${unmet.actualLevel}")`,
+      detail: `maturidade mínima exigida não atendida: ${unmet.code} — ${unmet.title} (exigido "${unmet.requiredLevel}", registrado "${unmet.actualLevel}")`,
     });
 
   for (const axis of axisList) {

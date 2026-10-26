@@ -3,27 +3,28 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Icon } from '@iconify/react';
-import { RiEyeFill, RiEyeOffFill } from 'react-icons/ri';
 import { FaRegEdit } from 'react-icons/fa';
 import { FiTrash2 } from 'react-icons/fi';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { IoAdd } from 'react-icons/io5';
 import { Combobox } from '@/components/ui/combobox';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { MaskInput } from '@/components/ui/mask-input';
-import { Modal } from '@/components/ui/modal';
-import { SearchInput } from '@/components/ui/search-input';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form } from '@/components/ui/form';
+import { Badge, Btn, PAGE, PageHeading } from '@/components/esg/ui';
+import { FormPasswordField, FormSelectField, FormTextField } from '@/components/esg/form-fields';
+import { AvatarEditor } from '@/components/people/avatar-editor';
+import { PeopleDirectory } from '@/components/people/people-directory';
 import { useAuth } from '@/contexts/auth';
 import { useUsers } from '@/contexts/users';
 import { ROLE_LABEL, ROLE_OPTIONS } from '@/lib/constants';
-import { formatMonthDay } from '@/lib/format';
+import { apiErrorMessage, notify } from '@/lib/toast';
+import { cn } from '@/lib/utils';
 import { getCompaniesLight } from '@/services/companies';
+import { removeUserAvatar, uploadUserAvatar } from '@/services/users';
 
+/**
+ * Pessoas (Administração) / Equipe (Gestor). Lógica de dados, permissões e rotas inalteradas;
+ * apresentação no design system (mesmo das demais telas).
+ */
 const ADMIN_PLACEHOLDER = 'randomUUID'; // o original preenche companyId com este marcador quando a função é ADMIN
 
 const userSchema = z.object({
@@ -37,36 +38,10 @@ const userSchema = z.object({
 });
 const userEditSchema = userSchema.partial();
 
-const FIELD = 'group/fieldset relative flex flex-col-reverse gap-1 mb-1';
-const FLOAT_LABEL = 'input-label-float -top-4 left-2 text-xs';
-
-function TextField({ form, name, label, placeholder, mask, type, ...rest }) {
-  return (
-    <FormField
-      name={name}
-      control={form.control}
-      render={({ field }) => (
-        <FormItem className={FIELD}>
-          <FormControl>
-            <>
-              {mask ? (
-                <MaskInput maskType={mask} placeholder={placeholder} type="text" field={{ ...field }} {...rest} />
-              ) : (
-                <Input placeholder={placeholder} {...field} value={field.value ?? ''} type={type} {...rest} />
-              )}
-              <FormLabel className={FLOAT_LABEL}>{label}</FormLabel>
-            </>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-}
-
 function RegisterUserForm() {
-  const [passwordType, setPasswordType] = useState('password');
   const [isAdminRole, setIsAdminRole] = useState(false);
+  const [photo, setPhoto] = useState(null); // { blob, url } — enviada depois que a conta existir
+  useEffect(() => () => photo && URL.revokeObjectURL(photo.url), [photo]);
   const [companies, setCompanies] = useState(null);
   const { registerUser } = useUsers();
   const form = useForm({ resolver: zodResolver(userSchema) });
@@ -80,99 +55,56 @@ function RegisterUserForm() {
   const submit = (v) => {
     const body = { name: v.name, email: v.email, password: v.password, cpf: v.cpf && v.cpf.replace(/[^\d]+/g, ''), jobTitle: v.jobTitle, role: v.role };
     if (!isAdminRole) body.companyId = v.companyId;
-    registerUser(body);
+    registerUser(body, { avatar: photo?.blob });
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(submit)} noValidate autoComplete="off" className="flex flex-col gap-6">
-        <TextField form={form} name="name" label="Nome Do Usuário" placeholder="Digite o nome de usuário" />
-        <TextField form={form} name="email" label="E-mail" placeholder="Digite o seu e-mail" />
-        <div className="relative">
-          <TextField form={form} name="password" label="Senha" placeholder="Digite a sua senha" type={passwordType} />
-          <button
-            type="button"
-            onClick={() => setPasswordType(passwordType === 'password' ? 'text' : 'password')}
-            className="absolute right-3 top-4"
-            aria-label="Mostrar senha"
-          >
-            {passwordType === 'password' ? <RiEyeOffFill className="fill-blue-500" /> : <RiEyeFill className="fill-blue-500" />}
-          </button>
-        </div>
-        <TextField form={form} name="cpf" label="Cpf (somente números)" placeholder="Digite o cpf" mask="cpf" />
-        <TextField form={form} name="jobTitle" label="Cargo" placeholder="Digite o cargo" />
-        <FormField
-          name="role"
-          control={form.control}
-          render={({ field }) => (
-            <FormItem className="relative">
-              <Select
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  if (value === 'ADMIN') {
-                    form.setValue('companyId', ADMIN_PLACEHOLDER);
-                    setIsAdminRole(true);
-                  } else {
-                    setIsAdminRole(false);
-                    if (form.getValues('companyId') === ADMIN_PLACEHOLDER) form.resetField('companyId');
-                  }
-                }}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma Função" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectGroup className="overflow-y-auto max-h-80">
-                    <SelectLabel>Selecione uma Função</SelectLabel>
-                    {ROLE_OPTIONS.map((r) => (
-                      <SelectItem key={r.value} value={r.value} className="border-b py-4">
-                        {r.text}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        {!isAdminRole && (
-          <FormField
-            name="companyId"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem className="relative">
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma empresa" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup className="overflow-y-auto max-h-80">
-                      <SelectLabel>Selecione uma empresa</SelectLabel>
-                      {Array.isArray(companies) &&
-                        companies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.bussinessName}
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+      <form onSubmit={form.handleSubmit(submit)} noValidate autoComplete="off" className="flex min-h-0 flex-1 flex-col">
+        <DialogBody className="flex flex-col gap-5">
+          <AvatarEditor
+            user={{ name: form.watch('name') || 'Novo usuário' }}
+            previewSrc={photo?.url}
+            onPick={(blob) => setPhoto({ blob, url: URL.createObjectURL(blob) })}
+            onRemove={photo ? () => setPhoto(null) : undefined}
+            hint="Opcional. JPEG, PNG ou WebP; a foto é recortada em 512×512 e salva junto com o cadastro."
           />
-        )}
-        <div className="w-full flex justify-center">
-          <Button className="w-2/3" size="lg">
-            CADASTRAR USUÁRIO
-          </Button>
-        </div>
+          <div className="grid items-start gap-4 sm:grid-cols-2">
+            <FormTextField form={form} name="name" label="Nome" placeholder="Digite o nome" className="sm:col-span-2" />
+            <FormTextField form={form} name="email" label="E-mail" placeholder="Digite o e-mail" type="email" />
+            <FormPasswordField form={form} name="password" label="Senha" hint="No mínimo 8 caracteres." placeholder="Digite a senha" />
+            <FormTextField form={form} name="cpf" label="CPF" hint="Somente números." placeholder="000.000.000-00" mask="cpf" />
+            <FormTextField form={form} name="jobTitle" label="Cargo" placeholder="Digite o cargo" />
+            <FormSelectField
+              form={form}
+              name="role"
+              label="Função"
+              placeholder="Selecione uma função"
+              options={ROLE_OPTIONS}
+              onValueChange={(value) => {
+                if (value === 'ADMIN') {
+                  form.setValue('companyId', ADMIN_PLACEHOLDER);
+                  setIsAdminRole(true);
+                } else {
+                  setIsAdminRole(false);
+                  if (form.getValues('companyId') === ADMIN_PLACEHOLDER) form.resetField('companyId');
+                }
+              }}
+            />
+            {!isAdminRole && (
+              <FormSelectField
+                form={form}
+                name="companyId"
+                label="Empresa"
+                placeholder="Selecione uma empresa"
+                options={(Array.isArray(companies) ? companies : []).map((c) => ({ value: c.id, text: c.bussinessName }))}
+              />
+            )}
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Btn type="submit">Cadastrar usuário</Btn>
+        </DialogFooter>
       </form>
     </Form>
   );
@@ -184,7 +116,9 @@ const EDITABLE_ROLES = [
   { identifier: 'CONSULTOR', name: 'Consultor' },
 ];
 
-function EditUserForm({ userSelected }) {
+function EditUserForm({ userSelected, onAvatarChange }) {
+  const [avatar, setAvatar] = useState(userSelected.avatar ?? null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [company, setCompany] = useState();
   const [role, setRole] = useState(userSelected?.role);
   const [editing, setEditing] = useState(false);
@@ -212,257 +146,196 @@ function EditUserForm({ userSelected }) {
 
   return (
     <Form {...form}>
-      <form noValidate autoComplete="off" className="flex flex-col gap-8 w-full">
-        <p className="text-neutral-03">
-          Situação: <span className="font-semibold">{userSelected?.status === 'INACTIVE' ? 'Inativa' : 'Ativa'}</span> · Perfis:{' '}
-          <span className="font-semibold">{(userSelected?.roles ?? []).map((r) => ROLE_LABEL[r] || r).join(', ')}</span>
-        </p>
-        <TextField form={form} name="name" label="Nome Do Usuário" placeholder="Digite o nome de usuário" disabled={!editing} />
-        <TextField form={form} name="email" label="E-mail" placeholder="Digite o seu e-mail" type="email" disabled={!editing} />
-        <TextField form={form} name="cpf" label="Cpf (somente números)" placeholder="Digite o cpf" mask="cpf" disabled={!editing} defaultValue={userSelected.cpf} />
-        <TextField form={form} name="jobTitle" label="Cargo" placeholder="Digite o cargo" disabled={!editing} />
-        <TextField form={form} name="password" label="Password" placeholder="Digite o novo password" disabled={!editing} />
-        {!['SUPERVISOR', 'ADMIN', 'AUDITOR'].includes(userSelected?.role) && (
-          <div className={FIELD}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }} className="flex-wrap">
-              {EDITABLE_ROLES.map((r) => (
-                <label
-                  key={r.identifier}
-                  style={{ margin: '10px' }}
-                  className="flex justify-between border border-[#C4C4C4] rounded-sm w-[290px] px-[12px] py-[20px] text-slate-600"
-                >
-                  <p>{r.name}</p>
-                  <input
-                    type="radio"
-                    disabled={!editing}
-                    value={r.identifier}
-                    checked={role === r.identifier}
-                    onChange={(e) => setRole(e.target.value)}
-                    style={{ marginRight: '5px' }}
-                  />
-                </label>
-              ))}
-            </div>
-            <label className={`text-sm font-medium leading-none ${FLOAT_LABEL}`}>Selecione a função</label>
+      <form noValidate autoComplete="off" className="flex min-h-0 flex-1 flex-col" onSubmit={(e) => e.preventDefault()}>
+        <DialogBody className="flex flex-col gap-5">
+          <AvatarEditor
+            user={{ ...userSelected, avatar }}
+            busy={avatarBusy}
+            onPick={async (blob) => {
+              setAvatarBusy(true);
+              try {
+                const { data } = await uploadUserAvatar(userSelected.id, blob);
+                setAvatar(data.avatar);
+                onAvatarChange?.();
+                notify('Foto atualizada.', 'success');
+              } catch (err) {
+                throw new Error(apiErrorMessage(err));
+              } finally {
+                setAvatarBusy(false);
+              }
+            }}
+            onRemove={async () => {
+              setAvatarBusy(true);
+              try {
+                await removeUserAvatar(userSelected.id);
+                setAvatar(null);
+                onAvatarChange?.();
+                notify('Foto removida; as iniciais voltam a ser exibidas.', 'success');
+              } catch (err) {
+                throw new Error(apiErrorMessage(err));
+              } finally {
+                setAvatarBusy(false);
+              }
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+            <Badge tone={userSelected?.status === 'INACTIVE' ? 'neutral' : 'success'}>{userSelected?.status === 'INACTIVE' ? 'Inativa' : 'Ativa'}</Badge>
+            <span>
+              Perfis: <strong className="font-semibold text-slate-800">{(userSelected?.roles ?? []).map((r) => ROLE_LABEL[r] || r).join(', ')}</strong>
+            </span>
           </div>
-        )}
-        {['SUPERVISOR', 'AUDITOR', 'CONSULTOR'].includes(userSelected?.role) ? (
-          <section className="flex flex-col gap-3">
-            <p className="font-semibold">Empresas vinculadas</p>
-            <ul className="flex flex-col gap-2">
-              {(links ?? []).map((l) => (
-                <li key={l.id} className="flex items-center justify-between border border-[#C4C4C4] rounded-sm px-3 py-2">
-                  <span className="text-slate-600">
-                    {l.bussinessName} <span className="text-neutral-03 text-sm">({ROLE_LABEL[l.role] || l.role})</span>
-                    {l.needsReview && <span className="ml-2 text-xs text-semantic-alert">vínculo migrado: confirmar</span>}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="error"
-                    size="sm"
-                    disabled={!editing || links.length <= 1}
-                    onClick={() => removeLink(userSelected.id, l.id)}
+          <div className="grid items-start gap-4 sm:grid-cols-2">
+            <FormTextField form={form} name="name" label="Nome" placeholder="Digite o nome" disabled={!editing} className="sm:col-span-2" />
+            <FormTextField form={form} name="email" label="E-mail" placeholder="Digite o e-mail" type="email" disabled={!editing} />
+            <FormTextField form={form} name="cpf" label="CPF" hint="Somente números." placeholder="000.000.000-00" mask="cpf" disabled={!editing} defaultValue={userSelected.cpf} />
+            <FormTextField form={form} name="jobTitle" label="Cargo" placeholder="Digite o cargo" disabled={!editing} />
+            <FormPasswordField form={form} name="password" label="Nova senha" hint="Em branco: mantém a senha atual." placeholder="Digite a nova senha" disabled={!editing} />
+          </div>
+          {!['SUPERVISOR', 'ADMIN', 'AUDITOR'].includes(userSelected?.role) && (
+            <fieldset className="flex flex-col gap-2" disabled={!editing}>
+              <legend className="mb-1.5 text-sm font-medium text-slate-800">Função</legend>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {EDITABLE_ROLES.map((r) => (
+                  <label
+                    key={r.identifier}
+                    className={cn(
+                      'flex h-10 cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 text-sm transition-colors',
+                      role === r.identifier ? 'border-primary-03 bg-blue-50 font-medium text-[#0D3969]' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+                      !editing && 'cursor-not-allowed opacity-60',
+                    )}
                   >
-                    Remover
-                  </Button>
-                </li>
-              ))}
-              {!links?.length && <li className="text-neutral-03">Nenhum vínculo vigente.</li>}
-            </ul>
-            <p className="text-sm text-neutral-03">Acrescentar empresa (o vínculo anterior é mantido):</p>
-            <Combobox disabled={!editing} data={companies} textField="bussinessName" onChange={(c) => setCompany(c)} />
-            <Button
-              type="button"
-              variant="primary-main"
-              size="lg"
-              className="w-64"
-              disabled={!editing || !company?.id}
-              onClick={() => addLink(userSelected.id, company.id, userSelected.role)}
-            >
-              ACRESCENTAR VÍNCULO
-            </Button>
-          </section>
-        ) : (
-          <p>Empresa: {userSelected?.company?.bussinessName ?? '—'}</p>
-        )}
-        {editing ? (
-          <Button
-            className="w-96 text-sm self-center"
-            variant="success-2"
-            size="lg"
-            type="button"
-            onClick={save}
-          >
-            SALVAR ALTERAÇÕES
-          </Button>
-        ) : (
-          <Button className="w-96 text-sm self-center" variant="primary-main" size="lg" type="button" onClick={() => setEditing(true)}>
-            HABILITAR EDIÇÃO
-          </Button>
-        )}
+                    {r.name}
+                    <input type="radio" className="accent-[#0D5DA8]" value={r.identifier} checked={role === r.identifier} onChange={(e) => setRole(e.target.value)} />
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          {['SUPERVISOR', 'AUDITOR', 'CONSULTOR'].includes(userSelected?.role) ? (
+            <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">Empresas vinculadas</h3>
+              <ul className="flex flex-col divide-y divide-slate-100 rounded-lg border border-slate-200">
+                {(links ?? []).map((l) => (
+                  <li key={l.id} className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm text-slate-800">
+                      {l.bussinessName} <span className="text-slate-500">({ROLE_LABEL[l.role] || l.role})</span>
+                      {l.needsReview && (
+                        <Badge tone="warning" className="ml-2">
+                          vínculo migrado: confirmar
+                        </Badge>
+                      )}
+                    </span>
+                    <Btn type="button" variant="danger-ghost" size="sm" disabled={!editing || links.length <= 1} onClick={() => removeLink(userSelected.id, l.id)}>
+                      <FiTrash2 aria-hidden /> Remover
+                    </Btn>
+                  </li>
+                ))}
+                {!links?.length && <li className="px-3 py-2.5 text-sm text-slate-500">Nenhum vínculo vigente.</li>}
+              </ul>
+              <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto]">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-slate-800">Acrescentar empresa</span>
+                  <Combobox disabled={!editing} data={companies} textField="bussinessName" onChange={(c) => setCompany(c)} placeholder="Pesquisar empresa" />
+                </div>
+                <Btn type="button" variant="secondary" disabled={!editing || !company?.id} onClick={() => addLink(userSelected.id, company.id, userSelected.role)}>
+                  <IoAdd aria-hidden /> Acrescentar vínculo
+                </Btn>
+              </div>
+              <p className="text-xs text-slate-500">O vínculo anterior é mantido.</p>
+            </section>
+          ) : (
+            <p className="text-sm text-slate-600">
+              Empresa: <strong className="font-semibold text-slate-800">{userSelected?.company?.bussinessName ?? '—'}</strong>
+            </p>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          {editing ? (
+            <Btn type="button" variant="success" onClick={save}>
+              Salvar alterações
+            </Btn>
+          ) : (
+            <Btn type="button" variant="secondary" onClick={() => setEditing(true)}>
+              <FaRegEdit aria-hidden /> Habilitar edição
+            </Btn>
+          )}
+        </DialogFooter>
       </form>
     </Form>
   );
 }
 
-function DeleteUserModal({ handleDeleteUser, setOpenModal }) {
-  return (
-    <Modal.Root closeModal={() => setOpenModal(false)} className="w-fit flex flex-col items-center">
-      <Icon icon="ph:x-circle-bold" className="text-semantic-error w-32 h-32" />
-      <Modal.Title classes="text-2xl text-medium">Inativação de conta</Modal.Title>
-      <p className="w-[460px] text-center text-neutral-03 text-xl">
-        A conta deixa de acessar o sistema e as sessões abertas são encerradas. Respostas, evidências, autoria e histórico são preservados, e a
-        conta pode ser reativada pela Administração.
-      </p>
-      <Modal.Content className="flex gap-4 mt-16">
-        <Button className="w-64 text-sm" variant="primary-main" size="lg" onClick={() => setOpenModal(false)}>
-          CANCELAR
-        </Button>
-        <Button className="w-64 text-sm" variant="error" size="lg" onClick={handleDeleteUser}>
-          INATIVAR CONTA
-        </Button>
-      </Modal.Content>
-    </Modal.Root>
-  );
-}
-
-function UsersSkeleton() {
-  return [1, 2, 3].map((k) => (
-    <TableRow key={k} className="gap-0">
-      {['w-[50%]', 'w-[50%]', 'w-[50%]', 'w-full'].map((w, i) => (
-        <TableCell key={i} className="pr-20">
-          <Skeleton className={`bg-zinc-400 ${w} h-4`} />
-        </TableCell>
-      ))}
-      <TableCell className="flex gap-2">
-        <Skeleton className="bg-zinc-400 w-6 h-6" />
-        <Skeleton className="bg-zinc-400 w-6 h-6" />
-      </TableCell>
-    </TableRow>
-  ));
-}
-
-function UsersTable() {
-  const { users, deleteUser, currentPage, numberOfPages, handleNextPage, handlePreviousPage } = useUsers();
-  const { userLogged } = useAuth();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [selected, setSelected] = useState(null);
-
-  return (
-    <>
-      {deleteOpen && <DeleteUserModal handleDeleteUser={() => selected && deleteUser(selected.id)} setOpenModal={setDeleteOpen} />}
-      {editOpen && (
-        <Modal.Root closeModal={() => setEditOpen(false)} className="flex flex-col w-[1080px] px-[70px] py-10">
-          <Modal.Title classes="text-2xl text-medium">Editar usuário</Modal.Title>
-          <p className="text-neutral-03 text-base w-[90%]">
-            Clique em “Habilitar edição” para editar suas informações. Após editar, clique em “Salvar alterações” e sua edição estará salva!
-          </p>
-          <Modal.Content className="flex gap-4 mt-4 w-full">
-            <EditUserForm userSelected={selected} />
-          </Modal.Content>
-        </Modal.Root>
-      )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="pl-4">Nome</TableHead>
-            <TableHead>Função</TableHead>
-            <TableHead>Data de Cadastro</TableHead>
-            <TableHead>E-mail</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users ? (
-            users.map((u) => (
-              <TableRow key={u.id} className="h-[4.5rem] gap-0">
-                <TableCell className="font-medium text-slate-800 pl-4">{u.name}</TableCell>
-                <TableCell className="font-medium text-slate-800">{ROLE_LABEL[u.role]}</TableCell>
-                <TableCell className="text-slate-500 ">{formatMonthDay(u.createdAt)}</TableCell>
-                <TableCell className="text-slate-500 w-20">{u.email}</TableCell>
-                {userLogged?.role === 'ADMIN' && (
-                  <TableCell>
-                    <Button size="icon" variant="ghost" className="hover:bg-transparent" aria-label="Editar usuário" onClick={() => (setEditOpen(true), setSelected(u))}>
-                      <FaRegEdit size="24px" className="fill-neutral-03 hover:fill-primary" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="hover:bg-transparent" aria-label="Excluir usuário" onClick={() => (setDeleteOpen(true), setSelected(u))}>
-                      <FiTrash2 size="24px" className="stroke-neutral-03 hover:stroke-primary" />
-                    </Button>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))
-          ) : (
-            <UsersSkeleton />
-          )}
-        </TableBody>
-      </Table>
-      <div className="flex justify-between items-center h-16 px-4 border-t">
-        <span className="font-medium text-sm text-neutral">
-          Página {currentPage} de {numberOfPages}
-        </span>
-        <div className="flex items-center gap-3 h-full">
-          {currentPage > 1 && (
-            <Button size="sm" variant="outline" onClick={handlePreviousPage}>
-              Anterior
-            </Button>
-          )}
-          {currentPage < numberOfPages && (
-            <Button size="sm" variant="outline" onClick={handleNextPage}>
-              Próximo
-            </Button>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
 export default function UsersPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [inactivating, setInactivating] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { userLogged } = useAuth();
-  const { searchUser } = useUsers();
+  const { deleteUser } = useUsers();
   if (!userLogged) return null;
+  // Mesma regra de antes: a Administração gerencia contas; a Equipe é consulta.
   const isAdmin = userLogged.role === 'ADMIN';
 
   return (
-    <div className="px-6 pb-5 h-full flex flex-col gap-2 lg:ml-56">
-      <section className="px-2 flex flex-col gap-2">
-        <div>
-          <h3 className="title-l">{isAdmin ? 'Lista de Usuários' : 'Usuário'}</h3>
-          <p className="text-neutral-03">{isAdmin ? 'Veja a lista de usuários cadastrados assim como a situação dos mesmos.' : 'Veja alguns de seus dados cadastrados.'}</p>
-        </div>
-        {isAdmin && (
-          <div className="flex justify-between items-center">
-            <SearchInput placeholder="Procurar por usuário" handleChange={searchUser} />
-            <div className="flex space-x-3" />
-          </div>
-        )}
-      </section>
-      {registerOpen && (
-        <Modal.Root closeModal={() => setRegisterOpen(false)} className="w-[900px] px-20">
-          <Modal.Title classes="mb-9 font-medium text-3xl">Novo Usuário</Modal.Title>
-          <Modal.Content>
-            <RegisterUserForm />
-          </Modal.Content>
-        </Modal.Root>
-      )}
-      <section className="px-2">
-        <Card.Root>
-          <div className="flex min-h-16 flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <h6 className="px-4 title-s">{isAdmin ? 'Todos os usuários' : 'Seus dados'}</h6>
-            {isAdmin && (
-              <div className="flex items-center px-4 sm:mr-2 sm:px-0">
-                <Button className="h-auto whitespace-normal border-none py-2 text-base text-white sm:text-xl" onClick={() => setRegisterOpen(true)}>
-                  Cadastrar Novo Usuário
-                </Button>
-              </div>
-            )}
-          </div>
-          <UsersTable />
-        </Card.Root>
-      </section>
+    <div className={PAGE}>
+      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Novo usuário</DialogTitle>
+            <DialogDescription>Perfis e vínculos com empresas são concedidos aqui pela Administração.</DialogDescription>
+          </DialogHeader>
+          {registerOpen && <RegisterUserForm />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Editar usuário</DialogTitle>
+            <DialogDescription>A foto é salva na hora. Para os demais dados, clique em “Habilitar edição” e depois em “Salvar alterações”.</DialogDescription>
+          </DialogHeader>
+          {editing && <EditUserForm userSelected={editing} onAvatarChange={() => setRefreshKey((k) => k + 1)} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!inactivating} onOpenChange={(v) => !v && setInactivating(null)}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>Inativar conta</DialogTitle>
+            <DialogDescription>
+              {inactivating?.name} deixa de acessar o sistema e as sessões abertas são encerradas. Respostas, evidências, autoria e histórico são preservados,
+              e a conta pode ser reativada pela Administração.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Btn variant="secondary" onClick={() => setInactivating(null)} autoFocus>
+              Cancelar
+            </Btn>
+            <Btn variant="danger" onClick={() => deleteUser(inactivating.id)}>
+              Inativar conta
+            </Btn>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <PageHeading
+        title={isAdmin ? 'Pessoas' : 'Equipe'}
+        description={isAdmin ? 'Usuários cadastrados, função e situação.' : 'Pessoas da sua empresa na plataforma.'}
+        actions={
+          isAdmin && (
+            <Btn size="lg" className="w-full sm:w-auto" onClick={() => setRegisterOpen(true)}>
+              <IoAdd aria-hidden /> Cadastrar usuário
+            </Btn>
+          )
+        }
+      />
+      <PeopleDirectory
+        scope={isAdmin ? 'all' : 'company'}
+        title={isAdmin ? 'Todos os usuários' : 'Pessoas da empresa'}
+        noun={isAdmin ? 'usuários' : 'pessoas'}
+        selfId={userLogged.id}
+        refreshKey={refreshKey}
+        onEdit={isAdmin ? setEditing : null}
+        onInactivate={isAdmin ? setInactivating : null}
+      />
     </div>
   );
 }

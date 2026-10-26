@@ -6,9 +6,12 @@ const { startServer, shutdown } = require('./helpers');
 const { parseCatalog } = require('../src/catalog/parse');
 const { readWorkbook } = require('../src/catalog/xlsx');
 
-/** Planilha oficial entregue para esta etapa (fora do versionamento, por ser fonte do programa). */
-const SOURCE = path.resolve(__dirname, '../../Indicadores Programa ESG FIEMS 1 (1).xlsx');
-const hasSource = fs.existsSync(SOURCE);
+/**
+ * Planilha oficial (fora do versionamento, por ser fonte do programa). Fica na pasta
+ * `Documentação`; o nome antigo na raiz continua aceito. Sem o arquivo, os testes que dependem
+ * dele não verificam nada — por isso `officialSource` é compartilhado com os demais testes.
+ */
+const { SOURCE, hasSource } = require('./fixtures/official-source');
 
 /* ------------------------------------------------------------------ leitor */
 
@@ -116,6 +119,51 @@ test('alternativas próprias de cada indicador, sem escala universal', () => {
 
   // "Não se aplica" não é nível de maturidade.
   assert.ok(!indicators.flatMap((i) => i.levels).some((l) => /n[ãa]o\s*se\s*aplica/i.test(l.name)));
+});
+
+/* ------------------------------------------------------------------ maturidade mínima exigida */
+
+/**
+ * Mapeamento oficial: indicador → nível mínimo, lido da marca visível "OBRIGATÓRIO" de cada
+ * página dos cadernos em PDF (tools/minimum_crosscheck.py). É independente da planilha.
+ */
+const OFFICIAL_MINIMUMS = require('./fixtures/minimos-oficiais.json').indicadores;
+
+test('maturidade mínima exigida: a planilha confere com os cadernos oficiais', () => {
+  if (!hasSource) return;
+  const { indicators } = parseCatalog(SOURCE);
+  const official = new Map(OFFICIAL_MINIMUMS.map((m) => [m.codigo, m]));
+  assert.equal(official.size, 50);
+
+  for (const indicator of indicators) {
+    const minimum = indicator.levels.find((l) => l.isMandatoryMinimum);
+    const expected = official.get(indicator.code);
+    if (!expected) {
+      // Sem exigência nos cadernos: nenhum nível marcado — o indicador continua sendo respondido.
+      assert.equal(indicator.mandatory, false, `${indicator.code} não tem mínimo nos cadernos`);
+      assert.equal(minimum, undefined, `${indicator.code} sem nível mínimo`);
+      continue;
+    }
+    assert.equal(indicator.mandatory, true, `${indicator.code} tem mínimo (${expected.fonte})`);
+    assert.equal(minimum.name, expected.maturidadeMinima, `${indicator.code}: nível mínimo (${expected.fonte})`);
+    assert.equal(minimum.position, expected.posicao, `${indicator.code}: posição do nível mínimo`);
+    assert.equal(indicator.section, expected.setor ?? 'All', `${indicator.code}: caderno`);
+  }
+
+  // Caderno Geral e setoriais; o nível exigido varia entre indicadores e entre cadernos.
+  const count = (section) => OFFICIAL_MINIMUMS.filter((m) => (m.setor ?? 'All') === section).length;
+  assert.deepEqual(
+    ['All', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(count),
+    [29, 5, 5, 3, 1, 1, 1, 1, 4],
+  );
+  const levels = new Set(OFFICIAL_MINIMUMS.map((m) => m.maturidadeMinima));
+  assert.deepEqual([...levels].sort(), ['Conforme', 'Consciente', 'Iniciante', 'Sensibilizada']);
+  assert.equal(official.get('GE01').maturidadeMinima, 'Iniciante');
+  assert.equal(official.get('GS01').maturidadeMinima, 'Conforme');
+  assert.equal(official.get('BG01').maturidadeMinima, 'Consciente');
+  assert.equal(official.get('AS01').maturidadeMinima, 'Sensibilizada');
+  // Resíduo invisível do modelo nos PDFs não conta como exigência (ex.: GE06, GG01).
+  assert.ok(!official.has('GE06') && !official.has('GG01'));
 });
 
 /* ------------------------------------------------------------------ importação pela API */
@@ -240,6 +288,23 @@ test('importação: prévia, rascunho, publicação e proteção das versões', 
     // Alternativas dinâmicas: cada indicador traz as suas.
     const sizes = new Set(items.body.map((i) => i.question.answers.length));
     assert.ok(sizes.size > 1, 'os indicadores do ciclo têm quantidades diferentes de alternativas');
+
+    // Maturidade mínima exigida pela API: Caderno Geral + setorial B, nível dos cadernos oficiais.
+    const expected = OFFICIAL_MINIMUMS.filter((m) => m.setor === null || m.setor === 'B');
+    const withMinimum = items.body.filter((i) => i.question.hasMandatory);
+    assert.deepEqual(withMinimum.map((i) => i.question.code).sort(), expected.map((m) => m.codigo).sort());
+    for (const item of withMinimum) {
+      const flagged = item.question.answers.filter((a) => a.mandatory);
+      const official = expected.find((m) => m.codigo === item.question.code);
+      assert.equal(flagged.length, 1, `${item.question.code}: um único nível mínimo`);
+      assert.equal(flagged[0].title, official.maturidadeMinima, `${item.question.code}: nível (${official.fonte})`);
+      assert.equal(item.question.mandatoryAnswerId, flagged[0].id, `${item.question.code}: mandatoryAnswerId aponta para o nível`);
+    }
+    // Sem exigência: nenhuma alternativa marcada, mas o indicador está no ciclo para ser respondido.
+    const ge06 = items.body.find((i) => i.question.code === 'GE06');
+    assert.ok(ge06, 'GE06 faz parte do ciclo');
+    assert.equal(ge06.question.hasMandatory, false);
+    assert.ok(!ge06.question.answers.some((a) => a.mandatory));
   });
 
   await t.test('níveis expostos pela versão, sem lista universal', async () => {

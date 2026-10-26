@@ -65,7 +65,7 @@ function SelectField({ form, name, placeholder, label, options }) {
   );
 }
 
-/** Passo 3: respostas (2 a 6), cada uma com nível, pontuação e marcação de obrigatória. */
+/** Passo 3: respostas (2 a 6), cada uma com nível, pontuação e marcação de maturidade mínima exigida. */
 function AnswersForm({ setOpenModal, setRequestIndicatorData }) {
   const [rows, setRows] = useState([1]);
   const [mandatoryIndex, setMandatoryIndex] = useState(null);
@@ -149,7 +149,7 @@ function AnswersForm({ setOpenModal, setRequestIndicatorData }) {
                   <FormControl>
                     <div className="flex items-center gap-2">
                       <Checkbox checked={mandatoryIndex === i} onCheckedChange={() => setMandatoryIndex(mandatoryIndex === i ? null : i)} />
-                      <FormLabel className="font-medium text-lg text-zind-600">Obrigatória</FormLabel>
+                      <FormLabel className="font-medium text-lg text-zind-600">Mínimo exigido</FormLabel>
                     </div>
                   </FormControl>
                   <FormMessage />

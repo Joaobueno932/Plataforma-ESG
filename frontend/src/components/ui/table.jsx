@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-// Tabela do original (módulo 97332).
+// Tabela do original (módulo 97332), no visual do design system.
 export const Table = React.forwardRef(({ className, ...props }, ref) => (
   <div className="w-full overflow-auto">
     <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
@@ -10,7 +10,7 @@ export const Table = React.forwardRef(({ className, ...props }, ref) => (
 Table.displayName = 'Table';
 
 export const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn('[&_tr]:border-b bg-zinc-100', className)} {...props} />
+  <thead ref={ref} className={cn('bg-slate-50 [&_tr]:border-b [&_tr]:border-slate-200 [&_tr:hover]:bg-slate-50', className)} {...props} />
 ));
 TableHeader.displayName = 'TableHeader';
 
@@ -22,7 +22,7 @@ TableBody.displayName = 'TableBody';
 export const TableRow = React.forwardRef(({ className, ...props }, ref) => (
   <tr
     ref={ref}
-    className={cn('border-b transition-colors hover:bg-neutral-01/50 data-[state=selected]:bg-reutral h-14', className)}
+    className={cn('h-14 border-b border-slate-100 transition-colors hover:bg-slate-50/70 data-[state=selected]:bg-blue-50/60', className)}
     {...props}
   />
 ));
@@ -32,7 +32,7 @@ export const TableHead = React.forwardRef(({ className, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
-      'h-10 px-2 text-left align-middle font-medium text-neutral-03 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-xs',
+      'h-11 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-slate-500 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
       className,
     )}
     {...props}
@@ -43,7 +43,7 @@ TableHead.displayName = 'TableHead';
 export const TableCell = React.forwardRef(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] font-normal text-sm', className)}
+    className={cn('px-3 py-2.5 align-middle text-sm font-normal text-slate-700 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]', className)}
     {...props}
   />
 ));

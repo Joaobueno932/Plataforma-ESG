@@ -39,3 +39,5 @@ export const setSectionCover = (versionId, section, avatar) => api.put(`/catalog
 export const addIndicator = (versionId, body) => api.post(`/catalog/editor/${versionId}/indicators`, body);
 export const updateIndicator = (id, body) => api.patch(`/catalog/editor/indicators/${id}`, body);
 export const removeIndicator = (id) => api.delete(`/catalog/editor/indicators/${id}`);
+/** Mesmo indicador na edição em rascunho (criada se preciso), a partir do indicador de um ciclo. */
+export const draftIndicatorFor = (questionId) => api.post(`/catalog/editor/for-question/${questionId}`);

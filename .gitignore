@@ -32,3 +32,10 @@ recon/captures/**/*.webp
 
 # Saída dos testes de carga (métricas brutas e massa gerada)
 tools/load/out/
+
+# Fotos de perfil enviadas pelos usuários (dados pessoais; nunca versionar)
+backend/static/avatars/
+backend/static/logos/
+
+# Fontes oficiais do programa (cadernos, planilha, manual, regulamentos): consulta local, não versionar
+Documentação/

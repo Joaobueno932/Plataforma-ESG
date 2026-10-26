@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { IoCloudUploadOutline, IoDownloadOutline, IoTrashOutline, IoLockClosed, IoDocumentAttachOutline } from 'react-icons/io5';
+import { LuPencil } from 'react-icons/lu';
+import { IoAlertCircleOutline, IoCloudUploadOutline, IoDownloadOutline, IoTrashOutline, IoLockClosed, IoDocumentAttachOutline } from 'react-icons/io5';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge, Btn, Card, EmptyState, Field, Notice, SelectInput, SkeletonRows, TextArea, TextInput, formatBytes, formatDateTime, formatDay } from '@/components/esg/ui';
 import { LevelCard, LevelCards } from '@/components/esg/level-card';
-import { AXES, levelName } from '@/lib/levels';
+import { AXES, MINIMUM_LABEL, levelName, minimumLevel } from '@/lib/levels';
 import { itemState, PENDING_KIND, PENDING_KINDS_BY_ROLE, PENDING_STATUS, ROLE_NAME } from '@/lib/workflow';
 import {
   addAnswerer,
@@ -23,6 +24,31 @@ import {
 } from '@/services/reports';
 import { apiErrorMessage, notify } from '@/lib/toast';
 
+/**
+ * Nível mínimo de maturidade exigido pelo caderno. Só informa: a declaração abaixo do mínimo é
+ * permitida (a empresa declara o nível real) e vira impedimento de elegibilidade no resultado.
+ */
+function MinimumNotice({ question }) {
+  const minimum = minimumLevel(question);
+  const name = minimum ? levelName(minimum) : null;
+  return (
+    <div role="note" className="mb-3 flex items-start gap-3 rounded-xl border border-[#FCA5A5] bg-[#FFF0F0] px-4 py-3 text-sm text-[#7F1D1D]">
+      <IoAlertCircleOutline className="mt-0.5 shrink-0 text-[1.15rem] text-[#B91C1C]" aria-hidden />
+      <div className="min-w-0">
+        <p className="font-semibold text-[#B91C1C]">{name ? `${MINIMUM_LABEL}: ${name}` : MINIMUM_LABEL}</p>
+        <p className="mt-0.5">
+          Este indicador possui um nível mínimo de maturidade exigido para atendimento aos critérios do Programa ESG FIEMS.
+          {name && ` Nível mínimo exigido: ${name}.`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Painel padrão da área de resposta: borda, raio e respiro iguais em todos os blocos. */
+const PANEL = 'flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4';
+const cnPanel = (extra) => `${PANEL} ${extra}`;
+
 const formFrom = (item) => ({
   answerId: item?.selectedAnswer?.id ?? null,
   answerText: item?.answerText ?? '',
@@ -38,7 +64,7 @@ const sameForm = (a, b) =>
  * as alternativas do indicador como cartões oficiais. Rascunho e envio são ações distintas;
  * erros aparecem junto do campo e os dados digitados ficam na tela se o salvamento falhar.
  */
-export function AnswerDialog({ item, open, onOpenChange, report, role, can, people, onSaved, returnFocusRef }) {
+export function AnswerDialog({ item, open, onOpenChange, report, role, can, people, onSaved, returnFocusRef, onEditMaturities = null }) {
   const [form, setForm] = useState(formFrom(item));
   const [base, setBase] = useState(formFrom(item));
   const [busy, setBusy] = useState(null);
@@ -174,12 +200,17 @@ export function AnswerDialog({ item, open, onOpenChange, report, role, can, peop
                 </div>
 
                 <section aria-labelledby="niveis">
-                  <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <h3 id="niveis" className="text-sm font-semibold text-slate-900">
                       Nível de maturidade declarado
                     </h3>
-                    {q.hasMandatory && <span className="text-xs text-slate-600">O nível marcado como “Obrigatório” é o mínimo exigido.</span>}
+                    {onEditMaturities && (
+                      <Btn variant="secondary" size="sm" onClick={() => onEditMaturities(item)} title="Somente Administração">
+                        <LuPencil aria-hidden /> Editar maturidades
+                      </Btn>
+                    )}
                   </div>
+                  {q.hasMandatory && <MinimumNotice question={q} />}
                   <fieldset disabled={!editable || form.naRequested} className={form.naRequested ? 'opacity-50' : ''}>
                     <LevelCards
                       answers={q.answers}
@@ -190,28 +221,32 @@ export function AnswerDialog({ item, open, onOpenChange, report, role, can, peop
                   </fieldset>
                 </section>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <Field label="Justificativa da resposta" htmlFor="justificativa" hint="Explique como a empresa atende ao nível escolhido.">
-                    <TextArea
-                      id="justificativa"
-                      value={form.answerText}
-                      onChange={(e) => setForm((f) => ({ ...f, answerText: e.target.value }))}
-                      disabled={!editable}
-                      maxLength={5000}
-                    />
-                  </Field>
-                  <div className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4">
-                    <label className="flex items-start gap-2 text-sm font-medium text-slate-800">
+                {/* Dois painéis do mesmo tipo, mesma altura e mesmo respiro interno. */}
+                <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                  <div className={PANEL}>
+                    <Field label="Justificativa da resposta" htmlFor="justificativa" hint="Explique como a empresa atende ao nível escolhido." className="h-full">
+                      <TextArea
+                        id="justificativa"
+                        value={form.answerText}
+                        onChange={(e) => setForm((f) => ({ ...f, answerText: e.target.value }))}
+                        disabled={!editable}
+                        maxLength={5000}
+                        className="flex-1"
+                      />
+                    </Field>
+                  </div>
+                  <div className={cnPanel('gap-2')}>
+                    <label className="flex min-h-[20px] items-center gap-2 text-sm font-medium text-slate-800">
                       <input
                         type="checkbox"
-                        className="mt-1 h-4 w-4 accent-[#0D5DA8]"
+                        className="h-4 w-4 shrink-0 accent-[#0D5DA8]"
                         checked={form.naRequested}
                         disabled={!editable}
                         onChange={(e) => setForm((f) => ({ ...f, naRequested: e.target.checked }))}
                       />
                       Solicitar “não se aplica”
                     </label>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs leading-relaxed text-slate-600">
                       O pedido vai para o auditor, que aceita ou recusa. Precisa de justificativa e de ao menos uma evidência. Enquanto não for aceito, o
                       indicador continua no cálculo.
                     </p>
@@ -394,22 +429,26 @@ function Evidence({ item, report, editable, onChanged }) {
       )}
 
       {editable && (
-        <div className="grid gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4 md:grid-cols-[1.2fr_1fr_auto_auto] md:items-end">
-          <Field label="Arquivo" htmlFor="evidencia-arquivo" hint="PDF, imagem, documento, planilha ou texto. Executáveis são recusados.">
-            <input
-              id="evidencia-arquivo"
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.csv,.txt"
-              className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[#0D5DA8] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-          </Field>
-          <Field label="Descrição" htmlFor="evidencia-descricao">
-            <TextInput id="evidencia-descricao" value={meta.description} onChange={(e) => setMeta((m) => ({ ...m, description: e.target.value }))} maxLength={500} />
-          </Field>
-          <Field label="Validade" htmlFor="evidencia-validade">
-            <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
+          {/* Campos alinhados pelo topo: label, controle de 40px e, abaixo, a dica de cada um. */}
+          <div className="grid items-start gap-4 md:grid-cols-12">
+            <Field label="Arquivo" htmlFor="evidencia-arquivo" hint="PDF, imagem, documento, planilha ou texto. Executáveis são recusados." className="md:col-span-5">
+              <input
+                id="evidencia-arquivo"
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.csv,.txt"
+                className="block h-10 w-full cursor-pointer overflow-hidden rounded-lg border border-slate-300 bg-white text-sm text-slate-700 shadow-sm file:mr-3 file:h-full file:cursor-pointer file:border-0 file:border-r file:border-slate-200 file:bg-slate-100 file:px-3 file:text-sm file:font-medium file:text-[#0D3969] hover:file:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-03/40"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </Field>
+            <Field label="Descrição" htmlFor="evidencia-descricao" className="md:col-span-4">
+              <TextInput id="evidencia-descricao" value={meta.description} onChange={(e) => setMeta((m) => ({ ...m, description: e.target.value }))} maxLength={500} />
+            </Field>
+            <div className="flex flex-col gap-1.5 md:col-span-3">
+              <label htmlFor="evidencia-validade" className="text-sm font-medium text-slate-800">
+                Validade
+              </label>
               <TextInput
                 id="evidencia-validade"
                 type="date"
@@ -418,19 +457,23 @@ function Evidence({ item, report, editable, onChanged }) {
                 onChange={(e) => setMeta((m) => ({ ...m, validUntil: e.target.value }))}
               />
               <label className="flex items-center gap-2 text-xs text-slate-600">
-                <input type="checkbox" className="accent-[#0D5DA8]" checked={meta.indefiniteValidity} onChange={(e) => setMeta((m) => ({ ...m, indefiniteValidity: e.target.checked, validUntil: '' }))} />
+                <input type="checkbox" className="h-3.5 w-3.5 accent-[#0D5DA8]" checked={meta.indefiniteValidity} onChange={(e) => setMeta((m) => ({ ...m, indefiniteValidity: e.target.checked, validUntil: '' }))} />
                 Prazo indeterminado
               </label>
             </div>
-          </Field>
-          <Btn onClick={upload} loading={progress !== null} disabled={!file}>
-            <IoCloudUploadOutline aria-hidden /> {progress !== null ? `${progress}%` : 'Anexar'}
-          </Btn>
-          {error && (
-            <p role="alert" className="text-sm font-medium text-red-700 md:col-span-4">
-              {error}
-            </p>
-          )}
+          </div>
+          <div className="flex flex-col gap-2 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            {error ? (
+              <p role="alert" className="text-sm font-medium text-red-700">
+                {error}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">{file ? `Selecionado: ${file.name}` : 'Escolha um arquivo para anexar como evidência.'}</p>
+            )}
+            <Btn onClick={upload} loading={progress !== null} disabled={!file} className="sm:min-w-[132px]">
+              <IoCloudUploadOutline aria-hidden /> {progress !== null ? `${progress}%` : 'Anexar'}
+            </Btn>
+          </div>
         </div>
       )}
     </section>
@@ -459,31 +502,37 @@ function Assign({ item, people, onChanged }) {
     }
   };
   return (
-    <section aria-labelledby="delegacao" className="grid gap-3 rounded-xl border border-slate-200 p-4 md:grid-cols-[1fr_200px_auto] md:items-end">
-      <h3 id="delegacao" className="text-sm font-semibold text-slate-900 md:col-span-3">
+    <section aria-labelledby="delegacao" className={cnPanel('gap-4')}>
+      <h3 id="delegacao" className="text-sm font-semibold text-slate-900">
         Responsável e prazo
       </h3>
-      <Field label="Responsável" htmlFor="responsavel">
-        <SelectInput id="responsavel" value={userId} onChange={(e) => setUserId(e.target.value)}>
-          <option value="">Selecione</option>
-          {candidates.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} — {ROLE_NAME[p.role]}
-            </option>
-          ))}
-        </SelectInput>
-      </Field>
-      <Field label="Prazo" htmlFor="prazo" hint="Prazo vencido não altera a pontuação.">
-        <TextInput id="prazo" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-      </Field>
-      <Btn variant="secondary" onClick={save} loading={busy} disabled={!userId}>
-        Salvar responsável
-      </Btn>
-      {error && (
-        <p role="alert" className="text-sm font-medium text-red-700 md:col-span-3">
-          {error}
-        </p>
-      )}
+      <div className="grid items-start gap-4 md:grid-cols-12">
+        <Field label="Responsável" htmlFor="responsavel" className="md:col-span-7">
+          <SelectInput id="responsavel" value={userId} onChange={(e) => setUserId(e.target.value)}>
+            <option value="">Selecione</option>
+            {candidates.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {ROLE_NAME[p.role]}
+              </option>
+            ))}
+          </SelectInput>
+        </Field>
+        <Field label="Prazo" htmlFor="prazo" hint="Prazo vencido não altera a pontuação." className="md:col-span-5">
+          <TextInput id="prazo" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+        </Field>
+      </div>
+      <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+        {error ? (
+          <p role="alert" className="text-sm font-medium text-red-700">
+            {error}
+          </p>
+        ) : (
+          <span className="text-xs text-slate-500">{item.answerer ? `Atual: ${item.answerer.name}` : 'Sem responsável definido.'}</span>
+        )}
+        <Btn variant="secondary" onClick={save} loading={busy} disabled={!userId} className="sm:min-w-[160px]">
+          Salvar responsável
+        </Btn>
+      </div>
     </section>
   );
 }

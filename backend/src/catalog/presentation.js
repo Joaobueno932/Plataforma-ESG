@@ -1,10 +1,12 @@
 /**
  * Apresentação dos cartões de alternativa (cor da faixa e da borda).
  *
- * Origem das cores padrão: cadernos oficiais (ex.: Caderno Geral, GE 01 e GE 02), conferidos
- * página a página — Não conforme #D2232A, Iniciante #6E7D8F, Sensibilizada #99D4E5,
- * Consciente #FFBC24, Engajada #40AD49. Nível sem cor documentada fica **sem** cor padrão
- * (a interface usa o neutro); nada de cor inventada, e nunca roxo para Engajada.
+ * Origem das cores padrão: cor de preenchimento da faixa de cada nível nos 9 cadernos oficiais em
+ * PDF (tools/level_colors.py, 24/10/2026) — Não conforme #D2232A (139/139), Iniciante #6E7D8F
+ * (41/45), Sensibilizada #99D4E5 (84/91), Consciente #FFBC24 (116/124), Engajada #40AD49
+ * (124/124) e Conforme #40AD49 (15/15: nos indicadores binários o nível de atendimento usa o
+ * mesmo verde de Engajada). Nível sem cor documentada fica **sem** cor padrão (a interface usa o
+ * neutro); nada de cor inventada, e nunca roxo para Engajada.
  *
  * A Administração pode definir a cor de cada alternativa no editor do catálogo; essa escolha
  * fica gravada em `answers.presentation` como JSON `{"color":"#RRGGBB"}` e prevalece.
@@ -15,6 +17,7 @@ const OFFICIAL = [
   { match: /^sensibilizad[ao]$/i, color: '#99D4E5' },
   { match: /^consciente$/i, color: '#FFBC24' },
   { match: /^engajad[ao]$/i, color: '#40AD49' },
+  { match: /^conforme$/i, color: '#40AD49' },
 ];
 
 const HEX = /^#[0-9a-f]{6}$/i;

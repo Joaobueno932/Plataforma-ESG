@@ -1,7 +1,11 @@
 const config = require('./config');
 
 /** Formato de paginação observado na API original (GET /companies, GET /users). */
-function paginate(req, rows, { defaultPerPage = 5, basePath }) {
+/**
+ * `withTotals` acrescenta `total` e `perPage` (rodapé "x–y de N") sem mudar o formato das demais
+ * listas, que seguem o contrato da API original.
+ */
+function paginate(req, rows, { defaultPerPage = 5, basePath, withTotals = false }) {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const perPage = Math.max(1, parseInt(req.query.perPage, 10) || defaultPerPage);
   const numberOfPages = Math.max(1, Math.ceil(rows.length / perPage));
@@ -9,6 +13,7 @@ function paginate(req, rows, { defaultPerPage = 5, basePath }) {
   const link = (p) => `${origin}${basePath}/?page=${p}&perPage=${perPage}`;
   return {
     contentCount: rows.slice((page - 1) * perPage, page * perPage).length,
+    ...(withTotals ? { total: rows.length, perPage } : {}),
     page,
     numberOfPages,
     nextPage: page < numberOfPages ? link(page + 1) : 'no next page',

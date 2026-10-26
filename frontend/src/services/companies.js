@@ -13,6 +13,14 @@ export const getCompany = (id) => api.get(`/companies/${id}`);
 export const createCompany = (body) => api.post('/companies', body);
 export const updateCompany = (id, body) => api.patch(`/companies/${id}`, body);
 export const deleteCompany = (id) => api.delete(`/companies/${id}`);
+
+/** Logo da empresa por arquivo (PNG, JPEG ou WebP); o servidor valida o conteúdo real. */
+export function uploadCompanyLogo(id, file) {
+  const form = new FormData();
+  form.append('file', file, file.name || 'logo');
+  return api.post(`/companies/${id}/logo`, form);
+}
+export const removeCompanyLogo = (id) => api.delete(`/companies/${id}/logo`);
 export const getCompanyFiles = async () => (await api.get('/companies/get/files')).data;
 /** Liberação operacional do processo para auditoria — Administração FIEMS. */
 export const releaseAudit = (companyId) => api.post(`/reports/releaseAudit/${companyId}`);

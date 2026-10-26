@@ -30,9 +30,9 @@ export function CompanySearch({ changeSelect, data, textField = 'bussinessName',
 
   return (
     <div className="flex flex-col relative">
-      <div className="flex items-center gap-2 w-full h-14 rounded-lg border-1 px-4 bg-neutral-01 shadow-sm">
+      <div className="flex h-10 w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 shadow-sm focus-within:border-primary-03 focus-within:ring-2 focus-within:ring-primary-03/30">
         <button type="button" onClick={() => filter(inputRef.current?.value)} aria-label="Pesquisar">
-          <FiSearch size="1.25rem" className="stroke-neutral-03" />
+          <FiSearch size="1.1rem" className="text-slate-400" aria-hidden />
         </button>
         <input
           ref={inputRef}
@@ -40,17 +40,17 @@ export function CompanySearch({ changeSelect, data, textField = 'bussinessName',
           name="search"
           id="search"
           placeholder={placeholder}
-          className="outline-none w-full bg-transparent"
+          className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
           onChange={(e) => filter(e.target.value)}
         />
       </div>
       {open && (
-        <div className={`flex flex-col w-full overflow-y-auto max-h-[170px] absolute top-14 z-10 ${open && 'shadow-md'}`} ref={listRef}>
+        <div className={`absolute top-11 z-10 flex max-h-[220px] w-full flex-col overflow-y-auto rounded-lg border border-slate-200 bg-white ${open && results.length ? 'shadow-lg' : 'hidden'}`} ref={listRef}>
           {results.map((item) => (
             <button
               key={item.id}
               type="button"
-              className="bg p-4 rounded border-[1px] border-neutral-02 hover:bg-neutral-01 text-start bg-white"
+              className="border-b border-slate-100 bg-white px-3 py-2.5 text-start text-sm text-slate-800 last:border-0 hover:bg-slate-50"
               onClick={() => {
                 changeSelect(item.id, item);
                 setOpen(false);

@@ -43,7 +43,7 @@ export const AnswerCardPoints = ({ children }) => (
 );
 export const AnswerCardText = ({ children }) => <p className="text-center w-52 font-normal leading-7">{children}</p>;
 /** Marca do nível mínimo exigido pelo indicador (não se deduz da pontuação). */
-export const AnswerCardMandatory = () => <span className="text-sm font-bold">Obrigatória*</span>;
+export const AnswerCardMandatory = () => <span className="text-sm font-bold">Mínimo exigido</span>;
 export const AnswerCardSelected = () => (
   <div className="absolute top-0 right-0">
     <IoCheckmarkCircle size="2rem" className="fill-[#19FB14]" />

@@ -6,13 +6,14 @@ import { IoArrowBack } from 'react-icons/io5';
 import { useAuth } from '@/contexts/auth';
 import { notify } from '@/lib/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EmptyState, ErrorState, SkeletonRows } from '@/components/esg/ui';
+import { EmptyState, ErrorState, PAGE, SkeletonRows } from '@/components/esg/ui';
 import { useCycle } from '@/components/cycle/use-cycle';
 import { CycleHeader } from '@/components/cycle/cycle-header';
 import { Overview } from '@/components/cycle/overview';
 import { IndicatorList } from '@/components/cycle/indicator-list';
 import { AnswerDialog } from '@/components/cycle/answer-dialog';
 import { PendingsPanel, ResultPanel, TeamPanel } from '@/components/cycle/panels';
+import { MaturityEditor } from '@/components/catalog/maturity-editor';
 
 /**
  * Tela do ciclo da empresa: visão geral, indicadores (em qualquer ordem, com busca e filtros),
@@ -40,6 +41,9 @@ function CycleWorkspace() {
     setOpenId(item.id);
   };
   const [tab, setTab] = useState('indicadores');
+  // Lápis de maturidades: só aparece com a capacidade; o servidor exige `catalog.manage`.
+  const [maturityFor, setMaturityFor] = useState(null);
+  const onEditMaturities = can.editMaturities ? (item) => setMaturityFor(item.question?.id || null) : null;
   const openItem = items.find((i) => i.id === openId && !i.summary) || null;
 
   const onSaved = useCallback(async (itemId) => cycle.refreshItem(itemId), [cycle]);
@@ -53,19 +57,19 @@ function CycleWorkspace() {
 
   if (status === 'loading' || !userLogged)
     return (
-      <div className="esg-surface px-4 py-6 sm:px-8 lg:ml-56">
+      <div className={PAGE}>
         <SkeletonRows rows={6} />
       </div>
     );
   if (status === 'error')
     return (
-      <div className="esg-surface px-4 py-6 sm:px-8 lg:ml-56">
+      <div className={PAGE}>
         <ErrorState message={error} onRetry={cycle.load} />
       </div>
     );
   if (!report)
     return (
-      <div className="esg-surface px-4 py-6 sm:px-8 lg:ml-56">
+      <div className={PAGE}>
         <EmptyState title="Esta empresa ainda não tem ciclo aberto" description="O ciclo é aberto no cadastro da empresa, com o caderno e a versão do catálogo." />
       </div>
     );
@@ -74,7 +78,7 @@ function CycleWorkspace() {
   const openPendings = pendings.filter((p) => ['aberta', 'em-andamento'].includes(p.status)).length;
 
   return (
-    <div className="esg-surface flex flex-col gap-6 px-4 pb-16 pt-2 sm:px-8 lg:ml-56">
+    <div className={PAGE}>
       <Link href="/companies" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-[#0D5DA8] hover:underline">
         <IoArrowBack aria-hidden /> Empresas
       </Link>
@@ -96,7 +100,7 @@ function CycleWorkspace() {
           <Overview report={report} items={items} workflow={workflow} pendings={pendings} role={role} />
         </TabsContent>
         <TabsContent value="indicadores">
-          <IndicatorList items={items} pendings={pendings} report={report} user={userLogged} actionLabel={actionLabel} onOpen={open} />
+          <IndicatorList items={items} pendings={pendings} report={report} user={userLogged} actionLabel={actionLabel} onOpen={open} onEditMaturities={onEditMaturities} />
         </TabsContent>
         <TabsContent value="pendencias">
           <PendingsPanel pendings={pendings} items={items} onOpenItem={open} onChanged={cycle.refreshPendings} />
@@ -126,7 +130,9 @@ function CycleWorkspace() {
         people={company?.users}
         onSaved={onSaved}
         returnFocusRef={triggerRef}
+        onEditMaturities={onEditMaturities}
       />
+      <MaturityEditor questionId={maturityFor} open={!!maturityFor} onOpenChange={(v) => !v && setMaturityFor(null)} />
     </div>
   );
 }

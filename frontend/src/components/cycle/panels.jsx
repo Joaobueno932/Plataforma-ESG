@@ -133,7 +133,7 @@ export function ResultPanel({ report, auditedVisible }) {
               {data.eligible === null ? 'Elegibilidade ainda não determinada' : data.eligible ? 'Elegível à certificação' : 'Não elegível à certificação'}
             </span>
           </div>
-          <p className="text-sm text-slate-600">Rating matemático e elegibilidade são verificações separadas: um obrigatório não atendido impede a certificação mesmo com pontuação alta.</p>
+          <p className="text-sm text-slate-600">Rating matemático e elegibilidade são verificações separadas: uma maturidade mínima exigida não atendida impede a certificação mesmo com pontuação alta.</p>
           {data.impediments?.length > 0 && (
             <ul className="flex flex-col gap-1.5">
               {data.impediments.map((imp, i) => (

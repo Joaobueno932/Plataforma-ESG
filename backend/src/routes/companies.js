@@ -1,4 +1,8 @@
 const express = require('express');
+const multer = require('multer');
+const config = require('../config');
+const images = require('../images');
+const limiter = require('../ratelimit');
 const db = require('../db');
 const ser = require('../serializers');
 const { paginate } = require('../pagination');
@@ -13,6 +17,30 @@ router.use('/companies', authenticate);
 
 const trim = (value) => String(value ?? '').trim();
 
+/**
+ * Data da liberação do acesso: é uma data (sem hora). "AAAA-MM-DD" é gravada como meia-noite UTC
+ * daquele dia — e lida/exibida em UTC na interface —, para não "voltar um dia" no fuso de MS.
+ */
+function accessDateOf(value) {
+  const text = trim(value);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00.000Z` : text;
+  const parsed = new Date(day);
+  if (!text || Number.isNaN(parsed.getTime())) throw badRequest('data da liberação do acesso inválida; use AAAA-MM-DD');
+  return parsed.toISOString();
+}
+
+/**
+ * Logo: só pelo envio (`POST /companies/:id/logo`). No cadastro/edição o campo aceita apenas a
+ * remoção (null/"") ou o mesmo valor atual — inclusive URLs antigas, que continuam valendo.
+ */
+function assertLogoField(value, current = null) {
+  if (value === undefined) return undefined;
+  const next = value || null;
+  if (next === (current ?? null)) return next;
+  if (next) throw badRequest('envie a logo como arquivo (POST /companies/:id/logo); URL não é aceita');
+  return null;
+}
+
 /** Linha da listagem, no formato consumido pela interface (projeção pura, sem consulta). */
 function listRow(c, progress) {
   const p = progress.get(c.id) || { status: 'Pending', answered: 0, total: 0 };
@@ -23,6 +51,7 @@ function listRow(c, progress) {
     cnpj: c.cnpj,
     size: c.size,
     section: c.section,
+    avatar: c.avatar ?? null,
     status: c.status ?? 'ACTIVE',
     accessDate: c.accessDate,
     report: { status: p.status, _count: { answeredQuestions: p.answered, totalQuestions: p.total } },
@@ -164,7 +193,9 @@ router.get('/companies/:id', async (req, res) => {
 router.post('/companies', authz.authorize('companies.manage'), async (req, res) => {
   const b = req.body || {};
   for (const field of ['legalName', 'bussinessName', 'email', 'cnpj', 'accessDate', 'size', 'section'])
-    if (!b[field]) throw badRequest(`o campo ${field} é obrigatório`);
+    if (!trim(b[field])) throw badRequest(`o campo ${field} é obrigatório`);
+  assertLogoField(b.avatar);
+  const accessDate = accessDateOf(b.accessDate);
   if (!v.COMPANY_SIZES.includes(b.size)) throw badRequest('porte inválido');
   if (!v.isValidEmail(b.email)) throw badRequest('informe um e-mail válido');
   const cnpj = v.onlyDigits(b.cnpj);
@@ -185,10 +216,10 @@ router.post('/companies', authz.authorize('companies.manage'), async (req, res) 
       trim(b.legalName),
       v.normalizeEmail(b.email),
       cnpj,
-      new Date(b.accessDate).toISOString(),
+      accessDate,
       b.size,
       b.section,
-      b.avatar || null,
+      null, // logo: enviada depois, pela rota própria
       req.principal.user.id,
       req.principal.user.id,
       at,
@@ -204,8 +235,12 @@ router.patch('/companies/:id', authz.authorize('companies.manage'), async (req, 
   const c = await findCompany(req.params.id);
   const b = req.body || {};
   const patch = {};
-  for (const field of ['bussinessName', 'legalName', 'avatar'])
-    if (b[field] !== undefined) patch[field] = b[field] === '' && field === 'avatar' ? null : trim(b[field]) || null;
+  for (const field of ['bussinessName', 'legalName'])
+    if (b[field] !== undefined) {
+      if (!trim(b[field])) throw badRequest(`o campo ${field} é obrigatório`);
+      patch[field] = trim(b[field]);
+    }
+  if (b.avatar !== undefined && (b.avatar || null) !== (c.avatar ?? null)) patch.avatar = assertLogoField(b.avatar, c.avatar);
   if (b.email !== undefined) {
     if (!v.isValidEmail(b.email)) throw badRequest('informe um e-mail válido');
     patch.email = v.normalizeEmail(b.email);
@@ -227,7 +262,7 @@ router.patch('/companies/:id', authz.authorize('companies.manage'), async (req, 
     // Troca de caderno vale para a próxima avaliação: ciclos existentes mantêm o seu caderno.
     patch.section = b.section;
   }
-  if (b.accessDate !== undefined) patch.accessDate = new Date(b.accessDate).toISOString();
+  if (b.accessDate !== undefined) patch.accessDate = accessDateOf(b.accessDate);
   if (b.access !== undefined) patch.access = b.access ? 1 : 0;
   if (b.status !== undefined) {
     const status = String(b.status).toUpperCase();
@@ -253,6 +288,43 @@ router.patch('/companies/:id', authz.authorize('companies.manage'), async (req, 
       companyId: c.id,
       details: { fields: keys, before: Object.fromEntries(keys.map((k) => [k, c[k] ?? null])), after: Object.fromEntries(keys.map((k) => [k, patch[k]])) },
     });
+  }
+  res.json(await ser.company(await findCompany(c.id), { withReport: true, withCycles: true }));
+});
+
+/* ------------------------------------------------------------------ logo */
+
+const logoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxLogoBytes, files: 1 } }).single('file');
+
+/**
+ * Envio (ou troca) da logo: somente Administração. O arquivo é validado pelo conteúdo real,
+ * limpo de metadados e gravado com nome gerado pelo servidor; a logo anterior só é apagada se
+ * tiver sido enviada por aqui (URL antiga não é tocada).
+ */
+router.post('/companies/:id/logo', authz.authorize('companies.manage'), async (req, res) => {
+  const c = await findCompany(req.params.id);
+  limiter.hit('upload', req, { extra: req.principal.user.id, max: config.rateLimit.uploadMax, windowMs: 60 * 1000 });
+  await new Promise((resolve, reject) => logoUpload(req, res, (err) => (err ? reject(err) : resolve())));
+  if (!req.file) throw badRequest('envie a imagem no campo "file"');
+  const image = images.inspect(req.file.buffer, 'logo');
+  const stored = images.store(image, 'logo');
+  try {
+    await db.run('UPDATE companies SET avatar = ?, updatedById = ?, updatedAt = ? WHERE id = ?', stored, req.principal.user.id, db.now(), c.id);
+  } catch (err) {
+    images.discard(stored, 'logo'); // sem arquivo órfão se o banco falhar
+    throw err;
+  }
+  images.discard(c.avatar, 'logo');
+  await authz.audit(req, 'company.logo', { entity: 'companies', entityId: c.id, companyId: c.id, details: { action: 'set', width: image.width, height: image.height, format: image.ext } });
+  res.status(201).json(await ser.company(await findCompany(c.id), { withReport: true, withCycles: true }));
+});
+
+router.delete('/companies/:id/logo', authz.authorize('companies.manage'), async (req, res) => {
+  const c = await findCompany(req.params.id);
+  if (c.avatar) {
+    await db.run('UPDATE companies SET avatar = NULL, updatedById = ?, updatedAt = ? WHERE id = ?', req.principal.user.id, db.now(), c.id);
+    images.discard(c.avatar, 'logo');
+    await authz.audit(req, 'company.logo', { entity: 'companies', entityId: c.id, companyId: c.id, details: { action: 'remove', before: c.avatar } });
   }
   res.json(await ser.company(await findCompany(c.id), { withReport: true, withCycles: true }));
 });

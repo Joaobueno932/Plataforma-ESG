@@ -30,11 +30,13 @@ export function CompaniesProvider({ children }) {
   useEffect(() => {
     if (!userLogged) return;
     if (pathname === '/companies') {
-      if (userLogged.role === 'ADMIN') {
+      // Administração vê a carteira; consultoria, auditoria e supervisão (sem empresa própria)
+      // recebem da API só as empresas com vínculo vigente; a empresa vê a si mesma.
+      if (userLogged.role === 'ADMIN' || !userLogged.companyId) {
         companiesApi
           .getCompanies(undefined, PER_PAGE, search)
           .then(({ data }) => applyPage(data))
-          .catch((err) => console.error('Erro ao obter todas as Empresas:', err));
+          .catch((err) => console.error('Erro ao obter as Empresas:', err));
       } else {
         companiesApi
           .getCompany(userLogged.companyId)
@@ -49,6 +51,16 @@ export function CompaniesProvider({ children }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, userLogged]);
+
+  /** Recarrega a página atual da lista (após cadastro/edição), sem recarregar a tela. */
+  const refreshCompanies = async () => {
+    try {
+      const { data } = await companiesApi.getCompanies(currentPage, PER_PAGE, search);
+      applyPage(data);
+    } catch (err) {
+      console.error('Erro ao atualizar a lista de empresas:', err);
+    }
+  };
 
   const searchCompany = async (value) => {
     const term = value.trim();
@@ -139,6 +151,7 @@ export function CompaniesProvider({ children }) {
       value={{
         companies,
         searchCompany,
+        refreshCompanies,
         registerCompany,
         handleNextPageCompanies: goToPage(currentPage + 1, 'próxima página'),
         handlePreviousPageCompanies: goToPage(currentPage - 1, 'página anterior'),

@@ -1,13 +1,27 @@
 import { api } from './api';
 
-export function getUsers(page = 1, perPage = 5, name) {
-  const params = new URLSearchParams({ page: String(page), perPage: String(perPage) });
-  if (name) params.set('name', name);
-  return api.get(`/users?${params}`);
+const query = (params = {}) => {
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== null && value !== '') q.set(key, String(value));
+  return q.toString();
+};
+
+/**
+ * Pessoas (Administração) e Equipe (empresa em contexto). Parâmetros iguais nas duas:
+ * `q`, `role`, `status`, `created` (7d | 30d | 12m | year), `sort`, `dir`, `page`, `perPage`.
+ */
+export const getUsers = (params = {}) => api.get(`/users?${query({ page: 1, perPage: 10, ...params })}`);
+export const getCompanyUsers = (params = {}) => api.get(`/users/getUsers/company?${query({ page: 1, perPage: 10, ...params })}`);
+
+/** Foto de perfil: imagem já recortada (Blob); o servidor valida tipo real, tamanho e dimensões. */
+export function uploadUserAvatar(id, blob) {
+  const form = new FormData();
+  form.append('file', blob, blob.name || 'foto.jpg');
+  return api.post(`/users/${id}/avatar`, form);
 }
+export const removeUserAvatar = (id) => api.delete(`/users/${id}/avatar`);
 
 export const createUser = (body) => api.post('/users', body);
-export const getCompanyUsers = () => api.get('/users/getUsers/company');
 export const updateUser = (id, body) => api.patch(`/users/${id}`, body);
 export const deleteUser = (id) => api.delete(`/users/${id}`);
 export const changeUserCompany = (id, companyId) => api.patch(`/users/changeCompany/${id}`, { companyId });

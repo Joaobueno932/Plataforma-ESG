@@ -1,5 +1,7 @@
 'use client';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/auth';
+import { AppHeader } from './app-shell';
 
 const TITLES = {
   companies: 'Empresas',
@@ -9,20 +11,36 @@ const TITLES = {
   settings: 'Configurações',
 };
 
-// Faixa superior das telas internas, na cor da marca.
+const SUBTITLE = 'Gerenciamento e acompanhamento';
+
+/** Título da tela: o ciclo é "Avaliação ESG"; para quem só gere a própria equipe, "Pessoas" é "Equipe" (o nome do menu). */
+function titleFor(pathname, user) {
+  const segment = pathname.split('/')[1];
+  if (segment === 'companies' && pathname.split('/').length > 2) return 'Avaliação ESG';
+  if (pathname.includes('response-indicator')) return 'Avaliação ESG';
+  const roles = user?.roles || [user?.role];
+  if (segment === 'users' && roles.includes('MANAGER') && !roles.includes('ADMIN')) return 'Equipe';
+  return TITLES[segment];
+}
+
+// Cabeçalho institucional das telas internas — o mesmo para todos os perfis.
 export function Header() {
   const pathname = usePathname();
-  const segment = pathname.split('/')[1];
+  const router = useRouter();
+  const { userLogged, logout } = useAuth();
   const hidden = ['auto-avaliacao', 'indicatorExtract', 'recovery-password'].some((p) => pathname.includes(p));
   if (pathname === '/' || hidden) return null;
-  const title = segment === 'companies' && pathname.split('/').length > 2 ? 'Avaliação ESG' : TITLES[segment];
   return (
-    <header
-      className={`mb-5 flex min-h-[5rem] w-auto items-center bg-gradient-to-r from-[#0D3969] to-[#0D5DA8] pl-16 pr-6 shadow-md sm:pr-8 lg:pl-8 ${
-        pathname.includes('response-indicator') ? 'ml-0' : 'lg:ml-56'
-      }`}
-    >
-      <h2 className="text-xl font-semibold text-white sm:text-2xl">{title}</h2>
-    </header>
+    <AppHeader
+      title={titleFor(pathname, userLogged)}
+      subtitle={SUBTITLE}
+      user={userLogged}
+      inset={!pathname.includes('response-indicator')}
+      onSettings={(section) => router.push(section === 'foto' ? '/settings#foto' : '/settings')}
+      onLogout={async () => {
+        await logout();
+        router.push('/');
+      }}
+    />
   );
 }

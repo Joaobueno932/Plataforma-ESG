@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth';
-import { SkeletonRows } from '@/components/esg/ui';
+import { PAGE, PageHeading, SkeletonRows } from '@/components/esg/ui';
 import { CatalogAdmin } from '@/components/catalog/catalog-admin';
 
 /**
@@ -20,14 +20,11 @@ export default function IndicatorsPage() {
   }, [userLogged, isAdmin, router]);
 
   return (
-    <div className="esg-surface flex flex-col gap-5 px-4 pb-16 sm:px-8 lg:ml-56">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Cadernos e indicadores</h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          Toda alteração acontece em uma <strong>edição em rascunho</strong> criada a partir da versão em vigor. Ao publicar, ela passa a valer para os ciclos
-          novos; ciclos já abertos continuam com o catálogo que congelaram.
-        </p>
-      </div>
+    <div className={PAGE}>
+      <PageHeading
+        title="Cadernos e indicadores"
+        description="Toda alteração acontece em uma edição em rascunho criada a partir da versão em vigor. Ao publicar, ela passa a valer para os ciclos novos; ciclos já abertos continuam com o catálogo que congelaram."
+      />
       {!userLogged || !isAdmin ? <SkeletonRows rows={5} /> : <CatalogAdmin />}
     </div>
   );

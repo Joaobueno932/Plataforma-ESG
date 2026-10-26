@@ -14,7 +14,7 @@ test('módulo empresas', async (t) => {
     assert.deepEqual(Object.keys(r.body).sort(), ['contentCount', 'data', 'nextPage', 'numberOfPages', 'page', 'previousPage']);
     assert.equal(r.body.nextPage, 'no next page');
     const row = r.body.data[0];
-    assert.deepEqual(Object.keys(row).sort(), ['accessDate', 'bussinessName', 'cnpj', 'id', 'legalName', 'report', 'section', 'size', 'status']);
+    assert.deepEqual(Object.keys(row).sort(), ['accessDate', 'avatar', 'bussinessName', 'cnpj', 'id', 'legalName', 'report', 'section', 'size', 'status']);
     // Nenhum indicador respondido ainda: respondidos = 0 e total = 8 (6 gerais + 2 do setorial).
     assert.equal(row.report._count.answeredQuestions, 0);
     assert.equal(row.report._count.totalQuestions, 8);
@@ -62,7 +62,9 @@ test('módulo empresas', async (t) => {
     assert.equal(search.body.data.length, 1);
     const id = search.body.data[0].id;
 
-    const upd = await s.api('PATCH', `/companies/${id}`, { token: admin, body: { bussinessName: 'Nova Editada', avatar: 'https://x/y.png' } });
+    // Logo só por envio de arquivo (POST /companies/:id/logo): URL nova é recusada.
+    assert.equal((await s.api('PATCH', `/companies/${id}`, { token: admin, body: { avatar: 'https://x/y.png' } })).status, 400);
+    const upd = await s.api('PATCH', `/companies/${id}`, { token: admin, body: { bussinessName: 'Nova Editada' } });
     assert.equal(upd.status, 200);
     assert.equal(upd.body.bussinessName, 'Nova Editada');
     const events = await s.api('GET', `/admin/events?entity=companies&entityId=${id}`, { token: admin });
