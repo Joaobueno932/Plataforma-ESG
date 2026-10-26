@@ -1,4 +1,8 @@
 const express = require('express');
+const multer = require('multer');
+const config = require('../config');
+const images = require('../images');
+const { filterPeople, sortPeople } = require('../people');
 const passwords = require('../password');
 const db = require('../db');
 const ser = require('../serializers');
@@ -6,6 +10,7 @@ const { paginate } = require('../pagination');
 const { wrap, badRequest, forbidden, notFound, conflict, asyncRouter } = require('../http');
 const { authenticate, revokeUserSessions } = require('../auth');
 const authz = require('../authz');
+const limiter = require('../ratelimit');
 
 const router = asyncRouter();
 router.use('/users', authenticate);
@@ -92,20 +97,12 @@ async function grantLink(req, userId, companyId, role) {
 /* ------------------------------------------------------------------ listagens */
 
 router.get('/users', authz.authorize('users.read'), async (req, res) => {
-  const name = trim(req.query.name);
-  const status = trim(req.query.status).toUpperCase();
-  const found = await db.all(
-    `SELECT * FROM users
-      WHERE deletedAt IS NULL
-        ${name ? 'AND (lower(name) LIKE ? OR lower(email) LIKE ?)' : ''}
-        ${status ? 'AND status = ?' : ''}
-      ORDER BY createdAt DESC`,
-    ...(name ? [`%${name.toLowerCase()}%`, `%${name.toLowerCase()}%`] : []),
-    ...(status ? [status] : []),
-  );
+  // Busca por nome, e-mail ou função, filtros e ordenação: `people.js` (mesmas regras da Equipe).
+  const rows = await db.all('SELECT * FROM users WHERE deletedAt IS NULL');
+  const found = sortPeople(filterPeople(rows, req.query), req.query, { sort: 'createdAt', dir: 'desc' });
   // Pagina antes de serializar: cada pessoa custa algumas consultas (perfis, vínculos, empresa),
   // e serializar a base inteira para devolver 5 linhas esgotava o pool de conexões (503 sob carga).
-  const result = paginate(req, found, { defaultPerPage: 5, basePath: '/users' });
+  const result = paginate(req, found, { defaultPerPage: 5, basePath: '/users', withTotals: true });
   result.data = await Promise.all(result.data.map((u) => ser.userWithProfiles(u)));
   res.json(result);
 });
@@ -117,16 +114,28 @@ router.get('/users', authz.authorize('users.read'), async (req, res) => {
 router.get('/users/getUsers/company', async (req, res) => {
   const companyId = trim(req.query.companyId) || req.context.companyId;
   await authz.assertCompanyScope(req, companyId, 'company.users.read');
+  // `createdAt` e `avatar` fazem parte da projeção: a tela Equipe mostra a data de cadastro e a
+  // foto (antes a data não vinha e a interface exibia "undefined NaN, NaN").
   const rows = (
     await db.all(
-      `SELECT DISTINCT u.id, u.name, u.email, u.jobTitle, u.status, l.role
+      `SELECT DISTINCT u.id, u.name, u.email, u.jobTitle, u.status, u.avatar, u.createdAt, l.role
          FROM user_company_links l JOIN users u ON u.id = l.userId
-        WHERE l.companyId = ? AND l.revokedAt IS NULL AND u.deletedAt IS NULL
-        ORDER BY u.name`,
+        WHERE l.companyId = ? AND l.revokedAt IS NULL AND u.deletedAt IS NULL`,
       companyId,
     )
-  ).map((u) => ({ id: u.id, name: u.name, email: u.email, jobTitle: u.jobTitle ?? null, status: u.status, role: u.role, companyId }));
-  res.json(paginate(req, rows, { defaultPerPage: 50, basePath: '/users/getUsers/company' }));
+  ).map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    jobTitle: u.jobTitle ?? null,
+    status: u.status,
+    avatar: u.avatar ?? null,
+    createdAt: u.createdAt ?? null,
+    role: u.role,
+    companyId,
+  }));
+  const found = sortPeople(filterPeople(rows, req.query), req.query, { sort: 'name', dir: 'asc' });
+  res.json(paginate(req, found, { defaultPerPage: 50, basePath: '/users/getUsers/company', withTotals: true }));
 });
 
 router.get('/users/:id', async (req, res) => {
@@ -292,7 +301,12 @@ router.patch(
     }
     if (body.cpf !== undefined) patch.cpf = digits(body.cpf) || null;
     if (body.jobTitle !== undefined) patch.jobTitle = trim(body.jobTitle) || null;
-    if (body.avatar !== undefined) patch.avatar = body.avatar || null;
+    // Foto: só pela rota de envio (validada e gravada pelo servidor). Aqui apenas a remoção
+    // (null) ou o mesmo valor atual são aceitos — nada de URL arbitrária no perfil.
+    if (body.avatar !== undefined && (body.avatar || null) !== (target.avatar ?? null)) {
+      if (body.avatar) throw badRequest('envie a foto por POST /users/:id/avatar');
+      patch.avatar = null;
+    }
 
     if (body.password) {
       if (String(body.password).length < 8) throw badRequest('a senha deve ter no mínimo 8 caracteres');
@@ -341,6 +355,42 @@ router.patch(
     res.json(await ser.userWithProfiles(await findUser(target.id)));
   }),
 );
+
+/* ------------------------------------------------------------------ foto de perfil */
+
+const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxAvatarBytes, files: 1 } }).single('file');
+
+/** A própria pessoa troca a sua foto; a de outra pessoa, só a Administração (`users.manage`). */
+async function assertAvatarEditor(req, target) {
+  if (req.principal.user.id === target.id) return;
+  if (!req.principal.isAdmin) throw forbidden('você não tem permissão para alterar a foto deste usuário');
+  await authz.assertCan(req, 'users.manage');
+}
+
+router.post('/users/:id/avatar', async (req, res) => {
+  const target = await findUser(req.params.id);
+  await assertAvatarEditor(req, target);
+  limiter.hit('upload', req, { extra: req.principal.user.id, max: config.rateLimit.uploadMax, windowMs: 60 * 1000 });
+  await new Promise((resolve, reject) => avatarUpload(req, res, (err) => (err ? reject(err) : resolve())));
+  if (!req.file) throw badRequest('envie a imagem no campo "file"');
+  const image = images.inspect(req.file.buffer, 'avatar');
+  const stored = images.store(image, 'avatar');
+  await db.run('UPDATE users SET avatar = ?, updatedAt = ? WHERE id = ?', stored, db.now(), target.id);
+  images.discard(target.avatar, 'avatar');
+  await authz.audit(req, 'user.avatar', { entity: 'users', entityId: target.id, details: { action: 'set', width: image.width, height: image.height, format: image.ext } });
+  res.status(201).json(await ser.userWithProfiles(await findUser(target.id)));
+});
+
+router.delete('/users/:id/avatar', async (req, res) => {
+  const target = await findUser(req.params.id);
+  await assertAvatarEditor(req, target);
+  if (target.avatar) {
+    await db.run('UPDATE users SET avatar = NULL, updatedAt = ? WHERE id = ?', db.now(), target.id);
+    images.discard(target.avatar, 'avatar');
+    await authz.audit(req, 'user.avatar', { entity: 'users', entityId: target.id, details: { action: 'remove' } });
+  }
+  res.json(await ser.userWithProfiles(await findUser(target.id)));
+});
 
 /* ------------------------------------------------------------------ situação */
 

@@ -1,0 +1,505 @@
+{
+ "fonte": "Cadernos em PDF da pasta Documentação (marca visível OBRIGATÓRIO sobre a coluna do nível), conferidos com a aba Questionário da planilha oficial por tools/minimum_crosscheck.py",
+ "indicadores": [
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE01",
+   "indicador": "Licenciamento ambiental",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 6"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE02",
+   "indicador": "Cadastro Técnico Federal (IBAMA) e TCFA",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 7"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE03",
+   "indicador": "Outorga de uso da água",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 8"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE04",
+   "indicador": "Histórico de responsabilizações administrativas, cíveis e criminais ambientais",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 9"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE05",
+   "indicador": "Gestão energética",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 10"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE07",
+   "indicador": "Gestão hídrica",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 12"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE08",
+   "indicador": "Efluentes líquidos industriais",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 13"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE10",
+   "indicador": "Gestão de resíduos sólidos",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 15"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE11",
+   "indicador": "Armazenamento de resíduos sólidos",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 16"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GE12",
+   "indicador": "Destinação de resíduos sólidos",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 17"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GG08",
+   "indicador": "Lei Geral de Proteção de Dados (LGPD)",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 54"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS01",
+   "indicador": "Certidão Negativa de Débitos Trabalhistas",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 21"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS02",
+   "indicador": "Certidão Negativa de Regularidade Fiscal",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 22"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS03",
+   "indicador": "Registro de Funcionários",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 23"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS04",
+   "indicador": "Certificado de Regularidade – Corpo de Bombeiros",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 24"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS05",
+   "indicador": "Programa de Gerenciamento de Riscos (PGR)",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 25"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS06",
+   "indicador": "Alvarás Sanitários e de Funcionamento",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 26"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS07",
+   "indicador": "Programa de Controle Médico de Saúde Ocupacional (PCMSO)",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 27"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS08",
+   "indicador": "Inexistência de trabalho infantil, forçado ou análogo ao escravo",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 28"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS09",
+   "indicador": "Trabalho estrangeiro",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 29"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS10",
+   "indicador": "Assédio e Abuso",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 30"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS12",
+   "indicador": "Equipamentos de Proteção Individual (EPI)",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 32"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS14",
+   "indicador": "Condição das Instalações",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 34"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS15",
+   "indicador": "Diversidade",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 35"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS17",
+   "indicador": "Empregabilidade de pessoas com deficiência (PcD)",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 37"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS18",
+   "indicador": "Benefícios",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 38"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS19",
+   "indicador": "Remuneração",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 39"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS21",
+   "indicador": "Desenvolvimento profissional",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 41"
+  },
+  {
+   "caderno": "Geral",
+   "setor": null,
+   "codigo": "GS24",
+   "indicador": "Gestão da Cadeia de Valor",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "Caderno GERAL 1.pdf, p. 44"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "A",
+   "codigo": "AE03",
+   "indicador": "Logística reversa de embalagens pós-consumo",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "A - Alimentos e bebidas 1.pdf, p. 8"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "A",
+   "codigo": "AS01",
+   "indicador": "Rotulagem e publicidade",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "A - Alimentos e bebidas 1.pdf, p. 12"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "A",
+   "codigo": "AS02",
+   "indicador": "Acurácia das informações",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "A - Alimentos e bebidas 1.pdf, p. 13"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "A",
+   "codigo": "AS03",
+   "indicador": "Registros e selos",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "A - Alimentos e bebidas 1.pdf, p. 14"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "A",
+   "codigo": "AS04",
+   "indicador": "Segurança alimentar (Food Security)",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "A - Alimentos e bebidas 1.pdf, p. 15"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "B",
+   "codigo": "BE04",
+   "indicador": "Logística reversa de embalagens pós consumo",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "B - Frigorifico 1.pdf, p. 9"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "B",
+   "codigo": "BG01",
+   "indicador": "Transporte humanitário",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "B - Frigorifico 1.pdf, p. 16"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "B",
+   "codigo": "BG02",
+   "indicador": "Condenações",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "B - Frigorifico 1.pdf, p. 17"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "B",
+   "codigo": "BS01",
+   "indicador": "Risco ergonômico",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "B - Frigorifico 1.pdf, p. 11"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "B",
+   "codigo": "BS02",
+   "indicador": "Atividades em câmara fria",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "B - Frigorifico 1.pdf, p. 12"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "C",
+   "codigo": "CE01",
+   "indicador": "Recursos naturais não renováveis",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "C_Construção Civil 1.pdf, p. 6"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "C",
+   "codigo": "CE03",
+   "indicador": "Proteção da flora e da fauna",
+   "maturidadeMinima": "Sensibilizada",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "C_Construção Civil 1.pdf, p. 8"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "C",
+   "codigo": "CS03",
+   "indicador": "Equipamentos de Proteção Coletiva (EPC)",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "C_Construção Civil 1.pdf, p. 14"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "D",
+   "codigo": "DE07",
+   "indicador": "Operações de transporte e manejo de recursos e produtos especialmente protegidos",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "D_Industria de Transformação Diversa 1.pdf, p. 12"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "E",
+   "codigo": "ES02",
+   "indicador": "Exposição à radiação",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "E - Energia, Telecomunicações, Resíduos e Similares 1.pdf, p. 13"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "F",
+   "codigo": "FG01",
+   "indicador": "Concessões, lavras, autorizações e outorgas",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "F - Extração de minerais 1.pdf, p. 17"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "G",
+   "codigo": "G1G01",
+   "indicador": "Concessões, lavras, autorizações e outorgas",
+   "maturidadeMinima": "Consciente",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "G - Papel e celulose 1.pdf, p. 17"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "H",
+   "codigo": "HE01",
+   "indicador": "Substâncias restritas",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "H - Calçados e Componentes para Calçados,etc.pdf, p. 6"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "H",
+   "codigo": "HE02",
+   "indicador": "Gestão de produtos químicos",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "H - Calçados e Componentes para Calçados,etc.pdf, p. 7"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "H",
+   "codigo": "HE05",
+   "indicador": "Logística reversa de embalagens pós-consumo",
+   "maturidadeMinima": "Iniciante",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "H - Calçados e Componentes para Calçados,etc.pdf, p. 10"
+  },
+  {
+   "caderno": "Setorial",
+   "setor": "H",
+   "codigo": "HE09",
+   "indicador": "Ruído externo",
+   "maturidadeMinima": "Conforme",
+   "posicao": 2,
+   "pontosNoCaderno": 0,
+   "fonte": "H - Calçados e Componentes para Calçados,etc.pdf, p. 14"
+  }
+ ]
+}

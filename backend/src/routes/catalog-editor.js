@@ -75,6 +75,19 @@ router.put('/catalog/editor/:versionId/sections/:section/cover', async (req, res
 
 /* ---------- indicadores e alternativas ---------- */
 
+/**
+ * Maturidades de um indicador em uso: devolve o mesmo indicador na edição em rascunho (criada se
+ * preciso), para editar sem tocar a versão congelada do ciclo. Somente Administração (router.use).
+ */
+router.post('/catalog/editor/for-question/:questionId', async (req, res) => {
+  const draft = await editor.draftForQuestion(req.params.questionId, { actorId: req.principal.user.id });
+  if (draft.created)
+    await authz.audit(req, 'catalog.edition', { entity: 'catalog_versions', entityId: draft.version.id, details: { label: draft.version.label, from: 'ativa', via: req.params.questionId } });
+  const { indicators } = await editor.editorView(draft.version.id);
+  const found = indicators.find(({ question }) => question.id === draft.questionId);
+  res.status(draft.created ? 201 : 200).json({ ...draft, indicator: await ser.question(found.question, new Map([[found.question.id, found.levels]])) });
+});
+
 router.post('/catalog/editor/:versionId/indicators', async (req, res) => {
   const id = await editor.addIndicator(req.params.versionId, req.body || {});
   await authz.audit(req, 'catalog.indicator.add', { entity: 'questions', entityId: id, details: { versionId: req.params.versionId } });

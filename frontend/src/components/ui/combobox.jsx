@@ -20,9 +20,9 @@ export function Combobox({ data = [], textField = 'name', defaultValue = '', onC
 
   return (
     <div ref={ref} className="relative w-full" style={style}>
-      <div className={`flex items-center h-10 rounded border border-[#ccc] bg-white px-3 ${disabled ? 'opacity-60' : ''}`}>
+      <div className={`flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 shadow-sm focus-within:border-primary-03 focus-within:ring-2 focus-within:ring-primary-03/30 ${disabled ? 'bg-slate-50 opacity-60' : ''}`}>
         <input
-          className="w-full outline-none bg-transparent"
+          className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
           value={text}
           disabled={disabled}
           placeholder={placeholder}
@@ -37,13 +37,13 @@ export function Combobox({ data = [], textField = 'name', defaultValue = '', onC
         </button>
       </div>
       {open && !disabled && (
-        <ul className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded border bg-white shadow-md">
-          {items.length === 0 && <li className="px-3 py-2 text-neutral-03">Nenhum resultado</li>}
+        <ul className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+          {items.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">Nenhum resultado</li>}
           {items.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
-                className="w-full px-3 py-2 text-start hover:bg-neutral-01"
+                className="w-full px-3 py-2 text-start text-sm text-slate-800 hover:bg-slate-50"
                 onClick={() => {
                   setText(item[textField]);
                   setOpen(false);

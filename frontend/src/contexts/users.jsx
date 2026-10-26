@@ -1,68 +1,42 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { createContext, useContext } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import * as usersApi from '@/services/users';
 import { forgotPassword, resetPassword } from '@/services/auth';
 import { notify, updateToast, apiErrorMessage } from '@/lib/toast';
-import { useAuth } from './auth';
 
 const UsersContext = createContext({});
 const reload = () => setTimeout(() => window.location.reload(), 2000);
 
-// Equivalente ao provider 81388 do original.
+/**
+ * Ações sobre contas (cadastro, edição, inativação, vínculos, senha). A listagem de Pessoas e
+ * Equipe — busca, filtros, ordenação e paginação no servidor — fica em
+ * `components/people/use-people-directory.js`.
+ */
 export function UsersProvider({ children }) {
-  const [users, setUsers] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [numberOfPages, setNumberOfPages] = useState(1);
-  const [search, setSearch] = useState(undefined);
   const router = useRouter();
-  const pathname = usePathname();
-  const { userLogged } = useAuth();
 
-  const applyPage = (d) => {
-    setUsers(d.data);
-    setCurrentPage(d.page);
-    setNumberOfPages(d.numberOfPages);
-  };
-
-  useEffect(() => {
-    if (pathname !== '/users' || !userLogged) return;
-    const request = userLogged.role !== 'ADMIN' ? usersApi.getCompanyUsers() : usersApi.getUsers();
-    request
-      .then(({ data }) => applyPage(data))
-      .catch((err) => console.error('Erro ao obter todos os usuários:', err));
-  }, [pathname, userLogged]);
-
-  const registerUser = async (values) => {
+  /** Cadastro; `avatar` (Blob já recortado) é enviado logo após a conta existir. */
+  const registerUser = async (values, { avatar } = {}) => {
     const id = notify('Cadastrando...', 'loading');
     try {
-      await usersApi.createUser(values);
+      const { data } = await usersApi.createUser(values);
+      const created = data?.user ?? data;
+      if (avatar && created?.id) {
+        try {
+          await usersApi.uploadUserAvatar(created.id, avatar);
+        } catch (err) {
+          updateToast(id, `Usuário cadastrado, mas a foto não foi salva: ${apiErrorMessage(err)}`, 'warning');
+          reload();
+          return;
+        }
+      }
       updateToast(id, 'Usuário cadastrado com sucesso!', 'success');
       reload();
     } catch (err) {
       console.error('Erro ao tentar cadastrar usuário:', err);
       updateToast(id, apiErrorMessage(err), 'error');
-    }
-  };
-
-  const searchUser = async (value) => {
-    const term = value.trim();
-    try {
-      const { data } = await usersApi.getUsers(undefined, undefined, term);
-      applyPage(data);
-      setSearch(term);
-    } catch (err) {
-      console.error('Erro ao procurar por um usuário', err);
-    }
-  };
-
-  const goToPage = (page, label) => async () => {
-    try {
-      const { data } = await usersApi.getUsers(page, undefined, search);
-      applyPage(data);
-    } catch (err) {
-      console.error(`Erro ao tentar ir para ${label} do usuário:`, err);
     }
   };
 
@@ -153,15 +127,9 @@ export function UsersProvider({ children }) {
   return (
     <UsersContext.Provider
       value={{
-        users,
         registerUser,
         updateUser,
         deleteUser,
-        searchUser,
-        numberOfPages,
-        currentPage,
-        handleNextPage: goToPage(currentPage + 1, 'próxima página'),
-        handlePreviousPage: goToPage(currentPage - 1, 'página anterior'),
         changeCompany,
         addLink,
         removeLink,

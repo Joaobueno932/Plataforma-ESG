@@ -83,7 +83,7 @@ function validateQuestion(q) {
     if (!a.description) throw badRequest('descrição da resposta é obrigatória');
     if (a.mandatory) mandatoryCount += 1;
   }
-  if (mandatoryCount > 1) throw badRequest('só pode haver um nível mínimo obrigatório por indicador');
+  if (mandatoryCount > 1) throw badRequest('só pode haver um nível de maturidade mínima exigida por indicador');
 }
 
 const slugify = (value) =>

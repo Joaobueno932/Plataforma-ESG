@@ -93,6 +93,8 @@ export function capabilities(role, cycleStatus, user) {
     requestReturn: !filling && cycleStatus !== 'Audited' && role === 'MANAGER',
     release: filling && isAdmin,
     designate: isAdmin,
+    // Estrutura de maturidades do catálogo (edição em rascunho); o servidor exige `catalog.manage`.
+    editMaturities: isAdmin,
     audit: auditing && role === 'AUDITOR',
     conclude: auditing && role === 'AUDITOR',
     approve: cycleStatus === 'AwaitingSupervisor' && role === 'SUPERVISOR',
@@ -101,3 +103,4 @@ export function capabilities(role, cycleStatus, user) {
     createPending: (PENDING_KINDS_BY_ROLE[role] || []).length > 0,
   };
 }
+

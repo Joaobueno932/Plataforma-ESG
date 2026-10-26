@@ -199,7 +199,7 @@ function validateAnswers(list) {
     }
     return { id: raw.id || null, title, points, description, mandatory: !!raw.mandatory, presentation: stored, position: index + 1 };
   });
-  if (mandatory > 1) throw badRequest('só pode haver um nível mínimo obrigatório por indicador');
+  if (mandatory > 1) throw badRequest('só pode haver um nível de maturidade mínima exigida por indicador');
   return answers;
 }
 
@@ -357,7 +357,42 @@ async function reorder(versionId, section, ids) {
   return { section, order: ids };
 }
 
+/**
+ * Edição das maturidades a partir de um indicador em uso (ex.: aberto em um ciclo).
+ *
+ * O indicador do ciclo pertence a uma versão **congelada** — editá-lo no lugar alteraria
+ * respostas, pontuações e auditorias já registradas. Em vez disso, localiza o **mesmo indicador**
+ * (código + caderno) na edição administrativa em rascunho mais recente, criando-a a partir da
+ * versão em vigor se não houver. Um indicador do Caderno Geral existe uma única vez por versão,
+ * então a edição publicada vale para empresas de todos os setores, sem duplicação.
+ */
+async function draftForQuestion(questionId, { actorId = null } = {}) {
+  const source = await db.one('SELECT id, versionId, code, section, title FROM questions WHERE id = ?', questionId);
+  if (!source) throw notFound('indicador não encontrado');
+  const frozen = await catalog.versionById(source.versionId);
+
+  let created = false;
+  let version = frozen?.status === 'draft' ? frozen : await db.one("SELECT * FROM catalog_versions WHERE status = 'draft' AND origin = 'edited' ORDER BY createdAt DESC LIMIT 1");
+  if (!version) {
+    version = await createEdition({ actorId });
+    created = true;
+  }
+  const question = await db.one('SELECT id FROM questions WHERE versionId = ? AND code = ? AND section = ?', version.id, source.code, source.section);
+  if (!question)
+    throw notFound(
+      `o indicador ${source.code} não existe na edição em rascunho "${version.label}" (pode ter sido removido nela ou não fazer parte da versão em vigor)`,
+    );
+  const cycles = Number((await db.one('SELECT count(*) AS n FROM reports WHERE catalogVersionId = ?', source.versionId)).n);
+  return {
+    version: { id: version.id, label: version.label, status: version.status },
+    created,
+    questionId: question.id,
+    source: { versionId: source.versionId, label: frozen?.label ?? null, status: frozen?.status ?? null, cycles },
+  };
+}
+
 module.exports = {
+  draftForQuestion,
   createEdition,
   editorView,
   addSection,

@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const PDFDocument = require('pdfkit');
 const presentation = require('../catalog/presentation');
+const images = require('../images');
 
 const TEMPLATE_VERSION = 'relatorio-auditoria-estrutura-v1';
 const LOGO = path.join(__dirname, '..', '..', 'assets', 'esg_logo_horizontal.png');
@@ -92,6 +93,16 @@ function build(data) {
 
   // ---- capa / identificação
   if (fs.existsSync(LOGO)) doc.image(LOGO, left, 40, { height: 42 });
+  // Logo da empresa (enviada pela plataforma), à direita. O PDFKit lê PNG e JPEG; WebP e URLs
+  // externas antigas ficam de fora do documento — o relatório nunca baixa conteúdo de terceiros.
+  const companyLogo = images.localPath(data.company.avatar, 'logo');
+  if (companyLogo && /\.(png|jpg)$/.test(companyLogo) && fs.existsSync(companyLogo)) {
+    try {
+      doc.image(companyLogo, left + width - 140, 36, { fit: [140, 50], align: 'right', valign: 'center' });
+    } catch {
+      /* imagem ilegível para o PDFKit: o relatório segue sem a logo da empresa */
+    }
+  }
   doc.y = 100;
   doc.fillColor(BLUE).font('Helvetica-Bold').fontSize(20).text('Relatório de auditoria', left, doc.y, { width });
   doc.fillColor(GRAY).font('Helvetica').fontSize(11).text('Programa ESG FIEMS · resultado aprovado pelo supervisor', { width });
@@ -137,7 +148,7 @@ function build(data) {
   heading('5. Elegibilidade');
   ensure(30);
   doc.font('Helvetica-Bold').fontSize(11).fillColor(r.eligible ? '#166534' : '#991B1B').text(r.eligible ? 'Elegível à certificação' : 'Não elegível à certificação', { width });
-  doc.font('Helvetica').fontSize(9).fillColor(GRAY).text('Rating matemático e elegibilidade são verificações separadas: requisito obrigatório não atendido impede a certificação mesmo com pontuação alta.', { width });
+  doc.font('Helvetica').fontSize(9).fillColor(GRAY).text('Rating matemático e elegibilidade são verificações separadas: maturidade mínima exigida não atendida impede a certificação mesmo com pontuação alta.', { width });
   doc.moveDown(0.4);
   if ((r.impediments || []).length) {
     for (const imp of r.impediments) {

@@ -1,14 +1,24 @@
 'use client';
 import { useState } from 'react';
-import { IoLockClosed, IoInformationCircleOutline } from 'react-icons/io5';
-import { Badge, Btn, Field, Notice, TextArea } from '@/components/esg/ui';
+import {
+  IoArrowUndoOutline,
+  IoCheckmarkCircleOutline,
+  IoCheckmarkDoneOutline,
+  IoDocumentTextOutline,
+  IoInformationCircleOutline,
+  IoLockClosed,
+  IoLockOpenOutline,
+  IoReturnUpBackOutline,
+} from 'react-icons/io5';
+import { Badge, Btn, Field, Notice, PageHeading, TextArea } from '@/components/esg/ui';
+import { CompanyLogo } from '@/components/companies/company-logo';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CYCLE_STATE, ROLE_NAME } from '@/lib/workflow';
 import { finishAuditory, releaseCycle, requestAudit, requestReturn, returnCycleWith, submitToSupervisor } from '@/services/reports';
 import { apiErrorMessage, notify } from '@/lib/toast';
 
-/** Ação com confirmação (e motivo, quando a regra exige). */
-function ConfirmAction({ label, title, description, needsReason, reasonLabel, variant = 'primary', onConfirm }) {
+/** Ação do ciclo com confirmação (e motivo, quando a regra exige). Mesmo tamanho e forma para todas. */
+function ConfirmAction({ label, icon, title, description, needsReason, reasonLabel, variant = 'primary', onConfirm }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,7 +39,8 @@ function ConfirmAction({ label, title, description, needsReason, reasonLabel, va
   };
   return (
     <>
-      <Btn variant={variant} size="md" onClick={() => setOpen(true)}>
+      <Btn variant={variant} size="lg" className="w-full px-6 sm:w-auto" onClick={() => setOpen(true)}>
+        {icon && <span className="text-[1.15rem]">{icon}</span>}
         {label}
       </Btn>
       <Dialog open={open} onOpenChange={(v) => !busy && setOpen(v)}>
@@ -73,12 +84,13 @@ export function CycleHeader({ company, report, workflow, role, can, onChanged })
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Avaliação ESG · Ciclo {report?.cycle ?? 1}</p>
-          <h1 className="mt-1 truncate text-2xl font-semibold text-slate-900 sm:text-[28px]">{company?.bussinessName}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-            <Badge tone={state.tone === 'success' ? 'success' : state.tone === 'warning' ? 'warning' : 'info'}>
+      <PageHeading
+        eyebrow={`Avaliação ESG · Ciclo ${report?.cycle ?? 1}`}
+        title={company?.bussinessName}
+        media={<CompanyLogo company={company} size="lg" />}
+        meta={
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-2 text-sm text-slate-600">
+            <Badge tone={state.tone === 'success' ? 'success' : state.tone === 'warning' ? 'warning' : 'info'} className="px-3 py-1 text-[13px]">
               {locked && <IoLockClosed aria-hidden />}
               {state.label}
             </Badge>
@@ -96,75 +108,79 @@ export function CycleHeader({ company, report, workflow, role, can, onChanged })
               </>
             )}
           </div>
-        </div>
+        }
+        actions={
+          <>
+            {can.requestAudit && !report?.auditRequestedAt && (
+              <ConfirmAction
+                label="Solicitar auditoria"
+                icon={<IoDocumentTextOutline aria-hidden />}
+                title="Solicitar auditoria"
+                description="A Administração FIEMS será avisada. A solicitação não libera o processo: a liberação confere se todos os indicadores foram enviados e aprovados."
+                onConfirm={() => done(requestAudit(company.id), 'Auditoria solicitada')}
+              />
+            )}
+            {can.release && (
+              <ConfirmAction
+                label="Liberar para auditoria"
+                icon={<IoLockOpenOutline aria-hidden />}
+                title="Liberar o processo para auditoria"
+                description={
+                  releaseBlocked
+                    ? 'Ainda há pré-requisitos pendentes (veja o aviso na tela). A liberação será recusada até que estejam resolvidos.'
+                    : 'Respostas, evidências, catálogo e escopo serão congelados. A empresa, a consultoria e a Administração não editam mais até um retorno autorizado.'
+                }
+                onConfirm={() => done(releaseCycle(company.id), 'Processo liberado para auditoria')}
+              />
+            )}
+            {can.conclude && (
+              <ConfirmAction
+                label="Concluir auditoria"
+                icon={<IoCheckmarkDoneOutline aria-hidden />}
+                title="Concluir a auditoria"
+                description="Todos os indicadores precisam de decisão válida. O ciclo seguirá para a aprovação do supervisor."
+                onConfirm={() => done(submitToSupervisor(company.id), 'Auditoria concluída; aguardando supervisor')}
+              />
+            )}
+            {can.approve && (
+              <ConfirmAction
+                label="Aprovar auditoria"
+                icon={<IoCheckmarkCircleOutline aria-hidden />}
+                variant="success"
+                title="Aprovar o trabalho do auditor"
+                description="A aprovação grava o resultado com a versão da regra e libera resultado e documentos automaticamente. Ela não altera enquadramentos."
+                onConfirm={() => done(finishAuditory(company.id), 'Auditoria aprovada')}
+              />
+            )}
+            {can.requestReturn && (
+              <ConfirmAction
+                label="Pedir retorno"
+                icon={<IoArrowUndoOutline aria-hidden />}
+                variant="secondary"
+                needsReason
+                title="Pedir o retorno do processo"
+                description="O pedido fica registrado para a consultoria e a Administração. Ele, sozinho, não desbloqueia a edição."
+                onConfirm={(reason) => done(requestReturn(company.id, reason), 'Pedido de retorno registrado')}
+              />
+            )}
+            {can.returnCycle && (
+              <ConfirmAction
+                label="Retornar processo"
+                icon={<IoReturnUpBackOutline aria-hidden />}
+                variant="warning"
+                needsReason
+                reasonLabel="Motivo do retorno"
+                title="Retornar o processo à empresa"
+                description="Abre uma nova rodada. O material enviado e os pareceres ficam preservados; só os indicadores alterados perdem a decisão anterior."
+                onConfirm={(reason) => done(returnCycleWith(company.id, { reason }), 'Processo retornado à empresa')}
+              />
+            )}
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap gap-2 lg:justify-end">
-          {can.requestAudit && !report?.auditRequestedAt && (
-            <ConfirmAction
-              label="Solicitar auditoria"
-              title="Solicitar auditoria"
-              description="A Administração FIEMS será avisada. A solicitação não libera o processo: a liberação confere se todos os indicadores foram enviados e aprovados."
-              onConfirm={() => done(requestAudit(company.id), 'Auditoria solicitada')}
-            />
-          )}
-          {can.release && (
-            <ConfirmAction
-              label="Liberar para auditoria"
-              title="Liberar o processo para auditoria"
-              description={
-                releaseBlocked
-                  ? 'Ainda há pré-requisitos pendentes (veja o aviso na tela). A liberação será recusada até que estejam resolvidos.'
-                  : 'Respostas, evidências, catálogo e escopo serão congelados. A empresa, a consultoria e a Administração não editam mais até um retorno autorizado.'
-              }
-              onConfirm={() => done(releaseCycle(company.id), 'Processo liberado para auditoria')}
-            />
-          )}
-          {can.conclude && (
-            <ConfirmAction
-              label="Concluir auditoria"
-              title="Concluir a auditoria"
-              description="Todos os indicadores precisam de decisão válida. O ciclo seguirá para a aprovação do supervisor."
-              onConfirm={() => done(submitToSupervisor(company.id), 'Auditoria concluída; aguardando supervisor')}
-            />
-          )}
-          {can.approve && (
-            <ConfirmAction
-              label="Aprovar auditoria"
-              variant="success"
-              title="Aprovar o trabalho do auditor"
-              description="A aprovação grava o resultado com a versão da regra e libera resultado e documentos automaticamente. Ela não altera enquadramentos."
-              onConfirm={() => done(finishAuditory(company.id), 'Auditoria aprovada')}
-            />
-          )}
-          {can.requestReturn && (
-            <ConfirmAction
-              label="Pedir retorno"
-              variant="secondary"
-              needsReason
-              title="Pedir o retorno do processo"
-              description="O pedido fica registrado para a consultoria e a Administração. Ele, sozinho, não desbloqueia a edição."
-              onConfirm={(reason) => done(requestReturn(company.id, reason), 'Pedido de retorno registrado')}
-            />
-          )}
-          {can.returnCycle && (
-            <ConfirmAction
-              label="Retornar processo"
-              variant="warning"
-              needsReason
-              reasonLabel="Motivo do retorno"
-              title="Retornar o processo à empresa"
-              description="Abre uma nova rodada. O material enviado e os pareceres ficam preservados; só os indicadores alterados perdem a decisão anterior."
-              onConfirm={(reason) => done(returnCycleWith(company.id, { reason }), 'Processo retornado à empresa')}
-            />
-          )}
-        </div>
-      </div>
-
-      <Notice tone={locked ? 'warning' : 'info'}>
-        <span className="flex items-start gap-2">
-          <IoInformationCircleOutline className="mt-0.5 shrink-0" aria-hidden />
-          <span>{state.help}</span>
-        </span>
+      <Notice tone={locked ? 'warning' : 'info'} icon={<IoInformationCircleOutline aria-hidden />} className="py-3.5 text-[15px]">
+        {state.help}
       </Notice>
     </div>
   );

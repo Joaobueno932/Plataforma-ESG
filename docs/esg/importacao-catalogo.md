@@ -122,6 +122,8 @@ ligadura "fi" na extração, **não** é divergência de conteúdo); `G1E01` (ve
 ("Inexistência de trabalho infantil, forçado ou análogo ao escravo" na planilha ×
 "Trabalho infantil, forçado, escravo ou análogo ao escravo" no caderno).
 
+**Atualização (24/10/2026):** a marca de mínimo passou a ser conferida por `tools/minimum_crosscheck.py` (posição gráfica + faixa preenchida), com 139/139 conferindo — ver `maturidade-minima.md`. O texto abaixo descreve a limitação original da extração de texto.
+
 **O que não é conferível por extração de texto:** a marca **"Obrigatório"** do nível mínimo
 aparece acima de uma coluna e a extração não preserva o layout (há página que rende
 `ObrigatórioObrigatório` e página em que a marca não sai). Comparar isso automaticamente
@@ -175,7 +177,7 @@ texto gerado.** A importação dessa parte exige uma das opções de § 6.
 |---|---|---|
 | 1 | **Ratificação de GS04 e G1E01** (nome oficial) | rótulo exibido de um indicador obrigatório e de um indicador setorial |
 | 2 | **Ratificação das pontuações de AE03 e GE06** | muda pontos obtidos e máximo aplicável desses indicadores (cálculo, etapa E5) |
-| 3 | **Conferência do mínimo obrigatório contra os cadernos** | não conferível por extração; precisa de leitura humana ou de fonte estruturada |
+| 3 | ~~Conferência do mínimo obrigatório contra os cadernos~~ — **resolvida em 24/10/2026**: 139/139 conferem, 50 com maturidade mínima exigida (ver `maturidade-minima.md`) | — |
 | 4 | **Descrição e orientação de verificação dos indicadores** | conteúdo que a empresa lê para responder. Caminhos: (a) planilha oficial que inclua as duas colunas; (b) extração assistida dos cadernos com revisão indicador por indicador; (c) digitação revisada. Nenhuma delas é automática |
 | 5 | Confirmar se `Indicadores Programa ESG FIEMS 1 (1).xlsx` é a revisão vigente (§ 1) | identidade da versão publicada |
 | 6 | `G1G01` sem cabeçalho localizável no caderno G | conferir se o indicador consta do caderno publicado |

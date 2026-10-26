@@ -42,6 +42,13 @@ const TONES = {
   warning: 'bg-amber-50 text-amber-900 ring-amber-200',
   danger: 'bg-red-50 text-red-800 ring-red-200',
   brand: 'bg-[#0D3969] text-white ring-[#0D3969]',
+  // Identificação de perfis (Pessoas/Equipe).
+  violet: 'bg-violet-50 text-violet-800 ring-violet-200',
+  teal: 'bg-teal-50 text-teal-800 ring-teal-200',
+  orange: 'bg-orange-50 text-orange-800 ring-orange-200',
+  // Classificação do indicador (listagem do Gestor).
+  mandatory: 'bg-[#FFF0F0] text-[#B91C1C] ring-[#FCA5A5]',
+  sector: 'bg-[#FFF4CC] text-[#A16207] ring-[#FACC15]',
 };
 
 export function Badge({ tone = 'neutral', className, children, ...props }) {
@@ -61,32 +68,104 @@ export function Spinner({ className }) {
   );
 }
 
+/** Contêiner padrão das telas internas (respiro, largura útil e deslocamento da sidebar). */
+export const PAGE = 'esg-surface flex flex-col gap-6 px-4 pb-16 pt-2 sm:px-8 lg:ml-56';
+
+/**
+ * Título de página do design system: sobretítulo opcional, título institucional, descrição ou
+ * linha de metadados (`meta`) e ações à direita. O mesmo em todas as telas e perfis.
+ */
+export function PageHeading({ eyebrow, title, description, meta, actions, media, className }) {
+  return (
+    <div className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}>
+      <div className="flex min-w-0 items-start gap-4">
+        {media && <div className="hidden shrink-0 sm:block">{media}</div>}
+        <div className="min-w-0">
+        {eyebrow && <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{eyebrow}</p>}
+        <h1 className={cn('truncate text-2xl font-bold text-[#0D3969] sm:text-[30px] sm:leading-tight', eyebrow && 'mt-1')}>{title}</h1>
+        {description && <p className="mt-1.5 max-w-3xl text-sm text-slate-600 sm:text-[15px]">{description}</p>}
+        {meta}
+        </div>
+      </div>
+      {actions && <div className="flex flex-wrap gap-2 lg:shrink-0 lg:justify-end">{actions}</div>}
+    </div>
+  );
+}
+
+/**
+ * Rodapé de paginação das listas (mesmo em Empresas, Pessoas e demais tabelas). Com `total` e
+ * `perPage`, mostra também "Mostrando x–y de N {noun}".
+ */
+export function Pagination({ page, pages, onPrevious, onNext, total, perPage, noun = 'registros' }) {
+  const from = total ? (page - 1) * perPage + 1 : 0;
+  const to = total ? Math.min(total, page * perPage) : 0;
+  return (
+    <div className="flex flex-col gap-2 border-t border-slate-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-sm text-slate-600" aria-live="polite">
+        {total !== undefined && perPage ? (
+          <>
+            Mostrando <strong className="font-semibold text-slate-800">{from}–{to}</strong> de <strong className="font-semibold text-slate-800">{total}</strong> {noun}
+            <span className="text-slate-400"> · </span>
+          </>
+        ) : null}
+        Página {page} de {pages}
+      </span>
+      <div className="flex gap-2">
+        {page > 1 && (
+          <Btn type="button" size="sm" variant="secondary" onClick={onPrevious}>
+            Anterior
+          </Btn>
+        )}
+        {page < pages && (
+          <Btn type="button" size="sm" variant="secondary" onClick={onNext}>
+            Próximo
+          </Btn>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Card({ className, ...props }) {
   return <section className={cn('rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]', className)} {...props} />;
 }
 
-export function CardHeader({ title, description, actions, className }) {
+export function CardHeader({ title, description, actions, icon, className }) {
   return (
     <div className={cn('flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between', className)}>
-      <div className="min-w-0">
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        {description && <p className="mt-0.5 text-sm text-slate-600">{description}</p>}
+      <div className="flex min-w-0 items-start gap-3">
+        {icon && <span className="mt-0.5 shrink-0 text-[1.375rem] text-[#0D5DA8]">{icon}</span>}
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+          {description && <p className="mt-0.5 text-sm text-slate-600">{description}</p>}
+        </div>
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
 
+/** Cartão de resumo: fundo suave na cor do tom, ícone, valor em destaque e dica discreta. */
+const STAT_TONES = {
+  neutral: { card: 'border-slate-200 bg-white', label: 'text-slate-600', value: 'text-slate-700' },
+  info: { card: 'border-blue-200/80 bg-blue-50/70', label: 'text-[#0D5DA8]', value: 'text-[#0D3969]' },
+  violet: { card: 'border-violet-200/80 bg-violet-50/70', label: 'text-violet-700', value: 'text-violet-700' },
+  success: { card: 'border-emerald-200/80 bg-emerald-50/70', label: 'text-emerald-700', value: 'text-emerald-700' },
+  warning: { card: 'border-orange-200/80 bg-orange-50/70', label: 'text-orange-700', value: 'text-orange-600' },
+  danger: { card: 'border-red-200/80 bg-red-50/70', label: 'text-red-700', value: 'text-red-700' },
+};
+
 export function Stat({ label, value, hint, tone = 'neutral', icon }) {
-  const accent = { neutral: 'text-slate-900', success: 'text-green-700', warning: 'text-amber-700', danger: 'text-red-700', info: 'text-[#0D5DA8]' }[tone];
+  const t = STAT_TONES[tone] || STAT_TONES.neutral;
   return (
-    <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-        {icon}
+    <div className={cn('flex min-w-0 flex-col gap-2 rounded-xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] xl:px-5', t.card)}>
+      <div className={cn('flex min-h-[1.75rem] items-center gap-2 text-[11px] font-semibold uppercase leading-tight tracking-wide', t.label)}>
+        {icon && <span className="shrink-0 text-[1.25rem]">{icon}</span>}
         {label}
       </div>
-      <div className={cn('text-2xl font-semibold tabular-nums', accent)}>{value}</div>
-      {hint && <div className="text-xs text-slate-500">{hint}</div>}
+      {/* Valores longos ("8 pendente(s)") reduzem a fonte para caber na coluna estreita do desktop. */}
+      <div className={cn('font-bold leading-none tabular-nums', String(value).length > 6 ? 'text-xl xl:text-[1.375rem]' : 'text-[1.75rem]', t.value)}>{value}</div>
+      {hint && <div className="text-xs text-slate-600">{hint}</div>}
     </div>
   );
 }
@@ -181,7 +260,7 @@ export const SelectInput = React.forwardRef(function SelectInput({ className, ch
   );
 });
 
-export function Notice({ tone = 'info', title, children, className }) {
+export function Notice({ tone = 'info', title, icon, children, className }) {
   const style = {
     info: 'border-blue-200 bg-blue-50 text-[#0D3969]',
     warning: 'border-amber-200 bg-amber-50 text-amber-900',
@@ -190,8 +269,20 @@ export function Notice({ tone = 'info', title, children, className }) {
   }[tone];
   return (
     <div className={cn('rounded-xl border px-4 py-3 text-sm', style, className)} role={tone === 'danger' ? 'alert' : 'status'}>
-      {title && <p className="font-semibold">{title}</p>}
-      <div className={title ? 'mt-0.5' : ''}>{children}</div>
+      {icon ? (
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 shrink-0 text-[1.25rem]">{icon}</span>
+          <div className="min-w-0">
+            {title && <p className="font-semibold">{title}</p>}
+            <div className={title ? 'mt-0.5' : ''}>{children}</div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {title && <p className="font-semibold">{title}</p>}
+          <div className={title ? 'mt-0.5' : ''}>{children}</div>
+        </>
+      )}
     </div>
   );
 }

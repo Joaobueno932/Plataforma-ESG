@@ -1,8 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { IoClose } from 'react-icons/io5';
 import { CompanySearch } from '@/components/ui/company-search';
 import { ChangePasswordForm } from '@/components/layout/change-password-form';
+import { AvatarEditor } from '@/components/people/avatar-editor';
+import { removeUserAvatar, uploadUserAvatar } from '@/services/users';
+import { Btn, Card, CardHeader, PAGE, PageHeading } from '@/components/esg/ui';
 import { useAuth } from '@/contexts/auth';
 import { getContextOptions, selectContext } from '@/services/auth';
 import { notify, updateToast, apiErrorMessage } from '@/lib/toast';
@@ -17,6 +20,7 @@ import { ROLE_LABEL } from '@/lib/constants';
 export default function SettingsPage() {
   const [selected, setSelected] = useState(null);
   const [options, setOptions] = useState(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const { userLogged, reloadUser } = useAuth();
   const links = userLogged?.links ?? [];
   const canSelectContext = links.length > 1;
@@ -42,74 +46,90 @@ export default function SettingsPage() {
     }
   };
 
+  /** Foto da própria pessoa: salva na hora e o cabeçalho atualiza sem novo login. */
+  const savePhoto = (action, done) => async (blob) => {
+    setPhotoBusy(true);
+    try {
+      await action(blob);
+      await reloadUser?.();
+      notify(done, 'success');
+    } catch (err) {
+      throw new Error(apiErrorMessage(err));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const rows = [
+    ['Nome', userLogged?.name],
+    ['E-mail', userLogged?.email],
+    userLogged?.jobTitle && ['Cargo', userLogged.jobTitle],
+    ['Perfis ativos', (userLogged?.roles ?? []).map((r) => ROLE_LABEL[r] || r).join(', ') || '—'],
+    ['Empresa em contexto', userLogged?.company?.bussinessName || '—'],
+  ].filter(Boolean);
+
   return (
-    <div className="px-6 pb-10 lg:ml-56 h-fit flex flex-col gap-2">
-      <section className="flex flex-col gap-4">
-        <h3 className="font-semibold text-neutral-03 text-xl">Meu perfil</h3>
-        <dl className="grid grid-cols-[auto,1fr] gap-x-6 gap-y-2 text-base">
-          <dt className="font-semibold text-neutral">Nome</dt>
-          <dd className="text-neutral-03">{userLogged?.name}</dd>
-          <dt className="font-semibold text-neutral">E-mail</dt>
-          <dd className="text-neutral-03">{userLogged?.email}</dd>
-          {userLogged?.jobTitle && (
-            <>
-              <dt className="font-semibold text-neutral">Cargo</dt>
-              <dd className="text-neutral-03">{userLogged.jobTitle}</dd>
-            </>
-          )}
-          <dt className="font-semibold text-neutral">Perfis ativos</dt>
-          <dd className="text-neutral-03">{(userLogged?.roles ?? []).map((r) => ROLE_LABEL[r] || r).join(', ') || '—'}</dd>
-          <dt className="font-semibold text-neutral">Empresa em contexto</dt>
-          <dd className="text-neutral-03">{userLogged?.company?.bussinessName || '—'}</dd>
-        </dl>
-        <p className="text-sm text-neutral-03">
-          Perfis e vínculos com empresas são concedidos pela Administração FIEMS e não podem ser alterados por aqui.
-        </p>
-      </section>
-      <div role="none" className="shrink-0 bg-border ml-16 w-[60%] my-8 h-1" />
-      <section className="flex flex-col gap-6">
-        <h3 className="font-semibold text-neutral-03 text-xl">Redefinição de senha</h3>
-        <ChangePasswordForm />
-      </section>
+    <div className={PAGE}>
+      <PageHeading title="Configurações" description="Seus dados de acesso e a troca de senha." />
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Meu perfil" description="Perfis e vínculos com empresas são concedidos pela Administração FIEMS e não podem ser alterados por aqui." />
+          <div id="foto" className="scroll-mt-28 border-b border-slate-100 p-5">
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Foto de perfil</h3>
+            {userLogged && (
+              <AvatarEditor
+                user={userLogged}
+                busy={photoBusy}
+                onPick={savePhoto((blob) => uploadUserAvatar(userLogged.id, blob), 'Foto atualizada.')}
+                onRemove={savePhoto(() => removeUserAvatar(userLogged.id), 'Foto removida; as iniciais voltam a ser exibidas.')}
+                hint="JPEG, PNG ou WebP. A foto é recortada em 512×512 e aparece no cabeçalho e nas listas de pessoas."
+              />
+            )}
+          </div>
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 p-5 text-sm sm:grid-cols-[auto,1fr] sm:gap-y-3">
+            {rows.map(([label, value]) => (
+              <div key={label} className="contents">
+                <dt className="font-medium text-slate-500">{label}</dt>
+                <dd className="mb-2 font-medium text-slate-900 sm:mb-0">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+        <Card>
+          <CardHeader title="Redefinição de senha" description="A troca exige a senha atual." />
+          <div className="p-5">
+            <ChangePasswordForm />
+          </div>
+        </Card>
+      </div>
       {canSelectContext && (
-        <>
-          <div role="none" className="shrink-0 bg-border ml-16 w-[60%] my-8 h-1" />
-          <section>
-            <h3 className="font-semibold text-neutral-03 text-xl">Empresa em contexto</h3>
-            <p className="text-sm text-neutral-03 mt-1 mb-3">
-              Escolha entre as empresas com vínculo vigente. A troca não concede acesso novo.
+        <Card>
+          <CardHeader title="Empresa em contexto" description="Escolha entre as empresas com vínculo vigente. A troca não concede acesso novo." />
+          <div className="flex flex-col gap-4 p-5">
+            <p className="text-sm text-slate-600">
+              Empresa atual: <strong className="font-semibold text-slate-900">{userLogged?.company?.bussinessName || '—'}</strong>
             </p>
-            <div className="flex flex-col gap-1 my-3">
-              <span className="text-base text-neutral font-semibold">Empresa atual:</span>
-              <span className="text-base text-neutral-03 font-medium">{userLogged?.company?.bussinessName || '—'}</span>
-            </div>
-            <div className="w-[70%]">
+            <div className="max-w-xl">
               <CompanySearch data={options} changeSelect={(id) => setSelected(options?.find((c) => c.id === id) || null)} />
             </div>
-            <div className="space-y-3 mt-14 mb-40">
-              <h4 className="font-semibold text-neutral text-base">Empresa selecionada:</h4>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-slate-800">Empresa selecionada</span>
               {selected ? (
-                <div className="w-fit h-12 px-4 flex gap-2 justify-between items-center bg-white rounded-2xl shadow-md">
-                  <span className="font-medium text-base text-neutral-04">{selected.bussinessName}</span>
-                  <Button
-                    className="border-none bg-transparent shadow-transparent hover:bg-transparent text-black rounded-lg p-1"
-                    type="button"
-                    onClick={() => setSelected(null)}
-                  >
-                    x
-                  </Button>
-                </div>
+                <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm">
+                  {selected.bussinessName}
+                  <button type="button" onClick={() => setSelected(null)} className="rounded p-0.5 text-slate-500 hover:text-slate-900" aria-label="Remover seleção">
+                    <IoClose aria-hidden />
+                  </button>
+                </span>
               ) : (
-                <span className="text-neutral-03">Nenhuma empresa selecionada.</span>
+                <span className="text-sm text-slate-500">Nenhuma empresa selecionada.</span>
               )}
             </div>
-            <div className="w-[70%] flex justify-center">
-              <Button size="lg" className="w-[390px]" variant="success" disabled={!selected} onClick={apply}>
-                SALVAR ALTERAÇÕES
-              </Button>
-            </div>
-          </section>
-        </>
+            <Btn variant="success" className="self-start" disabled={!selected} onClick={apply}>
+              Salvar alterações
+            </Btn>
+          </div>
+        </Card>
       )}
     </div>
   );

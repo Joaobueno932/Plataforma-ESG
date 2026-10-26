@@ -2,14 +2,15 @@
 /**
  * Cartão de alternativa fiel aos cadernos oficiais: faixa colorida com o nome do nível, corpo
  * claro com borda da mesma cor, explicação do nível, pontuação assentada na borda inferior e
- * faixa "OBRIGATÓRIO" no nível mínimo. A quantidade de cartões é a do indicador.
+ * faixa "Mínimo exigido" no nível de maturidade mínima exigida pelo caderno (onde o PDF imprime
+ * "OBRIGATÓRIO"). A quantidade de cartões é a do indicador.
  *
  * Seleção: anel externo + marca de verificação + texto "Selecionada" — as cores dos cartões
  * não mudam com a seleção e a escolha não depende só da cor. O grupo é um `radiogroup`:
  * setas movem entre os níveis, Espaço/Enter selecionam.
  */
 import * as React from 'react';
-import { IoCheckmarkCircle } from 'react-icons/io5';
+import { IoCheckmarkCircle, IoFlag } from 'react-icons/io5';
 import { cn } from '@/lib/utils';
 import { levelColor, levelName, readableOn, sortByPosition } from '@/lib/levels';
 
@@ -40,9 +41,10 @@ export function LevelCard({ answer, selected = false, audited = false, interacti
       </span>
       <span className="relative flex flex-1 flex-col border-x-2 border-b-2 bg-white" style={{ borderColor: color }}>
         <span className={cn('flex-1 px-3 pb-6 pt-3 text-[13px] leading-relaxed text-slate-700', compact && 'line-clamp-4')}>{answer.description}</span>
+        {/* Marca do piso, não da escolha: a seleção usa anel + selo "Selecionada" no topo. */}
         {answer.mandatory && (
-          <span className="mx-0 block px-2 py-1 text-center text-[11px] font-bold uppercase tracking-wide" style={{ background: color, color: onBand }}>
-            Obrigatório
+          <span className="mx-0 flex items-center justify-center gap-1 px-2 py-1 text-center text-[11px] font-bold uppercase tracking-wide" style={{ background: color, color: onBand }}>
+            <IoFlag aria-hidden /> Mínimo exigido
           </span>
         )}
         <span

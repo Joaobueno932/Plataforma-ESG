@@ -63,6 +63,10 @@ const config = {
   corsOrigins: list(process.env.CORS_ORIGINS),
   maxCompanyFileBytes: number(process.env.MAX_COMPANY_FILE_BYTES, 50 * 1024 * 1024),
   maxCoverBytes: number(process.env.MAX_COVER_BYTES, 100 * 1024 * 1024),
+  /** Foto de perfil: a interface já recorta e reduz para 512×512 antes de enviar. */
+  maxAvatarBytes: number(process.env.MAX_AVATAR_BYTES, 2 * 1024 * 1024),
+  /** Logo de empresa (exibida na plataforma e no relatório em PDF). */
+  maxLogoBytes: number(process.env.MAX_LOGO_BYTES, 5 * 1024 * 1024),
   /** Aplicar migrações na subida da API. */
   runMigrations: String(process.env.RUN_MIGRATIONS ?? 'true') !== 'false',
   /** Semear dados de demonstração quando o banco estiver vazio (nunca em produção). */

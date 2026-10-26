@@ -8,13 +8,14 @@ export const REPORT_STATUS_LABEL = {
   InRevision: 'Em Revisão',
 };
 
-export const REPORT_STATUS_COLOR = {
-  Pending: 'bg-blue-500',
-  Submited: 'bg-gray-400',
-  WaitingAuditory: 'bg-yellow-400',
-  Auditing: 'bg-yellow-500',
-  Audited: 'bg-green-600',
-  InRevision: 'bg-rose-700',
+/** Tom do `Badge` (design system) para a situação do ciclo nas listas. */
+export const REPORT_STATUS_TONE = {
+  Pending: 'info',
+  Submited: 'neutral',
+  WaitingAuditory: 'warning',
+  Auditing: 'warning',
+  Audited: 'success',
+  InRevision: 'danger',
 };
 
 /**
@@ -88,7 +89,7 @@ export const FALLBACK_LEVELS = [
 ];
 
 export const ROLE_OPTIONS = [
-  { text: 'Admin', value: 'ADMIN' },
+  { text: 'Administrador', value: 'ADMIN' },
   { text: 'Gestor', value: 'MANAGER' },
   { text: 'Consultor', value: 'CONSULTOR' },
   { text: 'Auditor', value: 'AUDITOR' },
@@ -97,3 +98,25 @@ export const ROLE_OPTIONS = [
 ];
 
 export const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((r) => [r.value, r.text]));
+
+/** Cor do badge de cada perfil (só identificação visual; não muda permissão). */
+export const ROLE_TONE = {
+  ADMIN: 'info',
+  MANAGER: 'success',
+  SUPERVISOR: 'violet',
+  AUDITOR: 'orange',
+  CONSULTOR: 'teal',
+  EMPLOYEE: 'neutral',
+};
+
+/** Filtros das listas de Pessoas e Equipe (valores aceitos pela API). */
+export const USER_STATUS_OPTIONS = [
+  { value: 'ACTIVE', text: 'Ativas' },
+  { value: 'INACTIVE', text: 'Inativas' },
+];
+export const CREATED_OPTIONS = [
+  { value: '7d', text: 'Últimos 7 dias' },
+  { value: '30d', text: 'Últimos 30 dias' },
+  { value: '12m', text: 'Últimos 12 meses' },
+  { value: 'year', text: 'Este ano' },
+];
